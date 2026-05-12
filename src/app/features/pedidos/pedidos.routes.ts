@@ -16,6 +16,13 @@ export const pedidosRoutes: Routes = [
       ),
   },
   {
+    path: ':id/editar',
+    loadComponent: () =>
+      import('./pages/novo-pedido/novo-pedido.component').then(
+        m => m.NovoPedidoComponent
+      ),
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./pages/detalhe-pedido/detalhe-pedido.component').then(

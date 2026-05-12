@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { Titulo, TituloForm } from '../models/titulo.model';
+import { CorrelacaoService } from '../../extrato/services/correlacao.service';
 
 @Injectable({ providedIn: 'root' })
 export class TitulosService {
   private db = inject(SupabaseService).client;
+  private correlacaoSvc = inject(CorrelacaoService);
 
   async listarPorPedido(pedidoId: string): Promise<Titulo[]> {
     const { data, error } = await this.db
@@ -23,6 +25,7 @@ export class TitulosService {
       .select()
       .single();
     if (error) throw error;
+    try { await this.correlacaoSvc.executar(); } catch { /* silent */ }
     return data;
   }
 

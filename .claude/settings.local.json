@@ -26,7 +26,8 @@
       "Bash(Out-Null)",
       "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\services\")",
       "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\pages\\\\lista-extrato\")",
-      "Bash(Write-Host \"Directories created.\")"
+      "Bash(Write-Host \"Directories created.\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\\" -Recurse -Directory | Select-Object FullName)"
     ]
   }
 }

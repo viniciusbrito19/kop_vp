@@ -84,6 +84,10 @@
                     (click)="$event.stopPropagation()" matTooltip="Ver detalhes">
               <mat-icon>visibility</mat-icon>
             </button>
+            <button mat-icon-button [routerLink]="['/pedidos', p.id, 'editar']"
+                    (click)="$event.stopPropagation()" matTooltip="Editar pedido">
+              <mat-icon>edit</mat-icon>
+            </button>
             <button mat-icon-button color="warn"
                     (click)="excluir(p.id, $event)" matTooltip="Excluir">
               <mat-icon>delete</mat-icon>
@@ -150,6 +154,7 @@
         <tr mat-header-row *matHeaderRowDef="colunas"></tr>
         <tr mat-row *matRowDef="let row; columns: colunas"
             class="row-hover"
+            [attr.data-pedido-id]="row.id"
             [routerLink]="['/pedidos', row.id]"></tr>
         <tr mat-row *matRowDef="let row; columns: ['detalhe']"
             class="detalhe-row"></tr>

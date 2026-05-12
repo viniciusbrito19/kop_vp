@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { lastValueFrom } from 'rxjs';
 import { MatTableModule } from '@angular/material/table';
@@ -40,6 +40,7 @@ export class ListaPedidosComponent implements OnInit {
   private titulosSvc     = inject(TitulosService);
   private snack          = inject(MatSnackBar);
   private dialog         = inject(MatDialog);
+  private route          = inject(ActivatedRoute);
 
   pedidos        = signal<Pedido[]>([]);
   carregando     = signal(false);
@@ -49,7 +50,21 @@ export class ListaPedidosComponent implements OnInit {
 
   colunas = ['expandir', 'data_limite', 'codigo', 'tipo_pedido', 'numero_nf', 'fornecedor', 'valor_total', 'valor_pago', 'acoes'];
 
-  async ngOnInit() { await this.carregar(); }
+  async ngOnInit() {
+    await this.carregar();
+    const expandir = this.route.snapshot.queryParamMap.get('expandir');
+    if (expandir) {
+      const pedido = this.pedidos().find(p => p.id === expandir);
+      if (pedido) {
+        this.expandedIds.update(ids => [...ids, pedido.id]);
+        await this.carregarTitulos(pedido.id);
+        setTimeout(() => {
+          document.querySelector(`[data-pedido-id="${expandir}"]`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    }
+  }
 
   async carregar() {
     this.carregando.set(true);
@@ -73,7 +88,7 @@ export class ListaPedidosComponent implements OnInit {
     await this.carregarTitulos(pedido.id);
   }
 
-  private async carregarTitulos(pedidoId: string) {
+  async carregarTitulos(pedidoId: string) {
     if (this.titulosMap()[pedidoId]) return;
     this.carregandoTitulos.update(ids => [...ids, pedidoId]);
     try {

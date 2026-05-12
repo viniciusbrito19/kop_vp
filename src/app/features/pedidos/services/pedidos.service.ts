@@ -53,6 +53,19 @@ export class PedidosService {
     return data ?? [];
   }
 
+  async atualizar(id: string, form: PedidoForm, itens: ItemPedidoForm[]): Promise<void> {
+    const { error } = await this.db.from('pedidos').update(form).eq('id', id);
+    if (error) throw error;
+    // Replace items wholesale: delete existing, re-insert new ones
+    await this.db.from('itens_pedido').delete().eq('pedido_id', id);
+    if (itens.length > 0) {
+      const { error: itemError } = await this.db
+        .from('itens_pedido')
+        .insert(itens.map(item => ({ ...item, pedido_id: id })));
+      if (itemError) throw itemError;
+    }
+  }
+
   async excluir(id: string): Promise<void> {
     const { error } = await this.db.from('pedidos').delete().eq('id', id);
     if (error) throw error;

@@ -3,6 +3,11 @@
     <button mat-button routerLink="/pedidos">
       <mat-icon>arrow_back</mat-icon> Voltar
     </button>
+    @if (pedido(); as p) {
+      <button mat-stroked-button [routerLink]="['/pedidos', p.id, 'editar']">
+        <mat-icon>edit</mat-icon> Editar
+      </button>
+    }
   </div>
 
   @if (carregando()) {

@@ -55,3 +55,16 @@
 .empty-itens { color: #999; text-align: center; padding: 16px; }
 
 .step-actions { display: flex; gap: 8px; padding: 8px 0; }
+
+.pdf-atual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 14px;
+  mat-icon { color: #c0392b; font-size: 20px; height: 20px; width: 20px; }
+  .pdf-hint { color: #999; }
+}

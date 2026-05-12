@@ -1,6 +1,6 @@
 <div class="page-container">
   <div class="page-header">
-    <h1>Novo Pedido</h1>
+    <h1>{{ modoEdicao() ? 'Editar Pedido' : 'Novo Pedido' }}</h1>
     <button mat-button routerLink="/pedidos">
       <mat-icon>arrow_back</mat-icon> Voltar
     </button>
@@ -12,6 +12,14 @@
     <mat-step label="Upload da Nota Fiscal (opcional)">
       <mat-card class="step-card">
         <p class="hint">Faça o upload do PDF da NF-e DANFE para preenchimento automático dos campos.</p>
+        @if (modoEdicao() && pdfAtualUrl() && !arquivoPdf) {
+          <div class="pdf-atual">
+            <mat-icon>picture_as_pdf</mat-icon>
+            <span>PDF atual:</span>
+            <a [href]="pdfAtualUrl()" target="_blank">Ver PDF cadastrado</a>
+            <span class="pdf-hint">— selecione abaixo para substituir</span>
+          </div>
+        }
         <label class="upload-area">
           <input type="file" accept="application/pdf" (change)="onFileChange($event)" hidden #fileInput />
           @if (extraindo()) {
@@ -19,11 +27,11 @@
             <span>Extraindo dados...</span>
           } @else {
             <mat-icon class="upload-icon">upload_file</mat-icon>
-            <span>{{ arquivoPdf ? arquivoPdf.name : 'Clique para selecionar o PDF' }}</span>
+            <span>{{ arquivoPdf ? arquivoPdf.name : (modoEdicao() ? 'Clique para substituir o PDF' : 'Clique para selecionar o PDF') }}</span>
           }
         </label>
         <button mat-flat-button (click)="fileInput.click()" [disabled]="extraindo()" color="primary">
-          Selecionar PDF
+          {{ modoEdicao() ? 'Substituir PDF' : 'Selecionar PDF' }}
         </button>
       </mat-card>
       <div class="step-actions">
@@ -167,7 +175,7 @@
       <div class="step-actions">
         <button mat-button matStepperPrevious>Anterior</button>
         <button mat-flat-button color="primary" [disabled]="salvando()" (click)="salvar()">
-          @if (salvando()) { <mat-spinner diameter="18" /> } @else { Salvar Pedido }
+          @if (salvando()) { <mat-spinner diameter="18" /> } @else { {{ modoEdicao() ? 'Atualizar Pedido' : 'Salvar Pedido' }} }
         </button>
       </div>
     </mat-step>

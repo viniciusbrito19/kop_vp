@@ -5,6 +5,7 @@ export interface Titulo {
   data_vencimento: string | null;
   data_pagamento: string | null;
   valor: number;
+  lancamento_extrato_id?: string | null;
   created_at: string;
 }
 

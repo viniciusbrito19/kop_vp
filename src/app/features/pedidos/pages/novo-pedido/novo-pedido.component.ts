@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray, AbstractControl } from '@angular/forms';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
@@ -47,11 +47,15 @@ export class NovoPedidoComponent implements OnInit {
   private tiposPedidoService = inject(TiposPedidoService);
   private snack = inject(MatSnackBar);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   fornecedores = signal<Fornecedor[]>([]);
   tiposPedido = signal<TipoPedido[]>([]);
   extraindo = signal(false);
   salvando = signal(false);
+  modoEdicao = signal(false);
+  pedidoId: string | null = null;
+  pdfAtualUrl = signal<string | null>(null);
   arquivoPdf: File | null = null;
 
   form = this.fb.group({
@@ -70,12 +74,41 @@ export class NovoPedidoComponent implements OnInit {
   get itens(): FormArray { return this.form.get('itens') as FormArray; }
 
   async ngOnInit() {
+    this.pedidoId = this.route.snapshot.paramMap.get('id');
+    this.modoEdicao.set(!!this.pedidoId);
+
     const [fornecedores, tiposPedido] = await Promise.all([
       this.fornecedoresService.listar(),
       this.tiposPedidoService.listar(true),
     ]);
     this.fornecedores.set(fornecedores);
     this.tiposPedido.set(tiposPedido);
+
+    if (this.pedidoId) {
+      try {
+        const [pedido, itens] = await Promise.all([
+          this.pedidosService.buscarPorId(this.pedidoId),
+          this.pedidosService.buscarItens(this.pedidoId),
+        ]);
+        this.pdfAtualUrl.set(pedido.pdf_url);
+        this.form.patchValue({
+          codigo:         pedido.codigo ?? '',
+          data_limite:    pedido.data_limite ?? '',
+          fornecedor_id:  pedido.fornecedor_id ?? '',
+          tipo_pedido_id: pedido.tipo_pedido_id ?? '',
+          numero_nf:      pedido.numero_nf ?? '',
+          data_emissao:   pedido.data_emissao ?? '',
+          valor_total:    pedido.valor_total,
+          status:         pedido.status,
+          observacoes:    pedido.observacoes ?? '',
+        });
+        this.itens.clear();
+        for (const item of itens) this.adicionarItem(item);
+      } catch {
+        this.snack.open('Erro ao carregar pedido.', 'OK', { duration: 4000 });
+        this.router.navigate(['/pedidos']);
+      }
+    }
   }
 
   aplicarMascaraNf(event: Event) {
@@ -138,7 +171,7 @@ export class NovoPedidoComponent implements OnInit {
   async salvar() {
     this.salvando.set(true);
     try {
-      let pdfUrl: string | null = null;
+      let pdfUrl: string | null = this.modoEdicao() ? (this.pdfAtualUrl() ?? null) : null;
       if (this.arquivoPdf) {
         pdfUrl = await this.storage.uploadPdf(
           this.arquivoPdf,
@@ -146,22 +179,27 @@ export class NovoPedidoComponent implements OnInit {
         );
       }
       const v = this.form.value;
-      await this.pedidosService.salvar(
-        {
-          codigo: v.codigo || null,
-          data_limite: v.data_limite || null,
-          fornecedor_id: v.fornecedor_id || null,
-          tipo_pedido_id: v.tipo_pedido_id || null,
-          numero_nf: v.numero_nf || null,
-          data_emissao: v.data_emissao || null,
-          valor_total: v.valor_total ?? null,
-          status: (v.status as any) ?? 'recebido',
-          observacoes: v.observacoes || null,
-          pdf_url: pdfUrl,
-        },
-        (v.itens as any[]) ?? []
-      );
-      this.snack.open('Pedido salvo com sucesso!', 'OK', { duration: 3000 });
+      const formData = {
+        codigo: v.codigo || null,
+        data_limite: v.data_limite || null,
+        fornecedor_id: v.fornecedor_id || null,
+        tipo_pedido_id: v.tipo_pedido_id || null,
+        numero_nf: v.numero_nf || null,
+        data_emissao: v.data_emissao || null,
+        valor_total: v.valor_total ?? null,
+        status: (v.status as any) ?? 'recebido',
+        observacoes: v.observacoes || null,
+        pdf_url: pdfUrl,
+      };
+      const itens = (v.itens as any[]) ?? [];
+
+      if (this.modoEdicao() && this.pedidoId) {
+        await this.pedidosService.atualizar(this.pedidoId, formData, itens);
+        this.snack.open('Pedido atualizado com sucesso!', 'OK', { duration: 3000 });
+      } else {
+        await this.pedidosService.salvar(formData, itens);
+        this.snack.open('Pedido salvo com sucesso!', 'OK', { duration: 3000 });
+      }
       this.router.navigate(['/pedidos']);
     } catch {
       this.snack.open('Erro ao salvar pedido.', 'OK', { duration: 4000 });

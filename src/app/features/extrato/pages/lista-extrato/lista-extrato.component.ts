@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormControl } from '@angular/forms';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
+import { Router } from '@angular/router';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
@@ -63,6 +64,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   private service = inject(ExtratoService);
   private snack = inject(MatSnackBar);
   private fb = inject(FormBuilder);
+  private router = inject(Router);
   private destroy$ = new Subject<void>();
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -74,7 +76,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   editandoId = signal<string | null>(null);
   salvando = signal(false);
 
-  colunas = ['data_lancamento', 'natureza', 'tipo', 'destinatario_remetente', 'valor', 'saldo', 'acoes'];
+  colunas = ['data_lancamento', 'natureza', 'tipo', 'destinatario_remetente', 'valor', 'saldo', 'pedido', 'acoes'];
   colunasFiltro = this.colunas.map(c => c + '_filtro');
 
   readonly tiposLancamento = Object.entries(LABELS_TIPO) as [TipoLancamento, string][];
@@ -217,6 +219,13 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
 
   formatarMoeda(valor: number): string {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  abrirPedido(pedidoId: string) {
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree(['/pedidos'], { queryParams: { expandir: pedidoId } })
+    );
+    window.open(url, '_blank');
   }
 
   formatarData(data: string): string {

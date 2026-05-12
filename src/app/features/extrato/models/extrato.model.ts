@@ -39,4 +39,5 @@ export interface LancamentoExtrato {
   ordem_original: number;
   hash: string;
   created_at: string;
+  pedido?: { id: string; codigo: string } | null;
 }

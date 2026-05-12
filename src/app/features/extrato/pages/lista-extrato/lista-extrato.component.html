@@ -84,6 +84,20 @@
           <td mat-cell *matCellDef="let l" class="num-cell saldo-cell">{{ formatarMoeda(l.saldo) }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="pedido">
+          <th mat-header-cell *matHeaderCellDef class="pedido-header"></th>
+          <td mat-cell *matCellDef="let l" class="pedido-cell">
+            @if (l.pedido) {
+              <button mat-icon-button color="primary"
+                (click)="abrirPedido(l.pedido.id)"
+                [matTooltip]="'Pedido ' + l.pedido.codigo"
+                type="button">
+                <mat-icon>receipt_long</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef class="acoes-header"></th>
           <td mat-cell *matCellDef="let l" class="acoes-cell">
@@ -156,6 +170,10 @@
               </button>
             }
           </th>
+        </ng-container>
+
+        <ng-container matColumnDef="pedido_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
         </ng-container>
 
         <ng-container matColumnDef="acoes_filtro">

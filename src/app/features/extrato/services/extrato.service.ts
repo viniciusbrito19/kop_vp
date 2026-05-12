@@ -5,12 +5,14 @@ import {
   NaturezaLancamento,
   TipoLancamento,
 } from '../models/extrato.model';
+import { CorrelacaoService } from './correlacao.service';
 
-type LancamentoInsert = Omit<LancamentoExtrato, 'id' | 'created_at'>;
+type LancamentoInsert = Omit<LancamentoExtrato, 'id' | 'created_at' | 'pedido'>;
 
 @Injectable({ providedIn: 'root' })
 export class ExtratoService {
   private db = inject(SupabaseService).client;
+  private correlacaoSvc = inject(CorrelacaoService);
 
   async atualizarTipo(id: string, tipo: TipoLancamento): Promise<void> {
     const { error } = await this.db
@@ -23,11 +25,15 @@ export class ExtratoService {
   async listar(): Promise<LancamentoExtrato[]> {
     const { data, error } = await this.db
       .from('lancamentos_extrato')
-      .select('*')
+      .select('*, titulos(pedido_id, pedidos(id, codigo))')
       .order('data_lancamento', { ascending: false })
       .order('ordem_original', { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map(row => {
+      const { titulos: rawTitulos, ...rest } = row as any;
+      const titulo = (rawTitulos as any[] | null)?.[0];
+      return { ...rest, pedido: titulo?.pedidos ?? null } as LancamentoExtrato;
+    });
   }
 
   async importarCsv(file: File): Promise<{ inseridos: number; duplicatas: number }> {
@@ -48,6 +54,7 @@ export class ExtratoService {
     if (error) throw error;
 
     const inseridos = (data ?? []).length;
+    try { await this.correlacaoSvc.executar(); } catch { /* silent */ }
     return { inseridos, duplicatas: lancamentos.length - inseridos };
   }
 
