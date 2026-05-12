@@ -12,6 +12,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { PedidosService } from '../../services/pedidos.service';
 import { PdfExtractorService } from '../../services/pdf-extractor.service';
+import { XmlExtractorService } from '../../services/xml-extractor.service';
 import { StorageService } from '../../../../core/services/storage.service';
 import { FornecedoresService } from '../../../fornecedores/services/fornecedores.service';
 import { TiposPedidoService } from '../../../tipos-pedido/services/tipos-pedido.service';
@@ -42,6 +43,7 @@ export class NovoPedidoComponent implements OnInit {
   private fb = inject(FormBuilder);
   private pedidosService = inject(PedidosService);
   private pdfExtractor = inject(PdfExtractorService);
+  private xmlExtractor = inject(XmlExtractorService);
   private storage = inject(StorageService);
   private fornecedoresService = inject(FornecedoresService);
   private tiposPedidoService = inject(TiposPedidoService);
@@ -59,7 +61,7 @@ export class NovoPedidoComponent implements OnInit {
   arquivoPdf: File | null = null;
 
   form = this.fb.group({
-    codigo: ['', [Validators.pattern(/^\d{7}KPN$/)]],
+    codigo: ['', [Validators.pattern(/^(\d{7}KPN|\d+)$/)]],
     data_limite: [''],
     fornecedor_id: [''],
     tipo_pedido_id: [''],
@@ -128,11 +130,14 @@ export class NovoPedidoComponent implements OnInit {
     this.arquivoPdf = file;
     this.extraindo.set(true);
     try {
-      const dados = await this.pdfExtractor.extrair(file);
+      const isXml = file.name.toLowerCase().endsWith('.xml');
+      const dados = isXml
+        ? await this.xmlExtractor.extrair(file)
+        : await this.pdfExtractor.extrair(file);
       this.preencherComDados(dados);
       this.snack.open('Dados extraídos com sucesso!', 'OK', { duration: 3000 });
     } catch {
-      this.snack.open('Não foi possível extrair dados do PDF. Preencha manualmente.', 'OK', { duration: 4000 });
+      this.snack.open('Não foi possível extrair dados do arquivo. Preencha manualmente.', 'OK', { duration: 4000 });
     } finally {
       this.extraindo.set(false);
     }
@@ -172,10 +177,11 @@ export class NovoPedidoComponent implements OnInit {
     this.salvando.set(true);
     try {
       let pdfUrl: string | null = this.modoEdicao() ? (this.pdfAtualUrl() ?? null) : null;
-      if (this.arquivoPdf) {
+      const isPdf = this.arquivoPdf && !this.arquivoPdf.name.toLowerCase().endsWith('.xml');
+      if (isPdf) {
         pdfUrl = await this.storage.uploadPdf(
-          this.arquivoPdf,
-          `${Date.now()}_${this.arquivoPdf.name}`
+          this.arquivoPdf!,
+          `${Date.now()}_${this.arquivoPdf!.name}`
         );
       }
       const v = this.form.value;

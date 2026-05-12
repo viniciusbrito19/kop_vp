@@ -37,3 +37,8 @@ mat-card {
   border-radius: 12px !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
 }
+
+.warn-item {
+  color: #c62828 !important;
+  mat-icon { color: #c62828 !important; }
+}

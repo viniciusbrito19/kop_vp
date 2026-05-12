@@ -9,6 +9,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { PedidosService } from '../../services/pedidos.service';
 import { TitulosService } from '../../services/titulos.service';
@@ -30,6 +31,7 @@ import { TituloDialogComponent } from './titulo-dialog.component';
     MatProgressSpinnerModule,
     MatCardModule,
     MatTooltipModule,
+    MatMenuModule,
     MatDialogModule,
   ],
   templateUrl: './lista-pedidos.component.html',

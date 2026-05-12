@@ -11,7 +11,7 @@
     <!-- STEP 1: Upload PDF -->
     <mat-step label="Upload da Nota Fiscal (opcional)">
       <mat-card class="step-card">
-        <p class="hint">Faça o upload do PDF da NF-e DANFE para preenchimento automático dos campos.</p>
+        <p class="hint">Faça o upload do PDF (CRM) ou XML da NF-e (GIMBA) para preenchimento automático dos campos.</p>
         @if (modoEdicao() && pdfAtualUrl() && !arquivoPdf) {
           <div class="pdf-atual">
             <mat-icon>picture_as_pdf</mat-icon>
@@ -21,17 +21,17 @@
           </div>
         }
         <label class="upload-area">
-          <input type="file" accept="application/pdf" (change)="onFileChange($event)" hidden #fileInput />
+          <input type="file" accept="application/pdf,.xml" (change)="onFileChange($event)" hidden #fileInput />
           @if (extraindo()) {
             <mat-spinner diameter="32" />
             <span>Extraindo dados...</span>
           } @else {
             <mat-icon class="upload-icon">upload_file</mat-icon>
-            <span>{{ arquivoPdf ? arquivoPdf.name : (modoEdicao() ? 'Clique para substituir o PDF' : 'Clique para selecionar o PDF') }}</span>
+            <span>{{ arquivoPdf ? arquivoPdf.name : (modoEdicao() ? 'Clique para substituir o arquivo' : 'Clique para selecionar o PDF ou XML') }}</span>
           }
         </label>
         <button mat-flat-button (click)="fileInput.click()" [disabled]="extraindo()" color="primary">
-          {{ modoEdicao() ? 'Substituir PDF' : 'Selecionar PDF' }}
+          {{ modoEdicao() ? 'Substituir arquivo' : 'Selecionar PDF ou XML' }}
         </button>
       </mat-card>
       <div class="step-actions">
@@ -46,10 +46,10 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Código do Pedido</mat-label>
-            <input matInput formControlName="codigo" placeholder="0000000KPN" maxlength="10" />
-            <mat-hint>7 números + KPN (ex.: 2465153KPN)</mat-hint>
+            <input matInput formControlName="codigo" placeholder="0000000KPN ou 11729449" />
+            <mat-hint>CRM: 7 dígitos + KPN (ex.: 2465153KPN) | GIMBA: somente números</mat-hint>
             @if (form.get('codigo')?.hasError('pattern')) {
-              <mat-error>Formato inválido. Use 7 dígitos + KPN.</mat-error>
+              <mat-error>Formato inválido. Use 7 dígitos + KPN ou somente números.</mat-error>
             }
           </mat-form-field>
 

@@ -26,12 +26,7 @@ import { TitulosService } from '../../services/titulos.service';
       <form [formGroup]="form" class="form-col">
         <mat-form-field appearance="outline">
           <mat-label>Código</mat-label>
-          <input matInput formControlName="codigo" placeholder="86001840/002"
-                 maxlength="12" (input)="aplicarMascara($event)" />
-          <mat-hint>XXXXXXXX/XXX — 8 dígitos barra número da parcela</mat-hint>
-          @if (form.get('codigo')?.hasError('pattern')) {
-            <mat-error>Formato inválido. Use XXXXXXXX/XXX.</mat-error>
-          }
+          <input matInput formControlName="codigo" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -76,19 +71,11 @@ export class TituloDialogComponent {
   salvando = signal(false);
 
   form = inject(FormBuilder).group({
-    codigo:          ['', [Validators.required, Validators.pattern(/^\d{8}\/\d{3}$/)]],
+    codigo:          ['', Validators.required],
     data_vencimento: [''],
     data_pagamento:  [''],
     valor:           [null as number | null, Validators.required],
   });
-
-  aplicarMascara(event: Event) {
-    const input = event.target as HTMLInputElement;
-    let v = input.value.replace(/\D/g, '').substring(0, 11);
-    if (v.length > 8) v = v.substring(0, 8) + '/' + v.substring(8);
-    this.form.get('codigo')!.setValue(v, { emitEvent: false });
-    input.value = v;
-  }
 
   async salvar() {
     if (this.form.invalid) return;
