@@ -1,0 +1,177 @@
+import { Injectable, inject } from '@angular/core';
+import { SupabaseService } from '../../../core/services/supabase.service';
+import {
+  LancamentoExtrato,
+  NaturezaLancamento,
+  TipoLancamento,
+} from '../models/extrato.model';
+
+type LancamentoInsert = Omit<LancamentoExtrato, 'id' | 'created_at'>;
+
+@Injectable({ providedIn: 'root' })
+export class ExtratoService {
+  private db = inject(SupabaseService).client;
+
+  async atualizarTipo(id: string, tipo: TipoLancamento): Promise<void> {
+    const { error } = await this.db
+      .from('lancamentos_extrato')
+      .update({ tipo })
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async listar(): Promise<LancamentoExtrato[]> {
+    const { data, error } = await this.db
+      .from('lancamentos_extrato')
+      .select('*')
+      .order('data_lancamento', { ascending: false })
+      .order('ordem_original', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async importarCsv(file: File): Promise<{ inseridos: number; duplicatas: number }> {
+    const texto = await this.lerArquivo(file);
+    const lancamentos = this.parsearCsv(texto);
+
+    if (lancamentos.length === 0) {
+      throw new Error('Nenhum lançamento encontrado no arquivo.');
+    }
+
+    // upsert with ignoreDuplicates avoids the long IN-query URL and 409 conflicts.
+    // Supabase returns only the rows actually inserted, so we can count them.
+    const { data, error } = await this.db
+      .from('lancamentos_extrato')
+      .upsert(lancamentos, { onConflict: 'hash', ignoreDuplicates: true })
+      .select('id');
+
+    if (error) throw error;
+
+    const inseridos = (data ?? []).length;
+    return { inseridos, duplicatas: lancamentos.length - inseridos };
+  }
+
+  private async lerArquivo(file: File): Promise<string> {
+    const buffer = await file.arrayBuffer();
+    // Try UTF-8 first; fall back to ISO-8859-1 (common in Brazilian bank exports)
+    let texto = new TextDecoder('utf-8').decode(buffer);
+    if (texto.includes('PerÃ') || texto.includes('LanÃ') || texto.includes('DescriÃ')) {
+      texto = new TextDecoder('iso-8859-1').decode(buffer);
+    }
+    return texto;
+  }
+
+  private parsearCsv(texto: string): LancamentoInsert[] {
+    const linhas = texto
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    const idxHeader = linhas.findIndex(l => /^Data/i.test(l));
+    if (idxHeader === -1) {
+      throw new Error('Formato de CSV inválido: cabeçalho não encontrado.');
+    }
+
+    const resultado: LancamentoInsert[] = [];
+
+    for (const linha of linhas.slice(idxHeader + 1)) {
+      const partes = linha.split(';');
+      if (partes.length < 4) continue;
+
+      const dataStr = partes[0].trim();
+      const descricao = partes[1].trim();
+      const valorStr = partes[2].trim();
+      const saldoStr = partes[3].trim();
+
+      const data = this.parsearData(dataStr);
+      const valor = this.parsearValor(valorStr);
+      const saldo = this.parsearValor(saldoStr);
+
+      if (!data || isNaN(valor) || isNaN(saldo)) continue;
+
+      const natureza: NaturezaLancamento = valor >= 0 ? 'entrada' : 'saida';
+      const tipo = this.classificarTipo(descricao, natureza);
+      const destinatario = this.extrairDestinatario(descricao);
+      const hash = `${dataStr}|${descricao}|${valorStr}|${saldoStr}`;
+
+      resultado.push({
+        data_lancamento: data,
+        natureza,
+        tipo,
+        destinatario_remetente: destinatario,
+        descricao_original: descricao,
+        valor,
+        saldo,
+        ordem_original: resultado.length,
+        hash,
+      });
+    }
+
+    return resultado;
+  }
+
+  private parsearData(dataStr: string): string | null {
+    const match = dataStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return null;
+    return `${match[3]}-${match[2]}-${match[1]}`;
+  }
+
+  private parsearValor(valorStr: string): number {
+    return parseFloat(valorStr.replace(/\./g, '').replace(',', '.'));
+  }
+
+  private classificarTipo(descricao: string, natureza: NaturezaLancamento): TipoLancamento {
+    const d = descricao.toLowerCase();
+
+    if (d.includes('pix enviado devolvido') || d.includes('pix recebido devolvido')) {
+      return 'pix_devolvido';
+    }
+    if (d.startsWith('pix enviado')) return 'pix_enviado';
+    if (d.startsWith('pix recebido')) return 'pix_recebido';
+    if (d.startsWith('pagamento efetuado')) return 'pagamento_efetuado';
+    if (d.startsWith('compra no debito') || d.startsWith('compra no débito')) {
+      return 'compra_debito';
+    }
+    if (d.startsWith('boleto de cobranca') || d.startsWith('boleto de cobrança')) {
+      return 'deposito_boleto';
+    }
+    if (d.startsWith('credito domicilio') || d.startsWith('crédito domicílio')) {
+      return 'recebimento_cartao';
+    }
+    if (d.includes('transferencia recebida') || d.includes('transferência recebida')) {
+      return 'transferencia_recebida';
+    }
+    if (/^d[eé]bito\b/.test(d) && !d.includes('debito no cartao')) {
+      return 'debito_conta';
+    }
+
+    return natureza === 'entrada' ? 'outros_recebimentos' : 'outros_pagamentos';
+  }
+
+  private extrairDestinatario(descricao: string): string {
+    const quotedMatch = descricao.match(/"([^"]+)"/);
+    if (!quotedMatch) return descricao.trim();
+
+    const conteudo = quotedMatch[1].trim();
+
+    // "Cp :CNPJ-NOME" → NOME
+    const cpMatch = conteudo.match(/^Cp\s*:\s*\d+-(.+)$/i);
+    if (cpMatch) return cpMatch[1].trim();
+
+    // "00019 NUMBER NOME..." → NOME
+    const numMatch = conteudo.match(/^00019\s+\d+\s+(.+)$/);
+    if (numMatch) return numMatch[1].trim();
+
+    // "No estabelecimento NOME CIDADE BRA" → NOME (strip last 2 words: city + BRA)
+    const estabMatch = conteudo.match(/^No estabelecimento\s+(.+)/i);
+    if (estabMatch) {
+      const palavras = estabMatch[1].trim().split(/\s+/);
+      if (palavras.length >= 3 && palavras[palavras.length - 1].toUpperCase() === 'BRA') {
+        return palavras.slice(0, -2).join(' ');
+      }
+      return estabMatch[1].trim();
+    }
+
+    return conteudo;
+  }
+}

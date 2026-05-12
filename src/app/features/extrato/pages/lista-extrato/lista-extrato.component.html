@@ -1,0 +1,185 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Extrato Financeiro</h1>
+    <div class="header-actions">
+      @if (filtrosAtivos) {
+        <span class="resultado-count">
+          {{ dataSource.filteredData.length }} de {{ dataSource.data.length }} lançamentos
+        </span>
+      }
+      <button
+        mat-flat-button
+        color="primary"
+        (click)="fileInput.click()"
+        [disabled]="importando() || carregando()"
+      >
+        <mat-icon>upload_file</mat-icon>
+        {{ importando() ? 'Importando...' : 'Importar CSV' }}
+      </button>
+    </div>
+    <input #fileInput type="file" accept=".csv" hidden (change)="onArquivoSelecionado($event)" />
+  </div>
+
+  @if (carregando() || importando()) {
+    <div class="loading">
+      <mat-spinner diameter="40" />
+    </div>
+  } @else {
+    <mat-card>
+      <table mat-table [dataSource]="dataSource" matSort class="full-table">
+
+        <!-- ── Colunas de dados ────────────────────────── -->
+
+        <ng-container matColumnDef="data_lancamento">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Data</th>
+          <td mat-cell *matCellDef="let l" class="data-cell">{{ formatarData(l.data_lancamento) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="natureza">
+          <th mat-header-cell *matHeaderCellDef>Natureza</th>
+          <td mat-cell *matCellDef="let l">
+            <span class="badge" [class.badge-entrada]="l.natureza === 'entrada'" [class.badge-saida]="l.natureza === 'saida'">
+              {{ l.natureza === 'entrada' ? 'Entrada' : 'Saída' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipo">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
+          <td mat-cell *matCellDef="let l" class="tipo-cell">
+            @if (editandoId() === l.id) {
+              <select
+                class="tipo-edit-select"
+                [value]="l.tipo"
+                (change)="salvarTipo(l, $event)"
+                [disabled]="salvando()"
+                autofocus
+              >
+                @for (t of tiposParaNatureza(l.natureza); track t[0]) {
+                  <option [value]="t[0]">{{ t[1] }}</option>
+                }
+              </select>
+            } @else {
+              <span [class.tipo-outros]="isEditavel(l)">{{ labelTipo(l.tipo) }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="destinatario_remetente">
+          <th mat-header-cell *matHeaderCellDef>Destinatário / Remetente</th>
+          <td mat-cell *matCellDef="let l" class="destinatario-cell" [matTooltip]="l.destinatario_remetente">
+            {{ l.destinatario_remetente }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="num-header">Valor</th>
+          <td mat-cell *matCellDef="let l" class="num-cell" [class.valor-saida]="l.valor < 0" [class.valor-entrada]="l.valor >= 0">
+            {{ formatarMoeda(l.valor) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="saldo">
+          <th mat-header-cell *matHeaderCellDef class="num-header">Saldo</th>
+          <td mat-cell *matCellDef="let l" class="num-cell saldo-cell">{{ formatarMoeda(l.saldo) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef class="acoes-header"></th>
+          <td mat-cell *matCellDef="let l" class="acoes-cell">
+            @if (isEditavel(l)) {
+              @if (editandoId() === l.id) {
+                <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar edição" type="button">
+                  <mat-icon>close</mat-icon>
+                </button>
+              } @else {
+                <button mat-icon-button (click)="iniciarEdicao(l)" title="Reclassificar tipo" type="button" class="btn-edit">
+                  <mat-icon>edit</mat-icon>
+                </button>
+              }
+            }
+          </td>
+        </ng-container>
+
+        <!-- ── Colunas de filtro ───────────────────────── -->
+
+        <ng-container matColumnDef="data_lancamento_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
+            <div class="filtro-dates">
+              <input class="filtro-input" type="date" [formControl]="ctrlDataInicio" title="Data inicial" />
+              <input class="filtro-input" type="date" [formControl]="ctrlDataFim" title="Data final" />
+            </div>
+          </th>
+        </ng-container>
+
+        <ng-container matColumnDef="natureza_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
+            <select class="filtro-select" [formControl]="ctrlNatureza">
+              <option value="">Todas</option>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </th>
+        </ng-container>
+
+        <ng-container matColumnDef="tipo_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
+            <select class="filtro-select" [formControl]="ctrlTipo">
+              <option value="">Todos</option>
+              @for (t of tiposLancamento; track t[0]) {
+                <option [value]="t[0]">{{ t[1] }}</option>
+              }
+            </select>
+          </th>
+        </ng-container>
+
+        <ng-container matColumnDef="destinatario_remetente_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
+            <div class="filtro-search">
+              <input class="filtro-input" type="text" [formControl]="ctrlDestinatario" placeholder="Buscar..." />
+              @if (ctrlDestinatario.value) {
+                <button class="btn-clear-input" (click)="ctrlDestinatario.setValue('')" type="button" title="Limpar">×</button>
+              }
+            </div>
+          </th>
+        </ng-container>
+
+        <ng-container matColumnDef="valor_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
+        </ng-container>
+
+        <ng-container matColumnDef="saldo_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell filtro-cell-limpar">
+            @if (filtrosAtivos) {
+              <button mat-icon-button color="warn" (click)="limparFiltros()" title="Limpar filtros" type="button">
+                <mat-icon>filter_alt_off</mat-icon>
+              </button>
+            }
+          </th>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes_filtro">
+          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
+        </ng-container>
+
+        <!-- ── Linhas ──────────────────────────────────── -->
+
+        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+        <tr mat-header-row *matHeaderRowDef="colunasFiltro" class="filtro-row"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunas;" [class.row-editando]="editandoId() === row.id"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell empty-state" [attr.colspan]="colunas.length">
+            @if (dataSource.data.length === 0) {
+              Nenhum lançamento encontrado. Importe um arquivo CSV para começar.
+            } @else {
+              Nenhum lançamento corresponde aos filtros aplicados.
+            }
+          </td>
+        </tr>
+      </table>
+
+      <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons />
+    </mat-card>
+  }
+</div>

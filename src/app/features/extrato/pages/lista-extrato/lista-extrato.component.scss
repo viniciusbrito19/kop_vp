@@ -1,0 +1,236 @@
+.page-container {
+  padding: 32px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #90282a;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.resultado-count {
+  font-size: 13px;
+  color: #777;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+// ── Tabela ─────────────────────────────────────────────────────────────
+
+.full-table {
+  width: 100%;
+}
+
+// ── Linha de filtros ───────────────────────────────────────────────────
+
+.filtro-row th {
+  background-color: #f7f7f7;
+  border-bottom: 2px solid #e8e8e8;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.filtro-cell {
+  vertical-align: middle;
+}
+
+.filtro-cell-limpar {
+  text-align: right;
+}
+
+.filtro-input,
+.filtro-select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #d4d4d4;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: inherit;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    border-color: #90282a;
+    box-shadow: 0 0 0 2px rgba(144, 40, 42, 0.12);
+  }
+
+  &::placeholder {
+    color: #bbb;
+  }
+}
+
+.filtro-select {
+  cursor: pointer;
+  width: 100%;
+}
+
+.filtro-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .filtro-input {
+    width: 140px;
+  }
+}
+
+.filtro-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+
+  .filtro-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.btn-clear-input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #ccc;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #999;
+  }
+}
+
+// ── Edição inline de tipo ──────────────────────────────────────────────
+
+.tipo-outros {
+  color: #888;
+  font-style: italic;
+}
+
+.tipo-edit-select {
+  height: 30px;
+  padding: 0 8px;
+  border: 2px solid #90282a;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  min-width: 180px;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.row-editando td {
+  background-color: #fff8f8;
+}
+
+.acoes-header,
+.acoes-cell {
+  width: 40px;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.btn-edit {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+tr.mat-mdc-row:hover .btn-edit {
+  opacity: 1;
+}
+
+// ── Células de dados ───────────────────────────────────────────────────
+
+.data-cell {
+  white-space: nowrap;
+  width: 100px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-entrada {
+  background-color: #e6f4ea;
+  color: #1a7a37;
+}
+
+.badge-saida {
+  background-color: #fdecea;
+  color: #c0392b;
+}
+
+.destinatario-cell {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.num-header {
+  text-align: right !important;
+}
+
+.num-cell {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.valor-entrada {
+  color: #1a7a37;
+  font-weight: 500;
+}
+
+.valor-saida {
+  color: #c0392b;
+  font-weight: 500;
+}
+
+.saldo-cell {
+  color: #555;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 32px;
+  color: #999;
+}

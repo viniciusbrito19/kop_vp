@@ -6,7 +6,27 @@
       "Bash(git remote *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(ng version *)",
+      "Bash(npm --version)",
+      "Bash(dir D:\\\\Projetos\\\\Kop_VP *)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(npm install -g @angular/cli 2>&1)",
+      "PowerShell(ng version 2>&1)",
+      "PowerShell(New-Item -ItemType Directory -Force \"D:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\tipos-pedido\\\\models\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"D:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\tipos-pedido\\\\services\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"D:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\tipos-pedido\\\\pages\\\\lista-tipos-pedido\")",
+      "Bash(node -e \"const p = require\\('./node_modules/pdfjs-dist/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(npx ng *)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\" -Recurse -Directory | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"d:\\\\Projetos\\\\Kop_VP\\\\\"\\), \"\" })",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\" -Recurse -File | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"d:\\\\Projetos\\\\Kop_VP\\\\\"\\), \"\" })",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\models\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\services\")",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\pages\\\\lista-extrato\")",
+      "Bash(Write-Host \"Directories created.\")"
     ]
   }
 }

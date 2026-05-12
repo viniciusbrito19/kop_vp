@@ -35,10 +35,8 @@ export const routes: Routes = [
       },
       {
         path: 'financeiro',
-        loadComponent: () =>
-          import('./features/pedidos/pages/lista-pedidos/lista-pedidos.component').then(
-            m => m.ListaPedidosComponent
-          ),
+        loadChildren: () =>
+          import('./features/extrato/extrato.routes').then(m => m.extratoRoutes),
       },
     ],
   },
