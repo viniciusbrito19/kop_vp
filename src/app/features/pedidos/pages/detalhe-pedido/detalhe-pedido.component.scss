@@ -1,0 +1,30 @@
+.page-container { padding: 32px; }
+.page-header { margin-bottom: 16px; }
+.loading { display: flex; justify-content: center; padding: 48px; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.info-card mat-card-header { margin-bottom: 12px; }
+
+.status-chip { margin: 8px 0; }
+.divider { margin: 16px 0; }
+
+.info-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0;
+
+  dt { color: #666; font-size: 13px; align-self: center; }
+  dd { margin: 0; font-weight: 500; }
+  .valor { color: #4e2a0e; font-size: 18px; font-weight: 700; }
+}
+
+.pdf-btn { margin-top: 16px; }
+.full-table { width: 100%; }
+.empty-state { text-align: center; padding: 24px; color: #999; }

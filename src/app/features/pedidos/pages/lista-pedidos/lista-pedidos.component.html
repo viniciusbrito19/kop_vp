@@ -1,0 +1,165 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Pedidos a Fornecedores</h1>
+    <button mat-flat-button color="primary" routerLink="/pedidos/novo">
+      <mat-icon>add</mat-icon> Novo Pedido
+    </button>
+  </div>
+
+  @if (carregando()) {
+    <div class="loading"><mat-spinner diameter="40" /></div>
+  } @else {
+    <mat-card class="table-card">
+      <table mat-table [dataSource]="pedidos()" multiTemplateDataRows class="full-table">
+
+        <!-- Expandir -->
+        <ng-container matColumnDef="expandir">
+          <th mat-header-cell *matHeaderCellDef class="col-expandir"></th>
+          <td mat-cell *matCellDef="let p" class="col-expandir">
+            <button mat-icon-button
+                    (click)="toggleExpand(p, $event)"
+                    [matTooltip]="isExpanded(p.id) ? 'Recolher' : 'Ver títulos'">
+              <mat-icon>{{ isExpanded(p.id) ? 'expand_less' : 'chevron_right' }}</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <!-- Data Limite -->
+        <ng-container matColumnDef="data_limite">
+          <th mat-header-cell *matHeaderCellDef>Data Limite</th>
+          <td mat-cell *matCellDef="let p">
+            <span [class]="'data-badge ' + dataLimiteClass(p.data_limite)">
+              {{ p.data_limite ? (p.data_limite | date:'dd/MM/yyyy') : '—' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Código -->
+        <ng-container matColumnDef="codigo">
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let p">{{ p.codigo ?? '—' }}</td>
+        </ng-container>
+
+        <!-- Tipo -->
+        <ng-container matColumnDef="tipo_pedido">
+          <th mat-header-cell *matHeaderCellDef>Tipo</th>
+          <td mat-cell *matCellDef="let p">{{ p.tipo_pedido?.nome ?? '—' }}</td>
+        </ng-container>
+
+        <!-- NF -->
+        <ng-container matColumnDef="numero_nf">
+          <th mat-header-cell *matHeaderCellDef>NF</th>
+          <td mat-cell *matCellDef="let p">{{ p.numero_nf ?? '—' }}</td>
+        </ng-container>
+
+        <!-- Fornecedor -->
+        <ng-container matColumnDef="fornecedor">
+          <th mat-header-cell *matHeaderCellDef>Fornecedor</th>
+          <td mat-cell *matCellDef="let p">{{ p.fornecedor?.nome ?? '—' }}</td>
+        </ng-container>
+
+        <!-- Valor NF -->
+        <ng-container matColumnDef="valor_total">
+          <th mat-header-cell *matHeaderCellDef class="col-right">Valor NF</th>
+          <td mat-cell *matCellDef="let p" class="col-right">
+            {{ p.valor_total != null ? (p.valor_total | currency:'BRL') : '—' }}
+          </td>
+        </ng-container>
+
+        <!-- Valor Pago -->
+        <ng-container matColumnDef="valor_pago">
+          <th mat-header-cell *matHeaderCellDef class="col-right">Valor Pago</th>
+          <td mat-cell *matCellDef="let p" class="col-right">
+            @if (valorPago(p) > 0) {
+              <span class="valor-pago">{{ valorPago(p) | currency:'BRL' }}</span>
+            } @else { — }
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let p" class="acoes-cell">
+            <button mat-icon-button [routerLink]="['/pedidos', p.id]"
+                    (click)="$event.stopPropagation()" matTooltip="Ver detalhes">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button mat-icon-button color="warn"
+                    (click)="excluir(p.id, $event)" matTooltip="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <!-- Detalhe (linha expansível) -->
+        <ng-container matColumnDef="detalhe">
+          <td mat-cell *matCellDef="let p" [attr.colspan]="colunas.length" class="detalhe-cell">
+            @if (isExpanded(p.id)) {
+              <div class="titulos-panel">
+                @if (carregandoTitulos().includes(p.id)) {
+                  <div class="titulos-loading"><mat-spinner diameter="24" /></div>
+                } @else {
+                  <div class="titulos-header">
+                    <span class="titulos-label">Títulos</span>
+                    <button mat-button color="primary"
+                            (click)="abrirDialogTitulo(p.id, $event)">
+                      <mat-icon>add</mat-icon> Novo Título
+                    </button>
+                  </div>
+
+                  @if ((titulosMap()[p.id] ?? []).length === 0) {
+                    <p class="titulos-vazio">Nenhum título cadastrado para este pedido.</p>
+                  } @else {
+                    <table class="titulos-table">
+                      <thead>
+                        <tr>
+                          <th>Código</th>
+                          <th>Parcela</th>
+                          <th>Vencimento</th>
+                          <th>Pagamento</th>
+                          <th class="col-right">Valor</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (t of titulosMap()[p.id]; track t.id) {
+                          <tr [class]="vencimentoClass(t)">
+                            <td>{{ t.codigo.split('/')[0] }}</td>
+                            <td>{{ t.codigo.split('/')[1] }}</td>
+                            <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
+                            <td>{{ t.data_pagamento  ? (t.data_pagamento  | date:'dd/MM/yyyy') : '—' }}</td>
+                            <td class="col-right">{{ t.valor | currency:'BRL' }}</td>
+                            <td>
+                              <button mat-icon-button color="warn"
+                                      (click)="excluirTitulo(t, p.id, $event)"
+                                      matTooltip="Excluir título">
+                                <mat-icon>delete_outline</mat-icon>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+                }
+              </div>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunas"
+            class="row-hover"
+            [routerLink]="['/pedidos', row.id]"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['detalhe']"
+            class="detalhe-row"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell empty-state" [attr.colspan]="colunas.length">
+            Nenhum pedido registrado. Clique em "Novo Pedido" para começar.
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+  }
+</div>

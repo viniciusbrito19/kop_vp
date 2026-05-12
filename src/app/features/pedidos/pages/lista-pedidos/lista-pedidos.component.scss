@@ -1,0 +1,102 @@
+.page-container { padding: 32px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 { margin: 0; font-size: 24px; font-weight: 600; color: #4e2a0e; }
+}
+
+.table-card { overflow: hidden; }
+.loading { display: flex; justify-content: center; padding: 48px; }
+.full-table { width: 100%; }
+
+.col-expandir { width: 48px; padding-right: 0 !important; }
+
+.data-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+
+  &.vencido { background: #fde8e8; color: #c62828; }
+  &.urgente { background: #fff3e0; color: #e65100; }
+}
+
+.col-right { text-align: right !important; }
+.valor-pago { color: #2e7d32; font-weight: 500; }
+.acoes-cell { text-align: right; white-space: nowrap; }
+
+.row-hover {
+  cursor: pointer;
+  &:hover { background-color: rgba(78, 42, 14, 0.04); }
+}
+
+.empty-state { text-align: center; padding: 40px; color: #999; }
+
+/* ── Linha de detalhe (expansível) ─────────────────────────────────────────── */
+
+.detalhe-row td { padding: 0 !important; border-bottom: none; }
+
+.detalhe-cell { padding: 0 !important; }
+
+.titulos-panel {
+  padding: 8px 16px 16px 56px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(78, 42, 14, 0.02);
+}
+
+.titulos-loading { display: flex; justify-content: center; padding: 16px; }
+
+.titulos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.titulos-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e2a0e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.titulos-vazio {
+  font-size: 13px;
+  color: #999;
+  margin: 4px 0 0;
+}
+
+.titulos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    text-align: left;
+    font-weight: 500;
+    color: #666;
+    padding: 4px 12px 4px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 6px 12px 6px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr.pago td { color: #2e7d32; }
+  tr.vencido td { color: #c62828; }
+
+
+}

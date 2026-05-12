@@ -1,0 +1,57 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1>Tipos de Pedido</h1>
+      <p class="subtitle">Categorias utilizadas no cadastro de pedidos.</p>
+    </div>
+    <button mat-flat-button color="primary" (click)="abrirDialog()">
+      <mat-icon>add</mat-icon> Novo Tipo
+    </button>
+  </div>
+
+  @if (carregando()) {
+    <div class="loading"><mat-spinner diameter="40" /></div>
+  } @else {
+    <mat-card>
+      <table mat-table [dataSource]="tipos()" class="full-table">
+
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let t">{{ t.nome }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Ativo</th>
+          <td mat-cell *matCellDef="let t">
+            <mat-slide-toggle
+              [checked]="t.ativo"
+              (change)="alternarAtivo(t)"
+              color="primary"
+            />
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let t" class="acoes-cell">
+            <button mat-icon-button (click)="abrirDialog(t)" title="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="excluir(t.id)" title="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell empty-state" colspan="3">
+            Nenhum tipo cadastrado. Adicione categorias como "Produtos de linha", "Cafeteria", "Pelúcia" etc.
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+  }
+</div>

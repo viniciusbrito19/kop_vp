@@ -1,0 +1,67 @@
+$chocolate-dark: #4e2a0e;
+$chocolate-mid: #7b4a2d;
+$chocolate-light: #c47b4a;
+$cream: #fdf6ee;
+
+.sidenav-container {
+  height: 100vh;
+}
+
+.sidenav {
+  width: 220px;
+  background-color: $chocolate-dark;
+  color: #fff;
+  border-right: none;
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+    .brand-icon {
+      font-size: 28px;
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+  }
+
+  mat-nav-list {
+    padding-top: 8px;
+
+    a[mat-list-item] {
+      color: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      margin: 2px 8px;
+
+      mat-icon {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+
+      &.active-link {
+        background-color: $chocolate-light;
+        color: #fff;
+
+        mat-icon {
+          color: #fff;
+        }
+      }
+    }
+  }
+}
+
+.main-content {
+  background-color: $cream;
+  overflow-y: auto;
+}

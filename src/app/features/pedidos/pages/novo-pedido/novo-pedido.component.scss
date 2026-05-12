@@ -1,0 +1,57 @@
+.page-container { padding: 32px; max-width: 900px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  h1 { margin: 0; font-size: 24px; font-weight: 600; color: #4e2a0e; }
+}
+
+.step-card { padding: 16px; margin-bottom: 8px; }
+
+.hint { color: #666; margin: 0 0 16px; }
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 2px dashed #c47b4a;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  color: #7b4a2d;
+
+  .upload-icon { font-size: 40px; height: 40px; width: 40px; }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+
+  .full-width { grid-column: 1 / -1; }
+}
+
+.itens-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.item-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.field-descricao { flex: 3; }
+.field-sm { flex: 1; min-width: 80px; }
+
+.empty-itens { color: #999; text-align: center; padding: 16px; }
+
+.step-actions { display: flex; gap: 8px; padding: 8px 0; }

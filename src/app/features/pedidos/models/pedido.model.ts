@@ -1,0 +1,43 @@
+export type StatusPedido = 'recebido' | 'pendente' | 'cancelado';
+
+export interface ItemPedido {
+  id: string;
+  pedido_id: string;
+  descricao: string;
+  quantidade: number;
+  unidade: string | null;
+  valor_unitario: number | null;
+  valor_total: number | null;
+}
+
+export type ItemPedidoForm = Omit<ItemPedido, 'id' | 'pedido_id'>;
+
+export interface Pedido {
+  id: string;
+  fornecedor_id: string | null;
+  tipo_pedido_id: string | null;
+  codigo: string | null;
+  data_limite: string | null;
+  numero_nf: string | null;
+  data_emissao: string | null;
+  valor_total: number | null;
+  status: StatusPedido;
+  pdf_url: string | null;
+  observacoes: string | null;
+  created_at: string;
+  fornecedor?: { nome: string };
+  tipo_pedido?: { nome: string };
+  titulos?: { valor: number; data_pagamento: string | null }[];
+}
+
+export type PedidoForm = Omit<Pedido, 'id' | 'created_at' | 'fornecedor' | 'tipo_pedido'>;
+
+export interface DadosExtraidosPdf {
+  codigo: string | null;
+  numero_nf: string | null;
+  data_emissao: string | null;
+  valor_total: number | null;
+  nome_emitente: string | null;
+  cnpj_emitente: string | null;
+  itens: ItemPedidoForm[];
+}

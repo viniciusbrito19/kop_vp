@@ -1,0 +1,176 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Novo Pedido</h1>
+    <button mat-button routerLink="/pedidos">
+      <mat-icon>arrow_back</mat-icon> Voltar
+    </button>
+  </div>
+
+  <mat-stepper orientation="vertical" [linear]="false">
+
+    <!-- STEP 1: Upload PDF -->
+    <mat-step label="Upload da Nota Fiscal (opcional)">
+      <mat-card class="step-card">
+        <p class="hint">Faça o upload do PDF da NF-e DANFE para preenchimento automático dos campos.</p>
+        <label class="upload-area">
+          <input type="file" accept="application/pdf" (change)="onFileChange($event)" hidden #fileInput />
+          @if (extraindo()) {
+            <mat-spinner diameter="32" />
+            <span>Extraindo dados...</span>
+          } @else {
+            <mat-icon class="upload-icon">upload_file</mat-icon>
+            <span>{{ arquivoPdf ? arquivoPdf.name : 'Clique para selecionar o PDF' }}</span>
+          }
+        </label>
+        <button mat-flat-button (click)="fileInput.click()" [disabled]="extraindo()" color="primary">
+          Selecionar PDF
+        </button>
+      </mat-card>
+      <div class="step-actions">
+        <button mat-button matStepperNext>Próximo</button>
+      </div>
+    </mat-step>
+
+    <!-- STEP 2: Dados do Pedido -->
+    <mat-step label="Dados do Pedido">
+      <mat-card class="step-card">
+        <form [formGroup]="form" class="form-grid">
+
+          <mat-form-field appearance="outline">
+            <mat-label>Código do Pedido</mat-label>
+            <input matInput formControlName="codigo" placeholder="0000000KPN" maxlength="10" />
+            <mat-hint>7 números + KPN (ex.: 2465153KPN)</mat-hint>
+            @if (form.get('codigo')?.hasError('pattern')) {
+              <mat-error>Formato inválido. Use 7 dígitos + KPN.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data Limite</mat-label>
+            <input matInput type="date" formControlName="data_limite" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fornecedor</mat-label>
+            <mat-select formControlName="fornecedor_id">
+              <mat-option value="">Selecione...</mat-option>
+              @for (f of fornecedores(); track f.id) {
+                <mat-option [value]="f.id">{{ f.nome }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de Pedido</mat-label>
+            <mat-select formControlName="tipo_pedido_id">
+              <mat-option value="">Selecione...</mat-option>
+              @for (t of tiposPedido(); track t.id) {
+                <mat-option [value]="t.id">{{ t.nome }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>Gerencie os tipos em <a routerLink="/tipos-pedido">Tipos de Pedido</a></mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Número da NF</mat-label>
+            <input
+              matInput
+              formControlName="numero_nf"
+              placeholder="000000000-0"
+              maxlength="11"
+              (input)="aplicarMascaraNf($event)"
+            />
+            <mat-hint>Formato: 000000000-0</mat-hint>
+            @if (form.get('numero_nf')?.hasError('pattern')) {
+              <mat-error>Formato inválido. Use 000000000-0.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data de Emissão</mat-label>
+            <input matInput type="date" formControlName="data_emissao" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Valor NF (R$)</mat-label>
+            <input matInput type="number" formControlName="valor_total" min="0" step="0.01" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option value="recebido">Recebido</mat-option>
+              <mat-option value="pendente">Pendente</mat-option>
+              <mat-option value="cancelado">Cancelado</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Observações</mat-label>
+            <textarea matInput formControlName="observacoes" rows="2"></textarea>
+          </mat-form-field>
+
+        </form>
+      </mat-card>
+      <div class="step-actions">
+        <button mat-button matStepperPrevious>Anterior</button>
+        <button mat-button matStepperNext>Próximo</button>
+      </div>
+    </mat-step>
+
+    <!-- STEP 3: Itens -->
+    <mat-step label="Itens do Pedido">
+      <mat-card class="step-card">
+        <div class="itens-header">
+          <span>{{ itens.length }} item(s)</span>
+          <button mat-button color="primary" (click)="adicionarItem()">
+            <mat-icon>add</mat-icon> Adicionar Item
+          </button>
+        </div>
+
+        <div [formGroup]="form">
+          <div formArrayName="itens">
+            @for (item of itens.controls; track $index; let i = $index) {
+              <div class="item-row" [formGroupName]="i">
+                <mat-form-field appearance="outline" class="field-descricao">
+                  <mat-label>Descrição</mat-label>
+                  <input matInput formControlName="descricao" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="field-sm">
+                  <mat-label>Qtd</mat-label>
+                  <input matInput type="number" formControlName="quantidade" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="field-sm">
+                  <mat-label>Unidade</mat-label>
+                  <input matInput formControlName="unidade" placeholder="KG, UN..." />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="field-sm">
+                  <mat-label>Vl. Unit.</mat-label>
+                  <input matInput type="number" formControlName="valor_unitario" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="field-sm">
+                  <mat-label>Vl. Total</mat-label>
+                  <input matInput type="number" formControlName="valor_total" />
+                </mat-form-field>
+                <button mat-icon-button color="warn" (click)="removerItem(i)">
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (itens.length === 0) {
+          <p class="empty-itens">Nenhum item adicionado.</p>
+        }
+      </mat-card>
+      <div class="step-actions">
+        <button mat-button matStepperPrevious>Anterior</button>
+        <button mat-flat-button color="primary" [disabled]="salvando()" (click)="salvar()">
+          @if (salvando()) { <mat-spinner diameter="18" /> } @else { Salvar Pedido }
+        </button>
+      </div>
+    </mat-step>
+
+  </mat-stepper>
+</div>

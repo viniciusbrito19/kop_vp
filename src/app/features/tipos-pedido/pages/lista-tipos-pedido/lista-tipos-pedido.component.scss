@@ -1,0 +1,16 @@
+.page-container { padding: 32px; max-width: 700px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+
+  h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; color: #4e2a0e; }
+  .subtitle { margin: 0; color: #666; font-size: 14px; }
+}
+
+.loading { display: flex; justify-content: center; padding: 48px; }
+.full-table { width: 100%; }
+.acoes-cell { text-align: right; white-space: nowrap; }
+.empty-state { text-align: center; padding: 32px; color: #999; font-size: 14px; }
