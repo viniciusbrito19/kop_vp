@@ -32,12 +32,20 @@ export interface Pedido {
 
 export type PedidoForm = Omit<Pedido, 'id' | 'created_at' | 'fornecedor' | 'tipo_pedido'>;
 
+export interface DuplicataExtraida {
+  codigo: string;
+  data_vencimento: string | null;
+  valor: number;
+}
+
 export interface DadosExtraidosPdf {
   codigo: string | null;
+  data_limite: string | null;
   numero_nf: string | null;
   data_emissao: string | null;
   valor_total: number | null;
   nome_emitente: string | null;
   cnpj_emitente: string | null;
   itens: ItemPedidoForm[];
+  duplicatas: DuplicataExtraida[];
 }

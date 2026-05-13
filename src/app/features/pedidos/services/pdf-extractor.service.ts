@@ -38,12 +38,14 @@ export class PdfExtractorService {
   private parseTexto(texto: string): DadosExtraidosPdf {
     return {
       codigo:        this.extrairCodigo(texto),
+      data_limite:   null,
       numero_nf:     this.extrairNumeroNf(texto),
       data_emissao:  this.extrairData(texto),
       valor_total:   this.extrairValorTotal(texto),
       nome_emitente: this.extrairNomeEmitente(texto),
       cnpj_emitente: this.extrairCnpj(texto),
       itens:         this.extrairItens(texto),
+      duplicatas:    [],
     };
   }
 

@@ -16,9 +16,10 @@ import { XmlExtractorService } from '../../services/xml-extractor.service';
 import { StorageService } from '../../../../core/services/storage.service';
 import { FornecedoresService } from '../../../fornecedores/services/fornecedores.service';
 import { TiposPedidoService } from '../../../tipos-pedido/services/tipos-pedido.service';
+import { TitulosService } from '../../services/titulos.service';
 import { Fornecedor } from '../../../fornecedores/models/fornecedor.model';
 import { TipoPedido } from '../../../tipos-pedido/models/tipo-pedido.model';
-import { DadosExtraidosPdf } from '../../models/pedido.model';
+import { DadosExtraidosPdf, DuplicataExtraida } from '../../models/pedido.model';
 
 @Component({
   selector: 'app-novo-pedido',
@@ -45,6 +46,7 @@ export class NovoPedidoComponent implements OnInit {
   private pdfExtractor = inject(PdfExtractorService);
   private xmlExtractor = inject(XmlExtractorService);
   private storage = inject(StorageService);
+  private titulosService = inject(TitulosService);
   private fornecedoresService = inject(FornecedoresService);
   private tiposPedidoService = inject(TiposPedidoService);
   private snack = inject(MatSnackBar);
@@ -59,6 +61,7 @@ export class NovoPedidoComponent implements OnInit {
   pedidoId: string | null = null;
   pdfAtualUrl = signal<string | null>(null);
   arquivoPdf: File | null = null;
+  private duplicatasExtraidas: DuplicataExtraida[] = [];
 
   form = this.fb.group({
     codigo: ['', [Validators.pattern(/^(\d{7}KPN|\d+)$/)]],
@@ -146,6 +149,7 @@ export class NovoPedidoComponent implements OnInit {
   private preencherComDados(dados: DadosExtraidosPdf) {
     this.form.patchValue({
       codigo:       dados.codigo ?? '',
+      data_limite:  dados.data_limite ?? '',
       numero_nf:    dados.numero_nf ?? '',
       data_emissao: dados.data_emissao ?? '',
       valor_total:  dados.valor_total,
@@ -159,6 +163,7 @@ export class NovoPedidoComponent implements OnInit {
       );
       if (f) this.form.patchValue({ fornecedor_id: f.id });
     }
+    this.duplicatasExtraidas = dados.duplicatas;
   }
 
   adicionarItem(valores?: any) {
@@ -203,8 +208,24 @@ export class NovoPedidoComponent implements OnInit {
         await this.pedidosService.atualizar(this.pedidoId, formData, itens);
         this.snack.open('Pedido atualizado com sucesso!', 'OK', { duration: 3000 });
       } else {
-        await this.pedidosService.salvar(formData, itens);
-        this.snack.open('Pedido salvo com sucesso!', 'OK', { duration: 3000 });
+        const pedido = await this.pedidosService.salvar(formData, itens);
+        if (this.duplicatasExtraidas.length > 0) {
+          for (const dup of this.duplicatasExtraidas) {
+            await this.titulosService.salvar({
+              pedido_id:       pedido.id,
+              codigo:          dup.codigo,
+              data_vencimento: dup.data_vencimento,
+              data_pagamento:  null,
+              valor:           dup.valor,
+            });
+          }
+          this.snack.open(
+            `Pedido salvo com ${this.duplicatasExtraidas.length} título(s) gerado(s) automaticamente.`,
+            'OK', { duration: 4000 }
+          );
+        } else {
+          this.snack.open('Pedido salvo com sucesso!', 'OK', { duration: 3000 });
+        }
       }
       this.router.navigate(['/pedidos']);
     } catch {
