@@ -1,15 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
-import { ReactiveFormsModule, FormBuilder, Validators, FormArray, AbstractControl } from '@angular/forms';
-import { MatStepperModule } from '@angular/material/stepper';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
+import { CurrencyPipe } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatCardModule } from '@angular/material/card';
 import { PedidosService } from '../../services/pedidos.service';
 import { PdfExtractorService } from '../../services/pdf-extractor.service';
 import { XmlExtractorService } from '../../services/xml-extractor.service';
@@ -27,15 +21,9 @@ import { DadosExtraidosPdf, DuplicataExtraida } from '../../models/pedido.model'
   imports: [
     RouterLink,
     ReactiveFormsModule,
-    MatStepperModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
+    CurrencyPipe,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatCardModule,
   ],
   templateUrl: './novo-pedido.component.html',
   styleUrl: './novo-pedido.component.scss',
@@ -61,6 +49,7 @@ export class NovoPedidoComponent implements OnInit {
   pedidoId: string | null = null;
   pdfAtualUrl = signal<string | null>(null);
   arquivoPdf: File | null = null;
+  pedidoDuplicado = signal<import('../../models/pedido.model').Pedido | null>(null);
   private duplicatasExtraidas: DuplicataExtraida[] = [];
 
   form = this.fb.group({
@@ -131,6 +120,7 @@ export class NovoPedidoComponent implements OnInit {
     const file = input.files?.[0];
     if (!file) return;
     this.arquivoPdf = file;
+    this.pedidoDuplicado.set(null);
     this.extraindo.set(true);
     try {
       const isXml = file.name.toLowerCase().endsWith('.xml');
@@ -138,7 +128,19 @@ export class NovoPedidoComponent implements OnInit {
         ? await this.xmlExtractor.extrair(file)
         : await this.pdfExtractor.extrair(file);
       this.preencherComDados(dados);
-      this.snack.open('Dados extraídos com sucesso!', 'OK', { duration: 3000 });
+
+      const duplicado = await this.pedidosService.verificarDuplicata(
+        dados.numero_nf,
+        dados.codigo,
+        this.pedidoId,
+      );
+      this.pedidoDuplicado.set(duplicado);
+
+      if (duplicado) {
+        this.snack.open('Atenção: este pedido já está cadastrado no sistema.', 'OK', { duration: 5000 });
+      } else {
+        this.snack.open('Dados extraídos com sucesso!', 'OK', { duration: 3000 });
+      }
     } catch {
       this.snack.open('Não foi possível extrair dados do arquivo. Preencha manualmente.', 'OK', { duration: 4000 });
     } finally {
@@ -209,7 +211,21 @@ export class NovoPedidoComponent implements OnInit {
         this.snack.open('Pedido atualizado com sucesso!', 'OK', { duration: 3000 });
       } else {
         const pedido = await this.pedidosService.salvar(formData, itens);
-        if (this.duplicatasExtraidas.length > 0) {
+
+        const tipo = this.tiposPedido().find(t => t.id === v.tipo_pedido_id);
+        const isKopClub = tipo?.nome?.toLowerCase() === 'kop club';
+
+        if (isKopClub && formData.valor_total && formData.data_limite) {
+          const base = formData.numero_nf ?? formData.codigo ?? 'SEM-NF';
+          await this.titulosService.salvar({
+            pedido_id:       pedido.id,
+            codigo:          `${base}/001`,
+            data_vencimento: formData.data_limite,
+            data_pagamento:  formData.data_limite,
+            valor:           formData.valor_total,
+          });
+          this.snack.open('Pedido Kop club salvo e quitado automaticamente.', 'OK', { duration: 3000 });
+        } else if (this.duplicatasExtraidas.length > 0) {
           for (const dup of this.duplicatasExtraidas) {
             await this.titulosService.salvar({
               pedido_id:       pedido.id,

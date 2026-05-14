@@ -1,75 +1,104 @@
-<div class="page-container">
-  <div class="page-header">
-    <h1>Fornecedores</h1>
-    <button mat-flat-button color="primary" (click)="abrirDialog()">
-      <mat-icon>add</mat-icon> Novo Fornecedor
+<!-- ===== Topbar ===== -->
+<header class="topbar">
+  <div class="crumbs row gap-2">
+    <span>Cadastros</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    <b>Fornecedores</b>
+  </div>
+  <div class="spacer"></div>
+  <div class="field" style="width:280px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input [(ngModel)]="busca" placeholder="Buscar fornecedor, CNPJ, categoria…"/>
+  </div>
+</header>
+
+<!-- ===== Content ===== -->
+<div class="content">
+
+  <!-- Page heading -->
+  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+    <div>
+      <h1 class="page">Cadastro de <span class="accent serif">fornecedores</span></h1>
+      <div class="page-sub">{{ fornecedoresFiltrados().length }} fornecedores cadastrados</div>
+    </div>
+    <button class="btn primary" (click)="abrirDialog()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Novo Fornecedor
     </button>
   </div>
 
+  <!-- Loading state -->
   @if (carregando()) {
-    <div class="loading">
-      <mat-spinner diameter="40" />
+    <div class="load-wrap">
+      <svg class="spin-ring" width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="15" stroke="var(--line-2)" stroke-width="3"/>
+        <path d="M18 3 A15 15 0 0 1 33 18" stroke="var(--bordo)" stroke-width="3" stroke-linecap="round"/>
+      </svg>
     </div>
+
+  } @else if (!fornecedoresFiltrados().length) {
+    <div class="empty-wrap">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      @if (busca()) {
+        <p>Nenhum fornecedor encontrado para "<b>{{ busca() }}</b>".</p>
+      } @else {
+        <p>Nenhum fornecedor cadastrado ainda.</p>
+        <button class="btn outline sm" (click)="abrirDialog()">Cadastrar primeiro fornecedor</button>
+      }
+    </div>
+
   } @else {
-    <mat-card>
-      <table mat-table [dataSource]="fornecedores()" class="full-table">
-        <ng-container matColumnDef="nome">
-          <th mat-header-cell *matHeaderCellDef>Nome</th>
-          <td mat-cell *matCellDef="let f">{{ f.nome }}</td>
-        </ng-container>
+    <div class="list">
+      <div class="list-head forn-grid">
+        <span>Nome</span>
+        <span>CNPJ</span>
+        <span>Categoria</span>
+        <span>Chaves no extrato</span>
+        <span></span>
+      </div>
 
-        <ng-container matColumnDef="cnpj">
-          <th mat-header-cell *matHeaderCellDef>CNPJ</th>
-          <td mat-cell *matCellDef="let f">{{ f.cnpj ?? '—' }}</td>
-        </ng-container>
+      @for (f of fornecedoresFiltrados(); track f.id) {
+        <div class="row-card">
+          <div class="row-main forn-grid">
 
-        <ng-container matColumnDef="categoria">
-          <th mat-header-cell *matHeaderCellDef>Categoria</th>
-          <td mat-cell *matCellDef="let f">
-            @if (f.categoria_fornecedor?.nome) {
-              <span class="badge-categoria">{{ f.categoria_fornecedor.nome }}</span>
-            } @else {
-              <span class="sem-dado">—</span>
-            }
-          </td>
-        </ng-container>
+            <span class="fornecedor-name">{{ f.nome }}</span>
 
-        <ng-container matColumnDef="chaves">
-          <th mat-header-cell *matHeaderCellDef>Chaves no extrato</th>
-          <td mat-cell *matCellDef="let f">
+            <span class="cnpj-text">{{ f.cnpj ?? '—' }}</span>
+
+            <span>
+              @if (f.categoria_fornecedor?.nome) {
+                <span class="pill bordo">{{ f.categoria_fornecedor?.nome }}</span>
+              } @else {
+                <span class="dim-dash">—</span>
+              }
+            </span>
+
             <div class="chaves-cell">
               @if (f.chaves?.length) {
                 @for (c of f.chaves; track c.id) {
                   <code class="badge-chave">{{ c.chave }}</code>
                 }
               } @else {
-                <span class="sem-dado">—</span>
+                <span class="dim-dash">—</span>
               }
             </div>
-          </td>
-        </ng-container>
 
-        <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let f" class="acoes-cell">
-            <button mat-icon-button (click)="abrirDialog(f)" title="Editar">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" (click)="excluir(f.id)" title="Excluir">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
+            <div class="row-actions-cell">
+              <button class="btn ghost icon sm" (click)="abrirDialog(f); $event.stopPropagation()" title="Editar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <button class="btn ghost icon sm del-btn" (click)="excluir(f.id); $event.stopPropagation()" title="Excluir">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+              </button>
+            </div>
 
-        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-        <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
-
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell empty-state" colspan="5">
-            Nenhum fornecedor cadastrado ainda.
-          </td>
-        </tr>
-      </table>
-    </mat-card>
+          </div>
+        </div>
+      }
+    </div>
   }
+
 </div>

@@ -9,13 +9,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { DatePickerComponent } from '../../../../shared/components/date-picker.component';
 import { PedidosService } from '../../services/pedidos.service';
 import { TitulosService } from '../../services/titulos.service';
 import { Pedido } from '../../models/pedido.model';
 import { Titulo } from '../../models/titulo.model';
 import { TituloDialogComponent } from './titulo-dialog.component';
 
-type StatusPedidoCalc = 'pago' | 'parcial' | 'aberto' | 'atrasado';
+type StatusPedidoCalc = 'pago' | 'aberto' | 'atrasado';
 
 @Component({
   selector: 'app-lista-pedidos',
@@ -31,6 +32,7 @@ type StatusPedidoCalc = 'pago' | 'parcial' | 'aberto' | 'atrasado';
     MatProgressSpinnerModule,
     MatMenuModule,
     MatDialogModule,
+    DatePickerComponent,
   ],
   templateUrl: './lista-pedidos.component.html',
   styleUrl: './lista-pedidos.component.scss',
@@ -48,23 +50,55 @@ export class ListaPedidosComponent implements OnInit {
   titulosMap        = signal<Partial<Record<string, Titulo[]>>>({});
   carregandoTitulos = signal<string[]>([]);
   filtroStatus      = signal<string>('todos');
+  filtroFornecedor  = signal<string>('todos');
+  filtroDataInicio  = signal<string>('');
+  filtroDataFim     = signal<string>('');
   busca             = '';
 
   tabs = [
     { label: 'Todos',     value: 'todos' },
     { label: 'Em atraso', value: 'atrasado' },
     { label: 'Em aberto', value: 'aberto' },
-    { label: 'Parcial',   value: 'parcial' },
     { label: 'Pago',      value: 'pago' },
   ];
 
   // ── Computed / derivados ────────────────────────────────────────────────────
 
-  pedidosFiltrados = computed(() => {
-    const status = this.filtroStatus();
-    const q = this.busca.toLowerCase();
+  // Deduplica por id caso o join do Supabase retorne linhas repetidas (uma por título)
+  pedidosUnicos = computed(() => {
+    const seen = new Set<string>();
     return this.pedidos().filter(p => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  });
+
+  fornecedoresDaLista = computed(() => {
+    const map = new Map<string, string>();
+    for (const p of this.pedidosUnicos()) {
+      if (p.fornecedor_id && p.fornecedor?.nome) map.set(p.fornecedor_id, p.fornecedor.nome);
+    }
+    return [...map.entries()]
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  });
+
+  pedidosFiltrados = computed(() => {
+    const status     = this.filtroStatus();
+    const fornecedor = this.filtroFornecedor();
+    const ini        = this.filtroDataInicio();
+    const fim        = this.filtroDataFim();
+    const q          = this.busca.toLowerCase();
+
+    return this.pedidosUnicos().filter(p => {
       if (status !== 'todos' && this.statusPedido(p) !== status) return false;
+      if (fornecedor !== 'todos' && p.fornecedor_id !== fornecedor) return false;
+      if (ini || fim) {
+        if (!p.data_limite) return false;
+        if (ini && p.data_limite < ini) return false;
+        if (fim && p.data_limite > fim) return false;
+      }
       if (q) {
         const haystack = [p.codigo, p.numero_nf, p.fornecedor?.nome, p.tipo_pedido?.nome]
           .join(' ').toLowerCase();
@@ -75,7 +109,7 @@ export class ListaPedidosComponent implements OnInit {
   });
 
   kpiAtrasado = computed(() => {
-    const lista = this.pedidos().filter(p => this.statusPedido(p) === 'atrasado');
+    const lista = this.pedidosUnicos().filter(p => this.statusPedido(p) === 'atrasado');
     return {
       count: lista.length,
       total: lista.reduce((s, p) => s + (p.valor_total ?? 0) - this.valorPago(p), 0),
@@ -85,10 +119,10 @@ export class ListaPedidosComponent implements OnInit {
   kpiAPagar = computed(() => {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const limite30 = new Date(hoje); limite30.setDate(hoje.getDate() + 30);
-    const lista = this.pedidos().filter(p => {
+    const lista = this.pedidosUnicos().filter(p => {
       const st = this.statusPedido(p);
       if (st === 'pago') return false;
-      if (!p.data_limite) return true;
+      if (!p.data_limite) return false;
       const dl = new Date(p.data_limite + 'T00:00:00');
       return dl <= limite30;
     });
@@ -99,12 +133,14 @@ export class ListaPedidosComponent implements OnInit {
   });
 
   kpiPagos = computed(() => {
-    const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const lista = this.pedidos().filter(p => {
+    const inicioMes = new Date();
+    inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+    const lista = this.pedidosUnicos().filter(p => {
       if (this.statusPedido(p) !== 'pago') return false;
-      const criado = new Date(p.created_at);
-      return criado >= inicioMes;
+      return (p.titulos ?? []).some(t =>
+        t.data_pagamento &&
+        new Date(t.data_pagamento + 'T00:00:00') >= inicioMes
+      );
     });
     return {
       count: lista.length,
@@ -113,23 +149,26 @@ export class ListaPedidosComponent implements OnInit {
   });
 
   ticketMedio = computed(() => {
-    const lista = this.pedidos().filter(p => p.valor_total);
+    const lista = this.pedidosUnicos().filter(p => p.valor_total);
     if (!lista.length) return 0;
     return lista.reduce((s, p) => s + (p.valor_total ?? 0), 0) / lista.length;
   });
 
   proximoVencimento = computed(() => {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    const proximo = this.pedidos()
-      .filter(p => p.data_limite && this.statusPedido(p) !== 'pago')
-      .map(p => new Date(p.data_limite! + 'T00:00:00'))
-      .filter(d => d >= hoje)
-      .sort((a, b) => a.getTime() - b.getTime())[0];
-    if (!proximo) return '—';
-    const diff = Math.round((proximo.getTime() - hoje.getTime()) / 864e5);
-    if (diff === 0) return 'hoje';
-    if (diff === 1) return 'amanhã';
-    return `em ${diff} dias`;
+    const datas: Date[] = [];
+    for (const p of this.pedidosUnicos()) {
+      if (this.statusPedido(p) === 'pago') continue;
+      for (const t of p.titulos ?? []) {
+        if (!t.data_pagamento && t.data_vencimento) {
+          const d = new Date(t.data_vencimento + 'T00:00:00');
+          if (d >= hoje) datas.push(d);
+        }
+      }
+    }
+    if (!datas.length) return '—';
+    datas.sort((a, b) => a.getTime() - b.getTime());
+    return datas[0].toLocaleDateString('pt-BR');
   });
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -162,24 +201,26 @@ export class ListaPedidosComponent implements OnInit {
     const pago  = this.valorPago(p);
     const total = p.valor_total ?? 0;
     if (total > 0 && pago >= total) return 'pago';
-    if (pago > 0) return 'parcial';
-    if (p.data_limite) {
-      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-      if (new Date(p.data_limite + 'T00:00:00') < hoje) return 'atrasado';
-    }
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const temAtrasado = (p.titulos ?? []).some(t =>
+      !t.data_pagamento &&
+      t.data_vencimento &&
+      new Date(t.data_vencimento + 'T00:00:00') < hoje
+    );
+    if (temAtrasado) return 'atrasado';
     return 'aberto';
   }
 
   statusLabel(p: Pedido): string {
     const map: Record<StatusPedidoCalc, string> = {
-      pago: 'Pago', parcial: 'Parcial', aberto: 'Em aberto', atrasado: 'Atrasado',
+      pago: 'Pago', aberto: 'Em aberto', atrasado: 'Atrasado',
     };
     return map[this.statusPedido(p)];
   }
 
   statusClass(p: Pedido): string {
     const map: Record<StatusPedidoCalc, string> = {
-      pago: 'ok', parcial: 'warn', aberto: 'info', atrasado: 'bad',
+      pago: 'ok', aberto: 'info', atrasado: 'bad',
     };
     return map[this.statusPedido(p)];
   }
@@ -195,10 +236,7 @@ export class ListaPedidosComponent implements OnInit {
   }
 
   valorClass(p: Pedido): string {
-    const st = this.statusPedido(p);
-    if (st === 'pago') return 'pago';
-    if (st === 'parcial') return 'parcial';
-    return 'aberto';
+    return this.statusPedido(p) === 'pago' ? 'pago' : '';
   }
 
   tituloDateClass(t: Titulo): string {

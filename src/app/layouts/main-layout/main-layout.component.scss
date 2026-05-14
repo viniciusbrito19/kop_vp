@@ -1,3 +1,9 @@
+/* Garante que o host do layout seja block-level (custom elements são inline por padrão) */
+:host {
+  display: block;
+  height: 100%;
+}
+
 /* ===== Shell layout ===== */
 .kop-shell {
   display: flex;

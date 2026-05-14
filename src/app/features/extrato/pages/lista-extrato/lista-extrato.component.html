@@ -1,61 +1,171 @@
-<div class="page-container">
-  <div class="page-header">
-    <h1>Extrato Financeiro</h1>
-    <div class="header-actions">
-      @if (filtrosAtivos) {
-        <span class="resultado-count">
-          {{ dataSource.filteredData.length }} de {{ dataSource.data.length }} lançamentos
-        </span>
-      }
-      <button
-        mat-stroked-button
-        color="primary"
-        (click)="conciliar()"
-        [disabled]="conciliando() || carregando() || importando()"
-      >
-        <mat-icon>sync</mat-icon>
-        {{ conciliando() ? 'Conciliando...' : 'Conciliar despesas' }}
-      </button>
-      <button
-        mat-flat-button
-        color="primary"
-        (click)="fileInput.click()"
-        [disabled]="importando() || carregando()"
-      >
-        <mat-icon>upload_file</mat-icon>
-        {{ importando() ? 'Importando...' : 'Importar CSV' }}
-      </button>
+<!-- ===== Topbar ===== -->
+<header class="topbar">
+  <div class="crumbs row gap-2">
+    <span>Financeiro</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    <b>Extrato Bancário</b>
+  </div>
+  <div class="spacer"></div>
+  <button
+    class="btn outline sm"
+    (click)="conciliar()"
+    [disabled]="conciliando() || carregando() || importando()"
+    type="button"
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    {{ conciliando() ? 'Conciliando…' : 'Conciliar despesas' }}
+  </button>
+  <button
+    class="btn primary sm"
+    (click)="fileInput.click()"
+    [disabled]="importando() || carregando()"
+    type="button"
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    {{ importando() ? 'Importando…' : 'Importar CSV' }}
+  </button>
+  <input #fileInput type="file" accept=".csv" hidden (change)="onArquivoSelecionado($event)" />
+</header>
+
+<!-- ===== Content ===== -->
+<div class="content">
+
+  <!-- Page heading -->
+  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+    <div>
+      <h1 class="page">Extrato <span class="accent serif">financeiro</span></h1>
+      <div class="page-sub">
+        @if (carregando()) { Carregando lançamentos… }
+        @else { {{ totalLancamentos() }} lançamentos importados }
+      </div>
     </div>
-    <input #fileInput type="file" accept=".csv" hidden (change)="onArquivoSelecionado($event)" />
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid kpi-grid-3" style="margin-bottom:22px">
+    <div class="kpi bordo">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        ENTRADAS
+      </div>
+      <div class="kpi-value">{{ formatarMoedaCurta(totalEntradas()) }}</div>
+      <div class="kpi-foot">{{ qtdEntradas() }} lançamento{{ qtdEntradas() !== 1 ? 's' : '' }}</div>
+    </div>
+    <div class="kpi" style="border-color:var(--bad-soft)">
+      <div class="kpi-label" style="color:var(--bad)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        SAÍDAS
+      </div>
+      <div class="kpi-value" style="color:var(--bad)">{{ formatarMoedaCurta(totalSaidas()) }}</div>
+      <div class="kpi-foot">{{ qtdSaidas() }} lançamento{{ qtdSaidas() !== 1 ? 's' : '' }}</div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        SALDO ATUAL
+      </div>
+      <div class="kpi-value">{{ formatarMoedaCurta(saldoAtual()) }}</div>
+      <div class="kpi-foot">último lançamento importado</div>
+    </div>
   </div>
 
   @if (carregando() || importando()) {
-    <div class="loading">
-      <mat-spinner diameter="40" />
+    <div class="loading-state">
+      <mat-spinner diameter="36" />
+      <span>{{ importando() ? 'Importando lançamentos…' : 'Carregando extrato…' }}</span>
     </div>
   } @else {
-    <mat-card>
-      <table mat-table [dataSource]="dataSource" matSort class="full-table">
 
-        <!-- ── Colunas de dados ────────────────────────── -->
+    <!-- Filter bar -->
+    <div class="filter-bar" style="margin-bottom:14px">
+      <div class="seg">
+        <button [class.on]="ctrlNatureza.value === ''"      (click)="ctrlNatureza.setValue('')">Todos</button>
+        <button [class.on]="ctrlNatureza.value === 'entrada'" (click)="ctrlNatureza.setValue('entrada')">Entradas</button>
+        <button [class.on]="ctrlNatureza.value === 'saida'"   (click)="ctrlNatureza.setValue('saida')">Saídas</button>
+      </div>
+      <div class="sep"></div>
+      <!-- Filtro de tipo -->
+      <div class="field filter-select-field">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <select [formControl]="ctrlTipo">
+          <option value="">Todos os tipos</option>
+          @for (t of tiposLancamento; track t[0]) {
+            <option [value]="t[0]">{{ t[1] }}</option>
+          }
+        </select>
+      </div>
+      <!-- Filtro de destinatário -->
+      <div class="field" style="flex:1;min-width:0;max-width:260px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input [formControl]="ctrlDestinatario" placeholder="Buscar destinatário…" />
+        @if (ctrlDestinatario.value) {
+          <button class="clear-btn" (click)="ctrlDestinatario.setValue('')" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        }
+      </div>
+      <!-- Filtro de data -->
+      <div class="field filter-date-range">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text-3)"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        <app-date-picker placeholder="De" [value]="ctrlDataInicio.value ?? ''" (valueChange)="ctrlDataInicio.setValue($event)" />
+        <span class="date-sep">–</span>
+        <app-date-picker placeholder="Até" [value]="ctrlDataFim.value ?? ''" (valueChange)="ctrlDataFim.setValue($event)" />
+      </div>
+      <!-- Filtro: apenas vinculados -->
+      <button
+        class="btn outline sm icon vinculo-toggle"
+        [class.on]="ctrlVinculado.value"
+        (click)="toggleVinculado()"
+        type="button"
+        title="Mostrar apenas lançamentos com despesa ou pedido vinculado"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
 
+      <!-- Limpar filtros + contador -->
+      <div class="spacer"></div>
+      <span class="resultado-count" [class.visivel]="filtrosAtivos">
+        {{ dataSource.filteredData.length }} de {{ dataSource.data.length }}
+      </span>
+      <button
+        class="btn ghost sm icon"
+        [class.limpar-visivel]="filtrosAtivos"
+        (click)="limparFiltros()"
+        type="button"
+        title="Limpar filtros"
+        [disabled]="!filtrosAtivos"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card table-card">
+      <table mat-table [dataSource]="dataSource" matSort class="extrato-table">
+
+        <!-- Data -->
         <ng-container matColumnDef="data_lancamento">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Data</th>
-          <td mat-cell *matCellDef="let l" class="data-cell">{{ formatarData(l.data_lancamento) }}</td>
+          <td mat-cell *matCellDef="let l" class="col-data">
+            <span class="data-chip">{{ formatarData(l.data_lancamento) }}</span>
+          </td>
         </ng-container>
 
+        <!-- Natureza -->
         <ng-container matColumnDef="natureza">
           <th mat-header-cell *matHeaderCellDef>Natureza</th>
           <td mat-cell *matCellDef="let l">
-            <span class="badge" [class.badge-entrada]="l.natureza === 'entrada'" [class.badge-saida]="l.natureza === 'saida'">
+            <span class="pill" [class.ok]="l.natureza === 'entrada'" [class.bad]="l.natureza === 'saida'">
+              <span class="dot"></span>
               {{ l.natureza === 'entrada' ? 'Entrada' : 'Saída' }}
             </span>
           </td>
         </ng-container>
 
+        <!-- Tipo -->
         <ng-container matColumnDef="tipo">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
-          <td mat-cell *matCellDef="let l" class="tipo-cell">
+          <td mat-cell *matCellDef="let l" class="col-tipo">
             @if (editandoId() === l.id) {
               <select
                 class="tipo-edit-select"
@@ -74,28 +184,34 @@
           </td>
         </ng-container>
 
+        <!-- Destinatário -->
         <ng-container matColumnDef="destinatario_remetente">
           <th mat-header-cell *matHeaderCellDef>Destinatário / Remetente</th>
-          <td mat-cell *matCellDef="let l" class="destinatario-cell" [matTooltip]="l.destinatario_remetente">
+          <td mat-cell *matCellDef="let l" class="col-destinatario" [matTooltip]="l.destinatario_remetente">
             {{ l.destinatario_remetente }}
           </td>
         </ng-container>
 
+        <!-- Valor -->
         <ng-container matColumnDef="valor">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header class="num-header">Valor</th>
-          <td mat-cell *matCellDef="let l" class="num-cell" [class.valor-saida]="l.valor < 0" [class.valor-entrada]="l.valor >= 0">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="col-num">Valor</th>
+          <td mat-cell *matCellDef="let l" class="col-num col-valor"
+              [class.valor-entrada]="l.valor >= 0"
+              [class.valor-saida]="l.valor < 0">
             {{ formatarMoeda(l.valor) }}
           </td>
         </ng-container>
 
+        <!-- Saldo -->
         <ng-container matColumnDef="saldo">
-          <th mat-header-cell *matHeaderCellDef class="num-header">Saldo</th>
-          <td mat-cell *matCellDef="let l" class="num-cell saldo-cell">{{ formatarMoeda(l.saldo) }}</td>
+          <th mat-header-cell *matHeaderCellDef class="col-num">Saldo</th>
+          <td mat-cell *matCellDef="let l" class="col-num col-saldo">{{ formatarMoeda(l.saldo) }}</td>
         </ng-container>
 
+        <!-- Link pedido/despesa -->
         <ng-container matColumnDef="pedido">
-          <th mat-header-cell *matHeaderCellDef class="pedido-header"></th>
-          <td mat-cell *matCellDef="let l" class="pedido-cell">
+          <th mat-header-cell *matHeaderCellDef class="col-icon"></th>
+          <td mat-cell *matCellDef="let l" class="col-icon">
             @if (l.pedido) {
               <button mat-icon-button color="primary"
                 (click)="abrirPedido(l.pedido.id)"
@@ -104,26 +220,23 @@
                 <mat-icon>receipt_long</mat-icon>
               </button>
             } @else if (l.despesa) {
-              <mat-icon class="icon-despesa"
-                [matTooltip]="l.despesa.descricao ?? 'Despesa'">
-                payments
-              </mat-icon>
+              <mat-icon class="icon-despesa" [matTooltip]="l.despesa.descricao ?? 'Despesa'">payments</mat-icon>
             }
           </td>
         </ng-container>
 
+        <!-- Ações -->
         <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef class="acoes-header"></th>
-          <td mat-cell *matCellDef="let l" class="acoes-cell">
+          <th mat-header-cell *matHeaderCellDef class="col-icon"></th>
+          <td mat-cell *matCellDef="let l" class="col-icon">
             @if (isIdentificavel(l)) {
-              <button mat-icon-button color="accent"
-                (click)="abrirPainel(l)" title="Identificar despesa" type="button" class="btn-identificar">
+              <button mat-icon-button (click)="abrirPainel(l)" title="Identificar despesa" type="button" class="btn-identificar">
                 <mat-icon>manage_search</mat-icon>
               </button>
             }
             @if (isEditavel(l)) {
               @if (editandoId() === l.id) {
-                <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar edição" type="button">
+                <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar" type="button">
                   <mat-icon>close</mat-icon>
                 </button>
               } @else {
@@ -135,100 +248,44 @@
           </td>
         </ng-container>
 
-        <!-- ── Colunas de filtro ───────────────────────── -->
-
-        <ng-container matColumnDef="data_lancamento_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
-            <div class="filtro-dates">
-              <input class="filtro-input" type="date" [formControl]="ctrlDataInicio" title="Data inicial" />
-              <input class="filtro-input" type="date" [formControl]="ctrlDataFim" title="Data final" />
-            </div>
-          </th>
-        </ng-container>
-
-        <ng-container matColumnDef="natureza_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
-            <select class="filtro-select" [formControl]="ctrlNatureza">
-              <option value="">Todas</option>
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saída</option>
-            </select>
-          </th>
-        </ng-container>
-
-        <ng-container matColumnDef="tipo_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
-            <select class="filtro-select" [formControl]="ctrlTipo">
-              <option value="">Todos</option>
-              @for (t of tiposLancamento; track t[0]) {
-                <option [value]="t[0]">{{ t[1] }}</option>
-              }
-            </select>
-          </th>
-        </ng-container>
-
-        <ng-container matColumnDef="destinatario_remetente_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell">
-            <div class="filtro-search">
-              <input class="filtro-input" type="text" [formControl]="ctrlDestinatario" placeholder="Buscar..." />
-              @if (ctrlDestinatario.value) {
-                <button class="btn-clear-input" (click)="ctrlDestinatario.setValue('')" type="button" title="Limpar">×</button>
-              }
-            </div>
-          </th>
-        </ng-container>
-
-        <ng-container matColumnDef="valor_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
-        </ng-container>
-
-        <ng-container matColumnDef="saldo_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell filtro-cell-limpar">
-            @if (filtrosAtivos) {
-              <button mat-icon-button color="warn" (click)="limparFiltros()" title="Limpar filtros" type="button">
-                <mat-icon>filter_alt_off</mat-icon>
-              </button>
-            }
-          </th>
-        </ng-container>
-
-        <ng-container matColumnDef="pedido_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
-        </ng-container>
-
-        <ng-container matColumnDef="acoes_filtro">
-          <th mat-header-cell *matHeaderCellDef class="filtro-cell"></th>
-        </ng-container>
-
-        <!-- ── Linhas ──────────────────────────────────── -->
-
+        <!-- Linhas -->
         <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-        <tr mat-header-row *matHeaderRowDef="colunasFiltro" class="filtro-row"></tr>
         <tr mat-row *matRowDef="let row; columns: colunas;" [class.row-editando]="editandoId() === row.id"></tr>
 
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell empty-state" [attr.colspan]="colunas.length">
+          <td class="mat-cell empty-cell" [attr.colspan]="colunas.length">
             @if (dataSource.data.length === 0) {
-              Nenhum lançamento encontrado. Importe um arquivo CSV para começar.
+              <div class="empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <p>Nenhum lançamento encontrado.</p>
+                <p style="color:var(--text-4);font-size:13px">Importe um arquivo CSV para começar.</p>
+                <button class="btn primary sm" (click)="fileInput.click()" type="button">Importar CSV</button>
+              </div>
             } @else {
-              Nenhum lançamento corresponde aos filtros aplicados.
+              <div class="empty-state">
+                <p>Nenhum lançamento corresponde aos filtros aplicados.</p>
+                <button class="btn ghost sm" (click)="limparFiltros()" type="button">Limpar filtros</button>
+              </div>
             }
           </td>
         </tr>
       </table>
 
       <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons />
-    </mat-card>
+    </div>
+
   }
 </div>
 
-<!-- ── Painel lateral: identificar despesa ───────────────────────────── -->
+<!-- ===== Painel lateral: identificar despesa ===== -->
 @if (painelAberto()) {
-  <div class="painel-overlay" (click)="fecharPainel()"></div>
+  <div class="drawer-scrim" (click)="fecharPainel()"></div>
 
-  <div class="identificar-panel">
-    <div class="painel-topo">
-      <h3 class="painel-titulo">Identificar despesa</h3>
+  <div class="drawer">
+    <div class="drawer-head">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--bordo);flex-shrink:0"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <h3 class="drawer-title">Identificar despesa</h3>
+      <div class="spacer"></div>
       <button mat-icon-button (click)="fecharPainel()" type="button">
         <mat-icon>close</mat-icon>
       </button>
@@ -242,58 +299,59 @@
       </div>
     }
 
-    <div [formGroup]="painelForm" class="painel-form">
+    <div [formGroup]="painelForm" class="drawer-body">
+      <div class="form-grid single" style="gap:16px">
 
-      <div class="campo-grupo">
-        <label class="campo-label">Tipo</label>
-        <select class="filtro-select" formControlName="modo">
-          <option value="recorrente">Despesa de template recorrente</option>
-          <option value="avulsa">Despesa avulsa</option>
-        </select>
-      </div>
-
-      @if (painelForm.value.modo === 'recorrente') {
-        <div class="campo-grupo">
-          <label class="campo-label">Template</label>
-          <select class="filtro-select" formControlName="templateId">
-            <option value="">Selecione...</option>
-            @for (t of templates(); track t.id) {
-              <option [value]="t.id">{{ t.descricao }}</option>
-            }
+        <label class="input">
+          <span>Tipo de despesa</span>
+          <select formControlName="modo">
+            <option value="recorrente">Template recorrente</option>
+            <option value="avulsa">Despesa avulsa</option>
           </select>
-        </div>
-      } @else {
-        <div class="campo-grupo">
-          <label class="campo-label">Fornecedor</label>
-          <select class="filtro-select" formControlName="fornecedorId"
-                  (change)="aoSelecionarFornecedor($event)">
-            <option value="">— nenhum —</option>
-            @for (f of fornecedores(); track f.id) {
-              <option [value]="f.id">{{ f.nome }}</option>
-            }
-          </select>
-        </div>
+        </label>
 
-        <div class="campo-grupo">
-          <label class="campo-label">Descrição</label>
-          <input class="filtro-input campo-full" type="text"
-                 formControlName="descricao" placeholder="Ex: Manutenção ar-condicionado" />
-        </div>
-      }
+        @if (painelForm.value.modo === 'recorrente') {
+          <label class="input">
+            <span>Template</span>
+            <select formControlName="templateId">
+              <option value="">Selecione…</option>
+              @for (t of templates(); track t.id) {
+                <option [value]="t.id">{{ t.descricao }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <label class="input">
+            <span>Fornecedor</span>
+            <select formControlName="fornecedorId" (change)="aoSelecionarFornecedor($event)">
+              <option value="">— nenhum —</option>
+              @for (f of fornecedores(); track f.id) {
+                <option [value]="f.id">{{ f.nome }}</option>
+              }
+            </select>
+          </label>
 
-      <div class="campo-grupo">
-        <label class="campo-label">Valor (R$)</label>
-        <input class="filtro-input campo-full" type="number"
-               formControlName="valor" min="0.01" step="0.01" />
+          <label class="input">
+            <span>Descrição</span>
+            <input type="text" formControlName="descricao" placeholder="Ex: Manutenção ar-condicionado" />
+          </label>
+        }
+
+        <label class="input">
+          <span>Valor (R$)</span>
+          <input type="number" formControlName="valor" min="0.01" step="0.01" />
+        </label>
+
       </div>
     </div>
 
-    <div class="painel-footer">
-      <button mat-button (click)="fecharPainel()" type="button">Cancelar</button>
-      <button mat-flat-button color="primary" type="button"
+    <div class="drawer-foot">
+      <button class="btn ghost" (click)="fecharPainel()" type="button">Cancelar</button>
+      <button class="btn primary"
               [disabled]="painelInvalido || salvandoIdentificacao()"
-              (click)="salvarIdentificacao()">
-        @if (salvandoIdentificacao()) { <mat-spinner diameter="18" /> } @else { Confirmar }
+              (click)="salvarIdentificacao()"
+              type="button">
+        @if (salvandoIdentificacao()) { <mat-spinner diameter="16" /> } @else { Confirmar }
       </button>
     </div>
   </div>

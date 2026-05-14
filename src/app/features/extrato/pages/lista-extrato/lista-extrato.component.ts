@@ -5,6 +5,7 @@ import {
   ViewChild,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
@@ -12,12 +13,12 @@ import { Router } from '@angular/router';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DatePickerComponent } from '../../../../shared/components/date-picker.component';
 import { ExtratoService } from '../../services/extrato.service';
 import { CorrelacaoService } from '../../services/correlacao.service';
 import {
@@ -37,6 +38,7 @@ interface FiltroExtrato {
   natureza: NaturezaLancamento | '' | null;
   tipo: TipoLancamento | '' | null;
   destinatario: string | null;
+  vinculado: boolean | null;
 }
 
 const TIPOS_SAIDA: TipoLancamento[] = [
@@ -55,12 +57,12 @@ const TIPOS_ENTRADA: TipoLancamento[] = [
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
-    MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    DatePickerComponent,
   ],
   templateUrl: './lista-extrato.component.html',
   styleUrl: './lista-extrato.component.scss',
@@ -84,6 +86,18 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   conciliando  = signal(false);
   editandoId = signal<string | null>(null);
   salvando   = signal(false);
+
+  private _lancamentos = signal<LancamentoExtrato[]>([]);
+
+  totalLancamentos = computed(() => this._lancamentos().length);
+  totalEntradas    = computed(() => this._lancamentos().filter(l => l.natureza === 'entrada').reduce((s, l) => s + l.valor, 0));
+  totalSaidas      = computed(() => Math.abs(this._lancamentos().filter(l => l.natureza === 'saida').reduce((s, l) => s + l.valor, 0)));
+  qtdEntradas      = computed(() => this._lancamentos().filter(l => l.natureza === 'entrada').length);
+  qtdSaidas        = computed(() => this._lancamentos().filter(l => l.natureza === 'saida').length);
+  saldoAtual       = computed(() => {
+    const lista = this._lancamentos();
+    return lista.length ? lista[0].saldo : 0;
+  });
 
   // ── Painel lateral ────────────────────────────────────────────────────
   painelAberto          = signal(false);
@@ -117,6 +131,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
     natureza: ['' as NaturezaLancamento | ''],
     tipo: ['' as TipoLancamento | ''],
     destinatario: [''],
+    vinculado: [false],
   });
 
   get ctrlDataInicio()   { return this.filtros.controls.dataInicio as FormControl; }
@@ -124,10 +139,17 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   get ctrlNatureza()     { return this.filtros.controls.natureza as FormControl; }
   get ctrlTipo()         { return this.filtros.controls.tipo as FormControl; }
   get ctrlDestinatario() { return this.filtros.controls.destinatario as FormControl; }
+  get ctrlVinculado()    { return this.filtros.controls.vinculado as FormControl; }
+
+  toggleVinculado() {
+    this.ctrlVinculado.setValue(!this.ctrlVinculado.value, { emitEvent: false });
+    this.dataSource.filter = JSON.stringify(this.filtros.value);
+    this.dataSource.paginator?.firstPage();
+  }
 
   get filtrosAtivos(): boolean {
     const v = this.filtros.value;
-    return !!(v.dataInicio || v.dataFim || v.natureza || v.tipo || v.destinatario);
+    return !!(v.dataInicio || v.dataFim || v.natureza || v.tipo || v.destinatario || v.vinculado);
   }
 
   isEditavel(l: LancamentoExtrato): boolean {
@@ -272,18 +294,22 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
           return false;
         }
       }
+      if (f.vinculado && !row.pedido && !row.despesa) return false;
       return true;
     };
   }
 
   limparFiltros() {
-    this.filtros.reset({ dataInicio: '', dataFim: '', natureza: '', tipo: '', destinatario: '' });
+    this.filtros.reset({ dataInicio: '', dataFim: '', natureza: '', tipo: '', destinatario: '', vinculado: false });
+    this.dataSource.filter = '';
   }
 
   async carregar() {
     this.carregando.set(true);
     try {
-      this.dataSource.data = await this.service.listar();
+      const dados = await this.service.listar();
+      this.dataSource.data = dados;
+      this._lancamentos.set(dados);
     } finally {
       this.carregando.set(false);
       setTimeout(() => {
@@ -344,6 +370,10 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   }
 
   formatarMoeda(valor: number): string {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  formatarMoedaCurta(valor: number): string {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 

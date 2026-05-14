@@ -1,184 +1,253 @@
-<div class="page-container">
-  <div class="page-header">
-    <h1>{{ modoEdicao() ? 'Editar Pedido' : 'Novo Pedido' }}</h1>
-    <button mat-button routerLink="/pedidos">
-      <mat-icon>arrow_back</mat-icon> Voltar
-    </button>
+<!-- ===== Topbar ===== -->
+<header class="topbar">
+  <div class="crumbs row gap-2">
+    <span>Operação</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    <a routerLink="/pedidos" style="color:var(--text-3);text-decoration:none">Pedidos a Fornecedores</a>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    <b>{{ modoEdicao() ? 'Editar Pedido' : 'Novo Pedido' }}</b>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn outline sm" routerLink="/pedidos">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    Voltar
+  </a>
+</header>
+
+<!-- ===== Content ===== -->
+<div class="content">
+
+  <!-- Page heading -->
+  <div style="margin-bottom:28px">
+    <h1 class="page">
+      {{ modoEdicao() ? 'Editar' : 'Novo' }} <span class="accent serif">pedido</span>
+    </h1>
+    <div class="page-sub">
+      @if (modoEdicao()) { Atualize os dados do pedido abaixo }
+      @else { Preencha os dados ou faça upload da NF para extração automática }
+    </div>
   </div>
 
-  <mat-stepper orientation="vertical" [linear]="false">
+  <form [formGroup]="form" class="col" style="gap:16px">
 
-    <!-- STEP 1: Upload PDF -->
-    <mat-step label="Upload da Nota Fiscal (opcional)">
-      <mat-card class="step-card">
-        <p class="hint">Faça o upload do PDF (CRM) ou XML da NF-e (GIMBA) para preenchimento automático dos campos.</p>
-        @if (modoEdicao() && pdfAtualUrl() && !arquivoPdf) {
-          <div class="pdf-atual">
-            <mat-icon>picture_as_pdf</mat-icon>
-            <span>PDF atual:</span>
-            <a [href]="pdfAtualUrl()" target="_blank">Ver PDF cadastrado</a>
-            <span class="pdf-hint">— selecione abaixo para substituir</span>
-          </div>
+    <!-- ===== Seção 1: Upload ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Upload da Nota Fiscal
+        <span class="badge-optional">opcional</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-3);margin:8px 0 16px;line-height:1.6">
+        Faça o upload do <strong style="color:var(--text-2);font-weight:600">PDF (CRM)</strong> ou
+        <strong style="color:var(--text-2);font-weight:600">XML da NF-e (GIMBA)</strong> para preenchimento automático dos campos.
+      </p>
+
+      @if (modoEdicao() && pdfAtualUrl() && !arquivoPdf) {
+        <div class="pdf-atual-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--bordo);flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>PDF cadastrado:</span>
+          <a [href]="pdfAtualUrl()" target="_blank" style="color:var(--bordo);font-weight:600">Visualizar arquivo</a>
+          <span style="color:var(--text-4)">— selecione abaixo para substituir</span>
+        </div>
+      }
+
+      <label class="upload-zone" style="cursor:pointer">
+        <input type="file" accept="application/pdf,.xml" (change)="onFileChange($event)" hidden #fileInput />
+        @if (extraindo()) {
+          <mat-spinner diameter="28" />
+          <span style="font-size:13px;color:var(--text-3);font-weight:500">Extraindo dados do arquivo...</span>
+        } @else if (arquivoPdf) {
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ok)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
+          <span style="font-size:14px;font-weight:600;color:var(--ok)">{{ arquivoPdf.name }}</span>
+          <span style="font-size:12px;color:var(--text-4)">Clique para trocar o arquivo</span>
+        } @else {
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--bordo);opacity:0.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span style="font-size:14px;font-weight:500;color:var(--text-2)">
+            {{ modoEdicao() ? 'Clique para substituir o arquivo' : 'Arraste ou clique para selecionar' }}
+          </span>
+          <span style="font-size:12px;color:var(--text-4)">PDF (CRM) ou XML da NF-e (GIMBA)</span>
         }
-        <label class="upload-area">
-          <input type="file" accept="application/pdf,.xml" (change)="onFileChange($event)" hidden #fileInput />
-          @if (extraindo()) {
-            <mat-spinner diameter="32" />
-            <span>Extraindo dados...</span>
-          } @else {
-            <mat-icon class="upload-icon">upload_file</mat-icon>
-            <span>{{ arquivoPdf ? arquivoPdf.name : (modoEdicao() ? 'Clique para substituir o arquivo' : 'Clique para selecionar o PDF ou XML') }}</span>
-          }
-        </label>
-        <button mat-flat-button (click)="fileInput.click()" [disabled]="extraindo()" color="primary">
+      </label>
+
+      <div style="margin-top:12px">
+        <button type="button" class="btn outline sm" (click)="fileInput.click()" [disabled]="extraindo()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           {{ modoEdicao() ? 'Substituir arquivo' : 'Selecionar PDF ou XML' }}
         </button>
-      </mat-card>
-      <div class="step-actions">
-        <button mat-button matStepperNext>Próximo</button>
       </div>
-    </mat-step>
 
-    <!-- STEP 2: Dados do Pedido -->
-    <mat-step label="Dados do Pedido">
-      <mat-card class="step-card">
-        <form [formGroup]="form" class="form-grid">
-
-          <mat-form-field appearance="outline">
-            <mat-label>Código do Pedido</mat-label>
-            <input matInput formControlName="codigo" placeholder="0000000KPN ou 11729449" />
-            <mat-hint>CRM: 7 dígitos + KPN (ex.: 2465153KPN) | GIMBA: somente números</mat-hint>
-            @if (form.get('codigo')?.hasError('pattern')) {
-              <mat-error>Formato inválido. Use 7 dígitos + KPN ou somente números.</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Data Limite</mat-label>
-            <input matInput type="date" formControlName="data_limite" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Fornecedor</mat-label>
-            <mat-select formControlName="fornecedor_id">
-              <mat-option value="">Selecione...</mat-option>
-              @for (f of fornecedores(); track f.id) {
-                <mat-option [value]="f.id">{{ f.nome }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo de Pedido</mat-label>
-            <mat-select formControlName="tipo_pedido_id">
-              <mat-option value="">Selecione...</mat-option>
-              @for (t of tiposPedido(); track t.id) {
-                <mat-option [value]="t.id">{{ t.nome }}</mat-option>
-              }
-            </mat-select>
-            <mat-hint>Gerencie os tipos em <a routerLink="/tipos-pedido">Tipos de Pedido</a></mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Número da NF</mat-label>
-            <input
-              matInput
-              formControlName="numero_nf"
-              placeholder="000000000-0"
-              maxlength="11"
-              (input)="aplicarMascaraNf($event)"
-            />
-            <mat-hint>Formato: 000000000-0</mat-hint>
-            @if (form.get('numero_nf')?.hasError('pattern')) {
-              <mat-error>Formato inválido. Use 000000000-0.</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Data de Emissão</mat-label>
-            <input matInput type="date" formControlName="data_emissao" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Valor NF (R$)</mat-label>
-            <input matInput type="number" formControlName="valor_total" min="0" step="0.01" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Status</mat-label>
-            <mat-select formControlName="status">
-              <mat-option value="recebido">Recebido</mat-option>
-              <mat-option value="pendente">Pendente</mat-option>
-              <mat-option value="cancelado">Cancelado</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Observações</mat-label>
-            <textarea matInput formControlName="observacoes" rows="2"></textarea>
-          </mat-form-field>
-
-        </form>
-      </mat-card>
-      <div class="step-actions">
-        <button mat-button matStepperPrevious>Anterior</button>
-        <button mat-button matStepperNext>Próximo</button>
-      </div>
-    </mat-step>
-
-    <!-- STEP 3: Itens -->
-    <mat-step label="Itens do Pedido">
-      <mat-card class="step-card">
-        <div class="itens-header">
-          <span>{{ itens.length }} item(s)</span>
-          <button mat-button color="primary" (click)="adicionarItem()">
-            <mat-icon>add</mat-icon> Adicionar Item
+      <!-- Banner de duplicidade -->
+      @if (pedidoDuplicado(); as dup) {
+        <div class="duplicata-banner">
+          <div class="duplicata-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 22 20H2L12 3Z"/><path d="M12 10v4M12 17v.01"/></svg>
+          </div>
+          <div class="duplicata-body">
+            <div class="duplicata-title">Pedido já cadastrado</div>
+            <div class="duplicata-desc">
+              Este documento já foi importado
+              @if (dup.fornecedor?.nome) { para <strong>{{ dup.fornecedor!.nome }}</strong> }
+              @if (dup.numero_nf) { · NF <strong>{{ dup.numero_nf }}</strong> }
+              @if (dup.valor_total != null) { · <strong>{{ dup.valor_total | currency:'BRL' }}</strong> }
+              · <a [routerLink]="['/pedidos', dup.id]" class="duplicata-link">Ver pedido existente</a>
+            </div>
+          </div>
+          <button type="button" class="btn ghost sm duplicata-dismiss" (click)="pedidoDuplicado.set(null)" title="Ignorar aviso">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
         </div>
+      }
+    </div>
 
-        <div [formGroup]="form">
-          <div formArrayName="itens">
-            @for (item of itens.controls; track $index; let i = $index) {
-              <div class="item-row" [formGroupName]="i">
-                <mat-form-field appearance="outline" class="field-descricao">
-                  <mat-label>Descrição</mat-label>
-                  <input matInput formControlName="descricao" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="field-sm">
-                  <mat-label>Qtd</mat-label>
-                  <input matInput type="number" formControlName="quantidade" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="field-sm">
-                  <mat-label>Unidade</mat-label>
-                  <input matInput formControlName="unidade" placeholder="KG, UN..." />
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="field-sm">
-                  <mat-label>Vl. Unit.</mat-label>
-                  <input matInput type="number" formControlName="valor_unitario" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="field-sm">
-                  <mat-label>Vl. Total</mat-label>
-                  <input matInput type="number" formControlName="valor_total" />
-                </mat-form-field>
-                <button mat-icon-button color="warn" (click)="removerItem(i)">
-                  <mat-icon>remove_circle_outline</mat-icon>
-                </button>
-              </div>
+    <!-- ===== Seção 2: Dados do Pedido ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="section-title" style="margin-bottom:18px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        Dados do Pedido
+      </div>
+
+      <div class="form-grid">
+
+        <label class="input">
+          <span>Código do Pedido</span>
+          <input formControlName="codigo" placeholder="0000000KPN ou 11729449" />
+          <span class="hint">CRM: 7 dígitos + KPN (ex.: 2465153KPN) | GIMBA: somente números</span>
+          @if (form.get('codigo')?.hasError('pattern') && form.get('codigo')?.touched) {
+            <span class="field-error">Formato inválido. Use 7 dígitos + KPN ou somente números.</span>
+          }
+        </label>
+
+        <label class="input">
+          <span>Data Limite</span>
+          <input type="date" formControlName="data_limite" />
+        </label>
+
+        <label class="input">
+          <span>Fornecedor</span>
+          <select formControlName="fornecedor_id">
+            <option value="">Selecione...</option>
+            @for (f of fornecedores(); track f.id) {
+              <option [value]="f.id">{{ f.nome }}</option>
             }
-          </div>
-        </div>
+          </select>
+        </label>
 
-        @if (itens.length === 0) {
-          <p class="empty-itens">Nenhum item adicionado.</p>
+        <label class="input">
+          <span>Tipo de Pedido</span>
+          <select formControlName="tipo_pedido_id">
+            <option value="">Selecione...</option>
+            @for (t of tiposPedido(); track t.id) {
+              <option [value]="t.id">{{ t.nome }}</option>
+            }
+          </select>
+          <span class="hint">Gerencie em <a routerLink="/tipos-pedido" style="color:var(--bordo)">Tipos de Pedido</a></span>
+        </label>
+
+        <label class="input">
+          <span>Número da NF</span>
+          <input
+            formControlName="numero_nf"
+            placeholder="000000000-0"
+            maxlength="11"
+            (input)="aplicarMascaraNf($event)"
+          />
+          <span class="hint">Formato: 000000000-0</span>
+          @if (form.get('numero_nf')?.hasError('pattern') && form.get('numero_nf')?.touched) {
+            <span class="field-error">Formato inválido. Use 000000000-0.</span>
+          }
+        </label>
+
+        <label class="input">
+          <span>Data de Emissão</span>
+          <input type="date" formControlName="data_emissao" />
+        </label>
+
+        <label class="input">
+          <span>Valor NF (R$)</span>
+          <input type="number" formControlName="valor_total" min="0" step="0.01" placeholder="0,00" />
+        </label>
+
+        <label class="input">
+          <span>Status</span>
+          <select formControlName="status">
+            <option value="recebido">Recebido</option>
+            <option value="pendente">Pendente</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </label>
+
+        <label class="input full">
+          <span>Observações</span>
+          <textarea formControlName="observacoes" rows="2" placeholder="Observações adicionais sobre o pedido..."></textarea>
+        </label>
+
+      </div>
+    </div>
+
+    <!-- ===== Seção 3: Itens ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="row" style="margin-bottom:16px">
+        <div class="section-title" style="margin-bottom:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+          Itens do Pedido
+        </div>
+        @if (itens.length > 0) {
+          <span style="font-size:13px;color:var(--text-4);font-weight:500;margin-left:8px">({{ itens.length }})</span>
         }
-      </mat-card>
-      <div class="step-actions">
-        <button mat-button matStepperPrevious>Anterior</button>
-        <button mat-flat-button color="primary" [disabled]="salvando()" (click)="salvar()">
-          @if (salvando()) { <mat-spinner diameter="18" /> } @else { {{ modoEdicao() ? 'Atualizar Pedido' : 'Salvar Pedido' }} }
+        <div class="spacer"></div>
+        <button type="button" class="btn outline sm" (click)="adicionarItem()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Adicionar Item
         </button>
       </div>
-    </mat-step>
 
-  </mat-stepper>
+      @if (itens.length === 0) {
+        <div class="empty-items">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          <div style="font-size:13px;font-weight:500;color:var(--text-3);margin-top:4px">Nenhum item adicionado</div>
+          <div style="font-size:12px;color:var(--text-4)">Itens são importados automaticamente do PDF/XML ou podem ser adicionados manualmente</div>
+        </div>
+      } @else {
+        <!-- Header das colunas -->
+        <div class="items-head">
+          <span>Descrição</span>
+          <span>Qtd</span>
+          <span>Unidade</span>
+          <span style="text-align:right">Vl. Unit.</span>
+          <span style="text-align:right">Vl. Total</span>
+          <span></span>
+        </div>
+
+        <div formArrayName="itens" class="col" style="gap:6px">
+          @for (item of itens.controls; track $index; let i = $index) {
+            <div class="item-row" [formGroupName]="i">
+              <input class="item-input" formControlName="descricao" placeholder="Descrição do item" />
+              <input class="item-input center" type="number" formControlName="quantidade" placeholder="0" />
+              <input class="item-input center" formControlName="unidade" placeholder="KG, UN…" />
+              <input class="item-input r" type="number" formControlName="valor_unitario" placeholder="0,00" />
+              <input class="item-input r" type="number" formControlName="valor_total" placeholder="0,00" />
+              <button type="button" class="btn ghost sm remove-btn" (click)="removerItem(i)" title="Remover item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ===== Rodapé de ações ===== -->
+    <div class="row gap-3" style="justify-content:flex-end;padding:4px 0 20px">
+      <a class="btn outline" routerLink="/pedidos">Cancelar</a>
+      <button type="button" class="btn primary" [disabled]="salvando()" (click)="salvar()">
+        @if (salvando()) {
+          <mat-spinner diameter="16" />
+          {{ modoEdicao() ? 'Atualizando…' : 'Salvando…' }}
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          {{ modoEdicao() ? 'Atualizar Pedido' : 'Salvar Pedido' }}
+        }
+      </button>
+    </div>
+
+  </form>
 </div>

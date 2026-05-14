@@ -1,14 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
 import { FornecedoresService } from '../../services/fornecedores.service';
 import { Fornecedor } from '../../models/fornecedor.model';
 import { FornecedorDialogComponent } from './fornecedor-dialog.component';
@@ -18,16 +11,8 @@ import { FornecedorDialogComponent } from './fornecedor-dialog.component';
   standalone: true,
   imports: [
     FormsModule,
-    ReactiveFormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
     MatDialogModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
-    MatCardModule,
   ],
   templateUrl: './lista-fornecedores.component.html',
   styleUrl: './lista-fornecedores.component.scss',
@@ -39,7 +24,18 @@ export class ListaFornecedoresComponent implements OnInit {
 
   fornecedores = signal<Fornecedor[]>([]);
   carregando = signal(false);
-  colunas = ['nome', 'cnpj', 'categoria', 'chaves', 'acoes'];
+  busca = signal('');
+
+  fornecedoresFiltrados = computed(() => {
+    const q = this.busca().toLowerCase().trim();
+    if (!q) return this.fornecedores();
+    return this.fornecedores().filter(f =>
+      f.nome.toLowerCase().includes(q) ||
+      (f.cnpj ?? '').toLowerCase().includes(q) ||
+      (f.categoria_fornecedor?.nome ?? '').toLowerCase().includes(q) ||
+      (f.chaves ?? []).some(c => c.chave.toLowerCase().includes(q))
+    );
+  });
 
   async ngOnInit() {
     await this.carregar();
@@ -56,7 +52,8 @@ export class ListaFornecedoresComponent implements OnInit {
 
   abrirDialog(fornecedor?: Fornecedor) {
     const ref = this.dialog.open(FornecedorDialogComponent, {
-      width: '440px',
+      width: '480px',
+      panelClass: 'kop-dialog',
       data: fornecedor ?? null,
     });
     ref.afterClosed().subscribe(async (salvo) => {

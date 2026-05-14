@@ -1,12 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FornecedoresService } from '../../services/fornecedores.service';
 import { Fornecedor, FornecedorChave } from '../../models/fornecedor.model';
 import { CategoriasFornecedorService } from '../../../categorias-fornecedor/services/categorias-fornecedor.service';
@@ -19,41 +13,36 @@ import { CategoriaFornecedor } from '../../../categorias-fornecedor/models/categ
     ReactiveFormsModule,
     FormsModule,
     MatDialogModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data ? 'Editar' : 'Novo' }} Fornecedor</h2>
+    <h2 mat-dialog-title class="dlg-title">{{ data ? 'Editar' : 'Novo' }} Fornecedor</h2>
+
     <mat-dialog-content>
-      <form [formGroup]="form" class="dialog-form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Nome</mat-label>
-          <input matInput formControlName="nome" />
-          @if (form.get('nome')?.hasError('required')) {
-            <mat-error>Nome é obrigatório</mat-error>
+      <form [formGroup]="form" class="dlg-form">
+
+        <label class="input">
+          <span>Nome *</span>
+          <input formControlName="nome" placeholder="Nome do fornecedor" />
+          @if (form.get('nome')?.hasError('required') && form.get('nome')?.touched) {
+            <span class="input-err">Nome é obrigatório</span>
           }
-        </mat-form-field>
+        </label>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>CNPJ</mat-label>
-          <input matInput formControlName="cnpj" placeholder="00.000.000/0000-00" />
-        </mat-form-field>
+        <label class="input">
+          <span>CNPJ</span>
+          <input formControlName="cnpj" placeholder="00.000.000/0000-00" />
+        </label>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Categoria</mat-label>
-          <mat-select formControlName="categoria_fornecedor_id">
-            <mat-option [value]="null">— não classificado —</mat-option>
+        <label class="input">
+          <span>Categoria</span>
+          <select formControlName="categoria_fornecedor_id">
+            <option value="">— não classificado —</option>
             @for (c of categorias(); track c.id) {
-              <mat-option [value]="c.id">{{ c.nome }}</mat-option>
+              <option [value]="c.id">{{ c.nome }}</option>
             }
-          </mat-select>
-        </mat-form-field>
+          </select>
+        </label>
 
-        <!-- Chaves do extrato -->
         <div class="chaves-section">
           <span class="chaves-label">Chaves no extrato</span>
 
@@ -62,14 +51,14 @@ import { CategoriaFornecedor } from '../../../categorias-fornecedor/models/categ
               <div class="chave-item" [class.removida]="removidas().has(chave.id)">
                 <code class="chave-texto">{{ chave.chave }}</code>
                 @if (!removidas().has(chave.id)) {
-                  <button mat-icon-button type="button" class="btn-remover"
+                  <button type="button" class="chave-btn del"
                           (click)="marcarRemocao(chave.id)" title="Remover">
-                    <mat-icon>close</mat-icon>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   </button>
                 } @else {
-                  <button mat-icon-button type="button" class="btn-desfazer"
+                  <button type="button" class="chave-btn undo"
                           (click)="desfazerRemocao(chave.id)" title="Desfazer">
-                    <mat-icon>undo</mat-icon>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
                   </button>
                 }
               </div>
@@ -77,9 +66,9 @@ import { CategoriaFornecedor } from '../../../categorias-fornecedor/models/categ
             @for (chave of novasChaves(); track chave) {
               <div class="chave-item chave-nova">
                 <code class="chave-texto">{{ chave }}</code>
-                <button mat-icon-button type="button" class="btn-remover"
+                <button type="button" class="chave-btn del"
                         (click)="removerNova(chave)" title="Cancelar">
-                  <mat-icon>close</mat-icon>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
               </div>
             }
@@ -90,116 +79,113 @@ import { CategoriaFornecedor } from '../../../categorias-fornecedor/models/categ
                    [ngModelOptions]="{standalone: true}"
                    placeholder="Ex: CEB, SABESP, LIMPEZA..."
                    (keydown.enter)="adicionarChave()" />
-            <button mat-stroked-button type="button" (click)="adicionarChave()"
+            <button type="button" class="btn outline sm" (click)="adicionarChave()"
                     [disabled]="!novaChaveInput.trim()">
               Adicionar
             </button>
           </div>
         </div>
+
       </form>
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [disabled]="form.invalid || salvando()" (click)="salvar()">
-        @if (salvando()) { <mat-spinner diameter="18" /> } @else { Salvar }
+      <button class="btn ghost sm" mat-dialog-close>Cancelar</button>
+      <button class="btn primary sm" [disabled]="form.invalid || salvando()" (click)="salvar()">
+        @if (salvando()) {
+          <svg class="btn-spin" width="14" height="14" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.35)" stroke-width="3"/>
+            <path d="M18 3 A15 15 0 0 1 33 18" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        } @else { Salvar }
       </button>
     </mat-dialog-actions>
   `,
   styles: [`
-    .dialog-form   { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
-    .full-width    { width: 100%; }
-    mat-dialog-content { min-width: 400px; }
+    .dlg-title {
+      font-size: 17px !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.01em;
+      color: var(--text) !important;
+      margin: 0 !important;
+    }
+
+    mat-dialog-content { min-width: 420px; padding-top: 16px !important; }
+    mat-dialog-actions { padding: 12px 24px 20px !important; gap: 8px; }
+
+    .dlg-form { display: flex; flex-direction: column; gap: 14px; }
+    .input-err { font-size: 11px; color: var(--bad); margin-top: 2px; }
 
     .chaves-section {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 12px;
+      display: flex; flex-direction: column; gap: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      padding: 14px;
     }
-
     .chaves-label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #555;
+      font-size: 11px; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em;
     }
-
-    .chaves-lista {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-height: 8px;
-    }
+    .chaves-lista { display: flex; flex-direction: column; gap: 4px; min-height: 8px; }
 
     .chave-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 2px 4px;
-      border-radius: 4px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: var(--r-xs);
+      background: var(--surface); border: 1px solid var(--line);
       transition: opacity 0.2s;
     }
-
-    .chave-item.removida {
-      opacity: 0.4;
-      text-decoration: line-through;
-    }
-
-    .chave-item.chave-nova .chave-texto {
-      color: #1a7a37;
-    }
+    .chave-item.removida { opacity: 0.4; text-decoration: line-through; }
+    .chave-item.chave-nova .chave-texto { color: var(--ok); }
 
     .chave-texto {
-      flex: 1;
-      background: #f3f4f6;
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-size: 13px;
+      flex: 1; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: var(--text-2);
     }
 
-    .btn-remover  { color: #c0392b; width: 28px; height: 28px; }
-    .btn-desfazer { color: #888;    width: 28px; height: 28px; }
-
-    .chave-input-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    .chave-btn {
+      width: 22px; height: 22px; border-radius: 4px; border: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; transition: background 0.12s;
     }
+    .chave-btn.del  { color: var(--bad); }
+    .chave-btn.del:hover  { background: var(--bad-soft); }
+    .chave-btn.undo { color: var(--text-3); }
+    .chave-btn.undo:hover { background: var(--surface-3); }
 
+    .chave-input-row { display: flex; gap: 8px; align-items: center; }
     .chave-input {
-      flex: 1;
-      height: 32px;
-      padding: 0 10px;
-      border: 1px solid #d4d4d4;
-      border-radius: 5px;
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      &:focus { border-color: #90282a; }
+      flex: 1; height: 36px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: var(--r-xs);
+      font-size: 13px; font-family: inherit;
+      background: var(--surface); color: var(--text); outline: none;
     }
+    .chave-input:focus { border-color: var(--bordo); box-shadow: 0 0 0 3px var(--bordo-tint); }
+    .chave-input::placeholder { color: var(--text-4); }
+
+    .btn-spin { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
 export class FornecedorDialogComponent implements OnInit {
-  private fb          = inject(FormBuilder);
-  private service     = inject(FornecedoresService);
+  private fb            = inject(FormBuilder);
+  private service       = inject(FornecedoresService);
   private categoriasSvc = inject(CategoriasFornecedorService);
-  private dialogRef   = inject(MatDialogRef<FornecedorDialogComponent>);
-  readonly data       = inject<Fornecedor | null>(MAT_DIALOG_DATA);
+  private dialogRef     = inject(MatDialogRef<FornecedorDialogComponent>);
+  readonly data         = inject<Fornecedor | null>(MAT_DIALOG_DATA);
 
   salvando   = signal(false);
   categorias = signal<CategoriaFornecedor[]>([]);
 
-  chavesAtuais  = signal<FornecedorChave[]>(this.data?.chaves ?? []);
-  removidas     = signal<Set<string>>(new Set());
-  novasChaves   = signal<string[]>([]);
+  chavesAtuais   = signal<FornecedorChave[]>(this.data?.chaves ?? []);
+  removidas      = signal<Set<string>>(new Set());
+  novasChaves    = signal<string[]>([]);
   novaChaveInput = '';
 
   form = this.fb.group({
     nome:                    [this.data?.nome                    ?? '', Validators.required],
     cnpj:                    [this.data?.cnpj                    ?? ''],
-    categoria_fornecedor_id: [this.data?.categoria_fornecedor_id ?? null],
+    categoria_fornecedor_id: [this.data?.categoria_fornecedor_id ?? ''],
   });
 
   async ngOnInit() {

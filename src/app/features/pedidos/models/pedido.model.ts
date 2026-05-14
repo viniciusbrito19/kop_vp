@@ -27,7 +27,7 @@ export interface Pedido {
   created_at: string;
   fornecedor?: { nome: string };
   tipo_pedido?: { nome: string };
-  titulos?: { valor: number; data_pagamento: string | null }[];
+  titulos?: { valor: number; data_pagamento: string | null; data_vencimento: string | null }[];
 }
 
 export type PedidoForm = Omit<Pedido, 'id' | 'created_at' | 'fornecedor' | 'tipo_pedido'>;

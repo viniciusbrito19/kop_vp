@@ -1,5 +1,42 @@
 /* A maior parte dos estilos vem do design system global (styles.scss) */
 
+/* Filtros de seleção na filter-bar */
+.filter-select {
+  height: 36px;
+  padding: 0 12px;
+  min-width: 180px;
+  border: 0;
+  background: transparent;
+
+  select {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+    color: var(--text-2);
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+  }
+}
+
+.filter-date-range {
+  height: 36px;
+  padding: 0 12px;
+  gap: 6px;
+  min-width: 260px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+
+  .date-sep {
+    color: var(--text-4);
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+}
+
 /* Kebab button da row-card */
 .row-kebab {
   width: 28px;

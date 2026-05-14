@@ -9,7 +9,7 @@ export class PedidosService {
   async listar(): Promise<Pedido[]> {
     const { data, error } = await this.db
       .from('pedidos')
-      .select('*, fornecedor:fornecedores(nome), tipo_pedido:tipos_pedido(nome), titulos(valor, data_pagamento)')
+      .select('*, fornecedor:fornecedores(nome), tipo_pedido:tipos_pedido(nome), titulos(valor, data_pagamento, data_vencimento)')
       .order('data_limite', { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -69,5 +69,29 @@ export class PedidosService {
   async excluir(id: string): Promise<void> {
     const { error } = await this.db.from('pedidos').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  async verificarDuplicata(
+    numeroNf: string | null,
+    codigo: string | null,
+    excludeId?: string | null,
+  ): Promise<Pedido | null> {
+    if (!numeroNf && !codigo) return null;
+
+    let query = this.db
+      .from('pedidos')
+      .select('*, fornecedor:fornecedores(nome)')
+      .limit(1);
+
+    if (numeroNf) {
+      query = query.eq('numero_nf', numeroNf);
+    } else {
+      query = query.eq('codigo', codigo!);
+    }
+
+    if (excludeId) query = query.neq('id', excludeId);
+
+    const { data } = await query.maybeSingle();
+    return data ?? null;
   }
 }
