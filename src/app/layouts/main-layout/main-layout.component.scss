@@ -1,67 +1,264 @@
-$chocolate-dark: #90282a;
-$chocolate-mid: #ad3335;
-$chocolate-light: #c95254;
-$cream: #f5f5f5;
-
-.sidenav-container {
+/* ===== Shell layout ===== */
+.kop-shell {
+  display: flex;
   height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
-.sidenav {
-  width: 220px;
-  background-color: $chocolate-dark;
-  color: #fff;
-  border-right: none;
+/* ===== Sidebar ===== */
+.kop-sb {
+  width: 232px;
+  flex: 0 0 232px;
+  background: var(--sb-bg);
+  color: var(--sb-fg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid var(--sb-rule);
+  transition: width 0.2s ease, flex-basis 0.2s ease;
+  overflow: hidden;
+}
+
+.kop-sb.collapsed {
+  width: 72px;
+  flex-basis: 72px;
+}
+
+/* Brand */
+.kop-sb-brand {
+  padding: 22px 18px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--sb-rule);
+  min-height: 76px;
+  flex-shrink: 0;
+
+  .kop-sb.collapsed & {
+    justify-content: center;
+    padding: 22px 0 18px;
+  }
+}
+
+.kop-logo {
+  flex-shrink: 0;
+}
+
+.kop-brand-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kop-brand-name {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.kop-brand-tag {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sb-fg-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Section label */
+.kop-section-label {
+  padding: 14px 22px 8px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sb-fg-dim);
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
+
+  .kop-sb.collapsed & {
+    opacity: 0;
+    padding: 14px 0 8px;
+  }
+}
+
+/* Nav */
+.kop-nav {
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
   overflow-x: hidden;
 
-  // Força cor branca no texto e ícones via CSS variables do Material M3
-  --mat-list-list-item-label-text-color: rgba(255, 255, 255, 0.85);
-  --mat-list-list-item-leading-icon-color: rgba(255, 255, 255, 0.7);
-  --mat-list-list-item-hover-label-text-color: #fff;
-  --mat-list-list-item-hover-leading-icon-color: #fff;
-  --mat-list-list-item-focus-label-text-color: #fff;
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 24px 20px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-
-    .brand-icon {
-      font-size: 28px;
-    }
-
-    .brand-name {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: #fff;
-    }
-  }
-
-  mat-nav-list {
-    padding-top: 8px;
-
-    a[mat-list-item] {
-      border-radius: 8px;
-      margin: 2px 8px;
-      width: calc(100% - 16px);
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-
-      &.active-link {
-        background-color: $chocolate-light;
-        --mat-list-list-item-label-text-color: #fff;
-        --mat-list-list-item-leading-icon-color: #fff;
-      }
-    }
+  .kop-sb.collapsed & {
+    padding: 4px 6px;
   }
 }
 
-.main-content {
-  background-color: $cream;
+.kop-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  color: var(--sb-fg-dim);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+
+  &:hover {
+    background: var(--sb-hover);
+    color: var(--sb-fg);
+  }
+
+  &.active {
+    background: var(--sb-active);
+    color: var(--sb-fg);
+  }
+
+  .kop-sb.collapsed & {
+    justify-content: center;
+    padding: 12px;
+    gap: 0;
+  }
+}
+
+.kop-nav-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+
+  svg {
+    display: block;
+  }
+}
+
+.kop-nav-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  .kop-sb.collapsed & {
+    display: none;
+  }
+}
+
+.kop-nav-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--gold);
+  color: #1a0e08;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+
+  .kop-sb.collapsed & {
+    display: none;
+  }
+}
+
+/* Footer */
+.kop-sb-footer {
+  margin-top: auto;
+  padding: 14px 18px;
+  border-top: 1px solid var(--sb-rule);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+
+  .kop-sb.collapsed & {
+    padding: 14px 8px;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.kop-sb-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--sb-fg-dim);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--sb-hover);
+    color: var(--sb-fg);
+  }
+
+  .kop-sb.collapsed & {
+    order: -1;
+  }
+}
+
+.kop-sb-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  color: #1a0e08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.kop-sb-who {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+
+  .kop-sb.collapsed & {
+    display: none;
+  }
+}
+
+.kop-sb-who-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kop-sb-who-role {
+  font-size: 11px;
+  color: var(--sb-fg-dim);
+  white-space: nowrap;
+}
+
+/* ===== Main content area ===== */
+.kop-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
   overflow-y: auto;
 }
