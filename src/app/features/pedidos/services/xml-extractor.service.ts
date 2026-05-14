@@ -51,10 +51,13 @@ export class XmlExtractorService {
       });
     }
 
-    const xPed     = this.tag(doc, 'xPed');
+    const xPedRaw  = this.tag(doc, 'xPed');
+    const xPed     = xPedRaw && /^\d{7}KPN$/i.test(xPedRaw) ? xPedRaw : null;
     const infCpl   = this.tag(doc, 'infCpl');
-    const reqMatch = infCpl?.match(/\/\/\s*REQ\s+(\d+)/);
-    const codigo   = xPed ?? reqMatch?.[1] ?? null;
+    const infAdProd = this.tag(doc, 'infAdProd');
+    const reqMatch       = infCpl?.match(/\/\/\s*REQ\s+(\d+)/);
+    const pedEmpresaMatch = infAdProd?.match(/Pedido Empresa:\s*(\d+)/);
+    const codigo   = xPed ?? reqMatch?.[1] ?? pedEmpresaMatch?.[1] ?? null;
 
     const nFat = this.tag(doc, 'nFat');
     const dupEls = doc.getElementsByTagNameNS('*', 'dup');

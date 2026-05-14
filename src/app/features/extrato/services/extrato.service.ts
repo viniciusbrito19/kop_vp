@@ -25,14 +25,18 @@ export class ExtratoService {
   async listar(): Promise<LancamentoExtrato[]> {
     const { data, error } = await this.db
       .from('lancamentos_extrato')
-      .select('*, titulos(pedido_id, pedidos(id, codigo))')
+      .select('*, titulos(pedido_id, categoria, descricao, pedidos(id, codigo))')
       .order('data_lancamento', { ascending: false })
       .order('ordem_original', { ascending: false });
     if (error) throw error;
     return (data ?? []).map(row => {
       const { titulos: rawTitulos, ...rest } = row as any;
       const titulo = (rawTitulos as any[] | null)?.[0];
-      return { ...rest, pedido: titulo?.pedidos ?? null } as LancamentoExtrato;
+      const pedido  = titulo?.pedido_id ? (titulo?.pedidos ?? null) : null;
+      const despesa = titulo && !titulo.pedido_id
+        ? { descricao: titulo.descricao ?? null, categoria: titulo.categoria ?? null }
+        : null;
+      return { ...rest, pedido, despesa } as LancamentoExtrato;
     });
   }
 

@@ -39,7 +39,7 @@ export class ListaFornecedoresComponent implements OnInit {
 
   fornecedores = signal<Fornecedor[]>([]);
   carregando = signal(false);
-  colunas = ['nome', 'cnpj', 'acoes'];
+  colunas = ['nome', 'cnpj', 'categoria', 'chaves', 'acoes'];
 
   async ngOnInit() {
     await this.carregar();

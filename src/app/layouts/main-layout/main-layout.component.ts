@@ -33,7 +33,9 @@ export class MainLayoutComponent {
     { label: 'Pedidos', icon: 'receipt_long', route: '/pedidos' },
     { label: 'Fornecedores', icon: 'storefront', route: '/fornecedores' },
     { label: 'Estoque', icon: 'inventory_2', route: '/estoque' },
-    { label: 'Financeiro', icon: 'payments', route: '/financeiro' },
+    { label: 'Financeiro', icon: 'payments',          route: '/financeiro' },
+    { label: 'Despesas',  icon: 'account_balance_wallet', route: '/despesas'  },
     { label: 'Tipos de Pedido', icon: 'category', route: '/tipos-pedido' },
+    { label: 'Cat. Fornecedor', icon: 'label', route: '/categorias-fornecedor' },
   ];
 }

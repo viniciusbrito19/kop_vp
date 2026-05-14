@@ -234,3 +234,114 @@ tr.mat-mdc-row:hover .btn-edit {
   padding: 48px 32px;
   color: #999;
 }
+
+// ── Indicador de despesa ───────────────────────────────────────────────
+
+.icon-despesa {
+  color: #7c3aed;
+  font-size: 20px;
+  vertical-align: middle;
+  cursor: default;
+}
+
+.btn-identificar {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+tr.mat-mdc-row:hover .btn-identificar {
+  opacity: 1;
+}
+
+.pedido-header,
+.pedido-cell {
+  width: 44px;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+// ── Painel lateral ────────────────────────────────────────────────────
+
+.painel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 200;
+}
+
+.identificar-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 360px;
+  background: #fff;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.painel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.painel-titulo {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #90282a;
+}
+
+.painel-lancamento {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  background: #f7f7f7;
+  border-bottom: 1px solid #e8e8e8;
+  font-size: 13px;
+}
+
+.pl-data  { color: #888; font-size: 12px; }
+.pl-dest  { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-valor { color: #c0392b; font-weight: 600; font-size: 15px; }
+
+.painel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  flex: 1;
+}
+
+.campo-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.campo-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+}
+
+.campo-full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.painel-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e8e8e8;
+  background: #fff;
+}

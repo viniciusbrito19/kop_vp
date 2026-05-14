@@ -40,4 +40,5 @@ export interface LancamentoExtrato {
   hash: string;
   created_at: string;
   pedido?: { id: string; codigo: string } | null;
+  despesa?: { descricao: string | null; categoria: string | null } | null;
 }

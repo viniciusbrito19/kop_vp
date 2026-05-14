@@ -38,6 +38,18 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/extrato/extrato.routes').then(m => m.extratoRoutes),
       },
+      {
+        path: 'despesas',
+        loadChildren: () =>
+          import('./features/despesas/despesas.routes').then(m => m.despesasRoutes),
+      },
+      {
+        path: 'categorias-fornecedor',
+        loadChildren: () =>
+          import('./features/categorias-fornecedor/categorias-fornecedor.routes').then(
+            m => m.categoriasFornecedorRoutes
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

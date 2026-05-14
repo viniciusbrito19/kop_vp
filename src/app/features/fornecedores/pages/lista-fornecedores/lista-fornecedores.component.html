@@ -23,6 +23,32 @@
           <td mat-cell *matCellDef="let f">{{ f.cnpj ?? '—' }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="categoria">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let f">
+            @if (f.categoria_fornecedor?.nome) {
+              <span class="badge-categoria">{{ f.categoria_fornecedor.nome }}</span>
+            } @else {
+              <span class="sem-dado">—</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="chaves">
+          <th mat-header-cell *matHeaderCellDef>Chaves no extrato</th>
+          <td mat-cell *matCellDef="let f">
+            <div class="chaves-cell">
+              @if (f.chaves?.length) {
+                @for (c of f.chaves; track c.id) {
+                  <code class="badge-chave">{{ c.chave }}</code>
+                }
+              } @else {
+                <span class="sem-dado">—</span>
+              }
+            </div>
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let f" class="acoes-cell">
@@ -39,7 +65,7 @@
         <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
 
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell empty-state" colspan="3">
+          <td class="mat-cell empty-state" colspan="5">
             Nenhum fornecedor cadastrado ainda.
           </td>
         </tr>

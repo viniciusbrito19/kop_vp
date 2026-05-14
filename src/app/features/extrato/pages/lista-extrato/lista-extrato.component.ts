@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 import { Router } from '@angular/router';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
@@ -19,12 +19,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ExtratoService } from '../../services/extrato.service';
+import { CorrelacaoService } from '../../services/correlacao.service';
 import {
   LancamentoExtrato,
   LABELS_TIPO,
   TipoLancamento,
   NaturezaLancamento,
 } from '../../models/extrato.model';
+import { DespesasService } from '../../../despesas/services/despesas.service';
+import { FornecedoresService } from '../../../fornecedores/services/fornecedores.service';
+import { DespesaRecorrente } from '../../../despesas/models/despesa.model';
+import { Fornecedor } from '../../../fornecedores/models/fornecedor.model';
 
 interface FiltroExtrato {
   dataInicio: string | null;
@@ -61,20 +66,45 @@ const TIPOS_ENTRADA: TipoLancamento[] = [
   styleUrl: './lista-extrato.component.scss',
 })
 export class ListaExtratoComponent implements OnInit, OnDestroy {
-  private service = inject(ExtratoService);
-  private snack = inject(MatSnackBar);
-  private fb = inject(FormBuilder);
-  private router = inject(Router);
-  private destroy$ = new Subject<void>();
+  private service      = inject(ExtratoService);
+  private despesasSvc  = inject(DespesasService);
+  private fornSvc      = inject(FornecedoresService);
+  private correlacaoSvc = inject(CorrelacaoService);
+  private snack        = inject(MatSnackBar);
+  private fb           = inject(FormBuilder);
+  private router       = inject(Router);
+  private destroy$     = new Subject<void>();
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
-  @ViewChild(MatSort) sort?: MatSort;
+  @ViewChild(MatSort)      sort?: MatSort;
 
   dataSource = new MatTableDataSource<LancamentoExtrato>([]);
-  carregando = signal(false);
-  importando = signal(false);
+  carregando   = signal(false);
+  importando   = signal(false);
+  conciliando  = signal(false);
   editandoId = signal<string | null>(null);
-  salvando = signal(false);
+  salvando   = signal(false);
+
+  // ── Painel lateral ────────────────────────────────────────────────────
+  painelAberto          = signal(false);
+  lancamentoSelecionado = signal<LancamentoExtrato | null>(null);
+  salvandoIdentificacao = signal(false);
+  templates             = signal<DespesaRecorrente[]>([]);
+  fornecedores          = signal<Fornecedor[]>([]);
+  painelForm = this.fb.group({
+    modo:          ['recorrente'],
+    templateId:    [''],
+    fornecedorId:  [''],
+    descricao:     [''],
+    valor:         [null as number | null, [Validators.required, Validators.min(0.01)]],
+  });
+
+  get painelInvalido(): boolean {
+    const v = this.painelForm.value;
+    if (!v.valor || v.valor <= 0) return true;
+    if (v.modo === 'recorrente') return !v.templateId;
+    return !v.descricao?.trim();
+  }
 
   colunas = ['data_lancamento', 'natureza', 'tipo', 'destinatario_remetente', 'valor', 'saldo', 'pedido', 'acoes'];
   colunasFiltro = this.colunas.map(c => c + '_filtro');
@@ -102,6 +132,81 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
 
   isEditavel(l: LancamentoExtrato): boolean {
     return l.tipo === 'outros_pagamentos' || l.tipo === 'outros_recebimentos';
+  }
+
+  isIdentificavel(l: LancamentoExtrato): boolean {
+    return l.natureza === 'saida' && !l.pedido && !l.despesa;
+  }
+
+  async abrirPainel(l: LancamentoExtrato) {
+    this.lancamentoSelecionado.set(l);
+    this.painelAberto.set(true);
+    this.painelForm.reset({
+      modo:         'recorrente',
+      templateId:   '',
+      fornecedorId: '',
+      descricao:    '',
+      valor:        Math.abs(l.valor),
+    });
+    if (!this.templates().length) {
+      const [templates, fornecedores] = await Promise.all([
+        this.despesasSvc.listarTemplates(),
+        this.fornSvc.listar(),
+      ]);
+      this.templates.set(templates);
+      this.fornecedores.set(fornecedores);
+    }
+  }
+
+  fecharPainel() {
+    this.painelAberto.set(false);
+    this.lancamentoSelecionado.set(null);
+  }
+
+  aoSelecionarFornecedor(_event: Event) {
+    // categoria do fornecedor não mapeia diretamente para categoria de despesa
+  }
+
+  async salvarIdentificacao() {
+    const v    = this.painelForm.value;
+    const lanc = this.lancamentoSelecionado();
+    if (!lanc || !v.valor) return;
+
+    let fornecedorId: string | null;
+    let descricao: string;
+    let templateId: string | null;
+
+    if (v.modo === 'recorrente' && v.templateId) {
+      const tpl = this.templates().find(t => t.id === v.templateId);
+      if (!tpl) return;
+      fornecedorId = tpl.fornecedor_id;
+      descricao    = tpl.descricao;
+      templateId   = tpl.id;
+    } else {
+      if (!v.descricao) return;
+      fornecedorId = v.fornecedorId || null;
+      descricao    = v.descricao;
+      templateId   = null;
+    }
+
+    this.salvandoIdentificacao.set(true);
+    try {
+      await this.despesasSvc.identificarLancamento({
+        lancamentoId:   lanc.id,
+        dataLancamento: lanc.data_lancamento,
+        valorReal:      v.valor,
+        fornecedorId,
+        descricao,
+        templateId,
+      });
+      this.fecharPainel();
+      await this.carregar();
+      this.snack.open('Despesa registrada.', 'OK', { duration: 4000 });
+    } catch {
+      this.snack.open('Erro ao registrar despesa.', 'OK', { duration: 4000 });
+    } finally {
+      this.salvandoIdentificacao.set(false);
+    }
   }
 
   tiposParaNatureza(natureza: NaturezaLancamento): [TipoLancamento, string][] {
@@ -185,6 +290,27 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
         if (this.paginator) this.dataSource.paginator = this.paginator;
         if (this.sort) this.dataSource.sort = this.sort;
       });
+    }
+  }
+
+  async conciliar() {
+    this.conciliando.set(true);
+    try {
+      const { vinculadas, criadas } = await this.correlacaoSvc.conciliarDespesas();
+      const total = vinculadas + criadas;
+      if (total === 0) {
+        this.snack.open('Nenhuma despesa recorrente identificada.', 'OK', { duration: 4000 });
+      } else {
+        const partes: string[] = [];
+        if (vinculadas) partes.push(`${vinculadas} vinculada${vinculadas > 1 ? 's' : ''}`);
+        if (criadas)    partes.push(`${criadas} criada${criadas > 1 ? 's' : ''}`);
+        this.snack.open(`Conciliação concluída: ${partes.join(', ')}.`, 'OK', { duration: 5000 });
+        await this.carregar();
+      }
+    } catch {
+      this.snack.open('Erro durante a conciliação.', 'OK', { duration: 4000 });
+    } finally {
+      this.conciliando.set(false);
     }
   }
 
