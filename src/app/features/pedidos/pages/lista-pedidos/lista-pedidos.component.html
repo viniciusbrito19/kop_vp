@@ -1,176 +1,301 @@
-<div class="page-container">
-  <div class="page-header">
-    <h1>Pedidos a Fornecedores</h1>
-    <button mat-flat-button color="primary" routerLink="/pedidos/novo">
-      <mat-icon>add</mat-icon> Novo Pedido
-    </button>
+<!-- ===== Topbar ===== -->
+<header class="topbar">
+  <div class="crumbs row gap-2">
+    <span>Operação</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    <b>Pedidos a Fornecedores</b>
+  </div>
+  <div class="spacer"></div>
+  <div class="field" style="width:300px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input [(ngModel)]="busca" placeholder="Buscar pedido, NF, fornecedor…"/>
+  </div>
+  <a class="btn icon outline" routerLink="/pedidos/novo" title="Novo Pedido">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+  </a>
+</header>
+
+<!-- ===== Content ===== -->
+<div class="content">
+
+  <!-- Page heading -->
+  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+    <div>
+      <h1 class="page">Pedidos a <span class="accent serif">fornecedores</span></h1>
+      <div class="page-sub">{{ pedidos().length }} pedidos · próximo vencimento {{ proximoVencimento() }}</div>
+    </div>
+    <div class="row gap-2">
+      <button class="btn outline sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+        Exportar
+      </button>
+      <a class="btn primary" routerLink="/pedidos/novo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Novo Pedido
+      </a>
+    </div>
   </div>
 
+  <!-- KPIs -->
+  <div class="kpi-grid" style="margin-bottom:22px">
+    <div class="kpi" [class.bordo]="kpiAtrasado().count > 0" [class.danger]="kpiAtrasado().count === 0">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 22 20H2L12 3Z"/><path d="M12 10v4M12 17v.01"/></svg>
+        EM ATRASO
+      </div>
+      <div class="kpi-value">{{ kpiAtrasado().total | currency:'BRL':'symbol':'1.0-0' }}</div>
+      <div class="kpi-foot">{{ kpiAtrasado().count }} {{ kpiAtrasado().count === 1 ? 'pedido' : 'pedidos' }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        A PAGAR (30 DIAS)
+      </div>
+      <div class="kpi-value">{{ kpiAPagar().total | currency:'BRL':'symbol':'1.0-0' }}</div>
+      <div class="kpi-foot">{{ kpiAPagar().count }} {{ kpiAPagar().count === 1 ? 'pedido' : 'pedidos' }} abertos</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+        PAGOS ESTE MÊS
+      </div>
+      <div class="kpi-value">{{ kpiPagos().total | currency:'BRL':'symbol':'1.0-0' }}</div>
+      <div class="kpi-foot">{{ kpiPagos().count }} {{ kpiPagos().count === 1 ? 'pedido' : 'pedidos' }}</div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12c0-4 3-7 7-7s7 3 7 7-3 7-7 7-7-3-7-7Z"/><path d="M9 9c.8 1 2 1.5 3 1.5s2.2-.5 3-1.5M9 14c.8 1 2 1.5 3 1.5s2.2-.5 3-1.5"/></svg>
+        TICKET MÉDIO
+      </div>
+      <div class="kpi-value">{{ ticketMedio() | currency:'BRL':'symbol':'1.0-0' }}</div>
+      <div class="kpi-foot">últimos 30 dias</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" style="margin-bottom:14px">
+    <div class="seg">
+      @for (tab of tabs; track tab.value) {
+        <button [class.on]="filtroStatus() === tab.value" (click)="filtroStatus.set(tab.value)">{{ tab.label }}</button>
+      }
+    </div>
+    <div class="sep"></div>
+    <div class="field" style="height:36px;padding:0 12px;min-width:190px;border:0;background:transparent">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+      <span style="font-size:13px;color:var(--text-2)">Últimos 30 dias</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="sep"></div>
+    <div class="field" style="height:36px;padding:0 12px;min-width:180px;border:0;background:transparent">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 5 4h14l2 5"/><path d="M3 9v11h18V9"/><path d="M3 9h18"/><path d="M9 9v3a3 3 0 0 0 6 0V9"/></svg>
+      <span style="font-size:13px;color:var(--text-2)">Todos fornecedores</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="spacer"></div>
+    <span class="chip-counter">{{ pedidosFiltrados().length }} resultados</span>
+  </div>
+
+  <!-- Loading -->
   @if (carregando()) {
-    <div class="loading"><mat-spinner diameter="40" /></div>
+    <div style="display:flex;justify-content:center;padding:64px">
+      <mat-spinner diameter="36"/>
+    </div>
   } @else {
-    <mat-card class="table-card">
-      <table mat-table [dataSource]="pedidos()" multiTemplateDataRows class="full-table">
 
-        <!-- Expandir -->
-        <ng-container matColumnDef="expandir">
-          <th mat-header-cell *matHeaderCellDef class="col-expandir"></th>
-          <td mat-cell *matCellDef="let p" class="col-expandir">
-            <button mat-icon-button
-                    (click)="toggleExpand(p, $event)"
-                    [matTooltip]="isExpanded(p.id) ? 'Recolher' : 'Ver títulos'">
-              <mat-icon>{{ isExpanded(p.id) ? 'expand_less' : 'chevron_right' }}</mat-icon>
-            </button>
-          </td>
-        </ng-container>
+    <!-- List header -->
+    <div class="list-head">
+      <span></span>
+      <span>Data Limite</span>
+      <span>Código</span>
+      <span>Tipo</span>
+      <span>Fornecedor / NF</span>
+      <span style="text-align:right">Valor NF</span>
+      <span style="text-align:right">Pago / Status</span>
+      <span></span>
+    </div>
 
-        <!-- Data Limite -->
-        <ng-container matColumnDef="data_limite">
-          <th mat-header-cell *matHeaderCellDef>Data Limite</th>
-          <td mat-cell *matCellDef="let p">
-            <span [class]="'data-badge ' + dataLimiteClass(p.data_limite)">
-              {{ p.data_limite ? (p.data_limite | date:'dd/MM/yyyy') : '—' }}
+    <!-- Empty state -->
+    @if (pedidosFiltrados().length === 0) {
+      <div style="text-align:center;padding:64px 0;color:var(--text-3)">
+        <div style="font-size:15px;font-weight:500">Nenhum pedido encontrado</div>
+        <div style="font-size:13px;margin-top:6px">Ajuste os filtros ou <a routerLink="/pedidos/novo" style="color:var(--bordo);font-weight:600">cadastre um novo pedido</a></div>
+      </div>
+    }
+
+    <!-- Row cards -->
+    <div class="list">
+      @for (p of pedidosFiltrados(); track p.id) {
+        <div class="row-card" [class.open]="isExpanded(p.id)">
+
+          <!-- Main row -->
+          <div class="row-main" (click)="toggleExpand(p, $event)">
+            <span class="chev">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
             </span>
-          </td>
-        </ng-container>
 
-        <!-- Código -->
-        <ng-container matColumnDef="codigo">
-          <th mat-header-cell *matHeaderCellDef>Código</th>
-          <td mat-cell *matCellDef="let p">{{ p.codigo ?? '—' }}</td>
-        </ng-container>
+            <span>
+              <span class="data-date" [class]="dataClass(p)">
+                {{ p.data_limite ? (p.data_limite | date:'dd/MM/yyyy') : '—' }}
+              </span>
+            </span>
 
-        <!-- Tipo -->
-        <ng-container matColumnDef="tipo_pedido">
-          <th mat-header-cell *matHeaderCellDef>Tipo</th>
-          <td mat-cell *matCellDef="let p">{{ p.tipo_pedido?.nome ?? '—' }}</td>
-        </ng-container>
+            <span class="codigo">{{ p.codigo ?? '—' }}</span>
 
-        <!-- NF -->
-        <ng-container matColumnDef="numero_nf">
-          <th mat-header-cell *matHeaderCellDef>NF</th>
-          <td mat-cell *matCellDef="let p">{{ p.numero_nf ?? '—' }}</td>
-        </ng-container>
+            <span style="font-size:13px;color:var(--text-2)">{{ p.tipo_pedido?.nome ?? '—' }}</span>
 
-        <!-- Fornecedor -->
-        <ng-container matColumnDef="fornecedor">
-          <th mat-header-cell *matHeaderCellDef>Fornecedor</th>
-          <td mat-cell *matCellDef="let p">{{ p.fornecedor?.nome ?? '—' }}</td>
-        </ng-container>
+            <div>
+              <div class="fornecedor-name">{{ p.fornecedor?.nome ?? '—' }}</div>
+              <div class="fornecedor-sub">
+                @if (p.numero_nf) { NF {{ p.numero_nf }} }
+              </div>
+            </div>
 
-        <!-- Valor NF -->
-        <ng-container matColumnDef="valor_total">
-          <th mat-header-cell *matHeaderCellDef class="col-right">Valor NF</th>
-          <td mat-cell *matCellDef="let p" class="col-right">
-            {{ p.valor_total != null ? (p.valor_total | currency:'BRL') : '—' }}
-          </td>
-        </ng-container>
+            <div class="valor">
+              {{ p.valor_total != null ? (p.valor_total | currency:'BRL') : '—' }}
+            </div>
 
-        <!-- Valor Pago -->
-        <ng-container matColumnDef="valor_pago">
-          <th mat-header-cell *matHeaderCellDef class="col-right">Valor Pago</th>
-          <td mat-cell *matCellDef="let p" class="col-right">
-            @if (valorPago(p) > 0) {
-              <span class="valor-pago">{{ valorPago(p) | currency:'BRL' }}</span>
-            } @else { — }
-          </td>
-        </ng-container>
+            <div class="row gap-2" style="justify-content:flex-end;align-items:center">
+              @if (valorPago(p) > 0) {
+                <span class="valor" [class]="valorClass(p)">{{ valorPago(p) | currency:'BRL' }}</span>
+              } @else {
+                <span style="color:var(--text-4);font-size:14px">—</span>
+              }
+              <span class="pill" [class]="statusClass(p)">{{ statusLabel(p) }}</span>
+            </div>
 
-        <!-- Ações -->
-        <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let p" class="acoes-cell">
-            <button mat-icon-button [matMenuTriggerFor]="menuAcoes"
-                    (click)="$event.stopPropagation()">
-              <mat-icon>more_vert</mat-icon>
+            <button class="row-kebab" [matMenuTriggerFor]="menuAcoes" (click)="$event.stopPropagation()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/></svg>
             </button>
             <mat-menu #menuAcoes="matMenu">
               <button mat-menu-item [routerLink]="['/pedidos', p.id]">
-                <mat-icon>visibility</mat-icon>
-                <span>Visualizar</span>
+                <mat-icon>visibility</mat-icon><span>Visualizar</span>
               </button>
               <button mat-menu-item [routerLink]="['/pedidos', p.id, 'editar']">
-                <mat-icon>edit</mat-icon>
-                <span>Editar</span>
+                <mat-icon>edit</mat-icon><span>Editar</span>
               </button>
               <button mat-menu-item class="warn-item" (click)="excluir(p.id, $event)">
-                <mat-icon>delete</mat-icon>
-                <span>Excluir</span>
+                <mat-icon>delete</mat-icon><span>Excluir</span>
               </button>
             </mat-menu>
-          </td>
-        </ng-container>
+          </div>
 
-        <!-- Detalhe (linha expansível) -->
-        <ng-container matColumnDef="detalhe">
-          <td mat-cell *matCellDef="let p" [attr.colspan]="colunas.length" class="detalhe-cell">
-            @if (isExpanded(p.id)) {
-              <div class="titulos-panel">
+          <!-- Expanded panel -->
+          @if (isExpanded(p.id)) {
+            <div class="row-expand">
+
+              <!-- Meta left -->
+              <div class="row-meta">
+                <div>
+                  <dt>Status</dt>
+                  <dd><span class="pill" [class]="statusClass(p)">{{ statusLabel(p) }}</span></dd>
+                </div>
+                <dl style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0">
+                  <div>
+                    <dt>Data Emissão</dt>
+                    <dd>{{ p.data_emissao ? (p.data_emissao | date:'dd/MM/yyyy') : '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Data Limite</dt>
+                    <dd>{{ p.data_limite ? (p.data_limite | date:'dd/MM/yyyy') : '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Tipo</dt>
+                    <dd>{{ p.tipo_pedido?.nome ?? '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>NF</dt>
+                    <dd class="mono" style="font-size:13px">{{ p.numero_nf ?? '—' }}</dd>
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <dt>Valor Total</dt>
+                    <dd class="serif" style="font-size:24px;color:var(--bordo)">{{ p.valor_total != null ? (p.valor_total | currency:'BRL') : '—' }}</dd>
+                  </div>
+                </dl>
+                @if (p.observacoes) {
+                  <div style="padding:12px;background:var(--bordo-tint);border-radius:10px;font-size:12px;color:var(--text-2);line-height:1.5">
+                    <div style="font-size:10px;color:var(--bordo);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Observações</div>
+                    {{ p.observacoes }}
+                  </div>
+                }
+                <div class="row-actions">
+                  <a class="btn sm outline" [routerLink]="['/pedidos', p.id, 'editar']">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m14.5 5.5 4 4"/></svg>
+                    Editar
+                  </a>
+                  <button class="btn sm ghost" style="color:var(--bad)" (click)="excluir(p.id, $event)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Títulos right -->
+              <div>
                 @if (carregandoTitulos().includes(p.id)) {
-                  <div class="titulos-loading"><mat-spinner diameter="24" /></div>
+                  <div style="display:flex;justify-content:center;padding:24px"><mat-spinner diameter="24"/></div>
                 } @else {
-                  <div class="titulos-header">
-                    <span class="titulos-label">Títulos</span>
-                    <button mat-button color="primary"
-                            (click)="abrirDialogTitulo(p.id, $event)">
-                      <mat-icon>add</mat-icon> Novo Título
+                  <div class="row" style="justify-content:space-between;margin-bottom:12px">
+                    <h3 style="margin:0;font-size:15px;font-weight:700">
+                      Títulos
+                      <span style="color:var(--text-4);font-weight:500">({{ (titulosMap()[p.id] ?? []).length }})</span>
+                    </h3>
+                    <button class="btn sm outline" (click)="abrirDialogTitulo(p.id, $event)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                      Novo Título
                     </button>
                   </div>
 
                   @if ((titulosMap()[p.id] ?? []).length === 0) {
-                    <p class="titulos-vazio">Nenhum título cadastrado para este pedido.</p>
+                    <p style="font-size:13px;color:var(--text-3);margin:4px 0 0">Nenhum título cadastrado.</p>
                   } @else {
-                    <table class="titulos-table">
+                    <table class="items-table">
                       <thead>
                         <tr>
                           <th>Código</th>
                           <th>Parcela</th>
                           <th>Vencimento</th>
                           <th>Pagamento</th>
-                          <th class="col-right">Valor</th>
+                          <th class="r">Valor</th>
                           <th></th>
                         </tr>
                       </thead>
                       <tbody>
                         @for (t of titulosMap()[p.id]; track t.id) {
                           <tr [class]="vencimentoClass(t)">
-                            <td>{{ t.codigo.split('/')[0] }}</td>
-                            <td>{{ t.codigo.split('/')[1] }}</td>
-                            <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
-                            <td>{{ t.data_pagamento  ? (t.data_pagamento  | date:'dd/MM/yyyy') : '—' }}</td>
-                            <td class="col-right">{{ t.valor | currency:'BRL' }}</td>
+                            <td class="mono" style="font-size:12px;color:var(--text-2)">{{ t.codigo.split('/')[0] }}</td>
+                            <td style="color:var(--text-3);font-size:12px">{{ t.codigo.split('/')[1] }}</td>
                             <td>
-                              <button mat-icon-button color="warn"
-                                      (click)="excluirTitulo(t, p.id, $event)"
-                                      matTooltip="Excluir título">
-                                <mat-icon>delete_outline</mat-icon>
+                              <span class="data-date" [class]="tituloDateClass(t)">
+                                {{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}
+                              </span>
+                            </td>
+                            <td style="font-size:13px;color:var(--ok)">
+                              {{ t.data_pagamento ? (t.data_pagamento | date:'dd/MM/yyyy') : '—' }}
+                            </td>
+                            <td class="r" style="font-weight:600">{{ t.valor | currency:'BRL' }}</td>
+                            <td style="text-align:right">
+                              <button class="btn sm ghost" style="color:var(--bad);width:28px;padding:0"
+                                      (click)="excluirTitulo(t, p.id, $event)" title="Excluir título">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
                               </button>
                             </td>
                           </tr>
                         }
+                        <tr class="items-foot">
+                          <td colspan="4" class="r" style="color:var(--text-3)">Total pago</td>
+                          <td class="r serif" style="font-size:18px;color:var(--bordo)">{{ valorPago(p) | currency:'BRL' }}</td>
+                          <td></td>
+                        </tr>
                       </tbody>
                     </table>
                   }
                 }
               </div>
-            }
-          </td>
-        </ng-container>
+            </div>
+          }
 
-        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-        <tr mat-row *matRowDef="let row; columns: colunas"
-            class="row-hover"
-            [attr.data-pedido-id]="row.id"
-            [routerLink]="['/pedidos', row.id]"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['detalhe']"
-            class="detalhe-row"></tr>
+        </div>
+      }
+    </div>
 
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell empty-state" [attr.colspan]="colunas.length">
-            Nenhum pedido registrado. Clique em "Novo Pedido" para começar.
-          </td>
-        </tr>
-      </table>
-    </mat-card>
   }
 </div>

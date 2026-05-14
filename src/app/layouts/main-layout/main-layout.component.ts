@@ -39,7 +39,7 @@ export class MainLayoutComponent {
   darkMode = false;
 
   navItems: NavItem[] = [
-    { label: 'Pedidos',         route: '/pedidos',               iconSvg: this.safe(ICONS['orders']),    badge: '12' },
+    { label: 'Pedidos',         route: '/pedidos',               iconSvg: this.safe(ICONS['orders']) },
     { label: 'Fornecedores',    route: '/fornecedores',          iconSvg: this.safe(ICONS['suppliers']) },
     { label: 'Estoque',         route: '/estoque',               iconSvg: this.safe(ICONS['stock']) },
     { label: 'Financeiro',      route: '/financeiro',            iconSvg: this.safe(ICONS['finance']) },
