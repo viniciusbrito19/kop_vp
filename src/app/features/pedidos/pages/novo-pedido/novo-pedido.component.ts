@@ -51,6 +51,7 @@ export class NovoPedidoComponent implements OnInit {
   arquivoPdf: File | null = null;
   pedidoDuplicado = signal<import('../../models/pedido.model').Pedido | null>(null);
   private duplicatasExtraidas: DuplicataExtraida[] = [];
+  private uploadSeq = 0;
 
   form = this.fb.group({
     codigo: ['', [Validators.pattern(/^(\d{7}KPN|\d+)$/)]],
@@ -119,6 +120,7 @@ export class NovoPedidoComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    const seq = ++this.uploadSeq;
     this.arquivoPdf = file;
     this.pedidoDuplicado.set(null);
     this.extraindo.set(true);
@@ -127,6 +129,7 @@ export class NovoPedidoComponent implements OnInit {
       const dados = isXml
         ? await this.xmlExtractor.extrair(file)
         : await this.pdfExtractor.extrair(file);
+      if (seq !== this.uploadSeq) return;
       this.preencherComDados(dados);
 
       const duplicado = await this.pedidosService.verificarDuplicata(
@@ -134,6 +137,7 @@ export class NovoPedidoComponent implements OnInit {
         dados.codigo,
         this.pedidoId,
       );
+      if (seq !== this.uploadSeq) return;
       this.pedidoDuplicado.set(duplicado);
 
       if (duplicado) {
@@ -142,9 +146,13 @@ export class NovoPedidoComponent implements OnInit {
         this.snack.open('Dados extraídos com sucesso!', 'OK', { duration: 3000 });
       }
     } catch {
-      this.snack.open('Não foi possível extrair dados do arquivo. Preencha manualmente.', 'OK', { duration: 4000 });
+      if (seq === this.uploadSeq) {
+        this.snack.open('Não foi possível extrair dados do arquivo. Preencha manualmente.', 'OK', { duration: 4000 });
+      }
     } finally {
-      this.extraindo.set(false);
+      if (seq === this.uploadSeq) {
+        this.extraindo.set(false);
+      }
     }
   }
 
@@ -157,7 +165,7 @@ export class NovoPedidoComponent implements OnInit {
       valor_total:  dados.valor_total,
     });
     this.itens.clear();
-    for (const item of dados.itens) this.adicionarItem(item);
+    for (const item of dados.itens) this.itens.push(this.criarItemGroup(item));
     if (dados.cnpj_emitente) {
       const cnpjLimpo = dados.cnpj_emitente.replace(/\D/g, '');
       const f = this.fornecedores().find(
@@ -168,14 +176,18 @@ export class NovoPedidoComponent implements OnInit {
     this.duplicatasExtraidas = dados.duplicatas;
   }
 
-  adicionarItem(valores?: any) {
-    this.itens.push(this.fb.group({
+  private criarItemGroup(valores?: any) {
+    return this.fb.group({
       descricao: [valores?.descricao ?? '', Validators.required],
       quantidade: [valores?.quantidade ?? null],
       unidade: [valores?.unidade ?? ''],
       valor_unitario: [valores?.valor_unitario ?? null],
       valor_total: [valores?.valor_total ?? null],
-    }));
+    });
+  }
+
+  adicionarItem(valores?: any) {
+    this.itens.push(this.criarItemGroup(valores));
   }
 
   removerItem(index: number) { this.itens.removeAt(index); }

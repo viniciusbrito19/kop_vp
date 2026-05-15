@@ -344,12 +344,12 @@
 
 /* ===== Topbar ===== */
 .topbar {
-  height: 56px;
+  min-height: 56px;
   padding: 0 24px;
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--surface);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
 }
@@ -360,4 +360,181 @@
 
   svg { color: var(--text-4); }
   b   { color: var(--text); font-weight: 600; }
+}
+
+/* ===== Destinatário field (filter bar) ===== */
+.filter-dest-field {
+  flex: 1;
+  min-width: 0;
+  max-width: 260px;
+}
+
+/* ========================================================================
+   Responsive — tablet (≤ 768px)
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .kpi-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+
+    .kpi-value { font-size: 26px; }
+  }
+}
+
+/* ========================================================================
+   Responsive — mobile (≤ 640px)
+   ======================================================================== */
+
+@media (max-width: 640px) {
+
+  /* ===== Topbar: linha única, botões icon-only ===== */
+  .topbar {
+    padding: 0 16px;
+    gap: 8px;
+    /* Override do flex-wrap:wrap global — tudo cabe em uma linha */
+    flex-wrap: nowrap;
+
+    /* Crumbs: largura natural; o spacer empurra os botões para a direita */
+    .crumbs {
+      flex: none;
+      white-space: nowrap;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* Esconde label, mantém só o ícone */
+    .btn-label { display: none; }
+
+    .btn.outline.sm,
+    .btn.primary.sm {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+  }
+
+  /* ===== Content padding ===== */
+  .content { padding: 16px 14px 32px; }
+
+  /* ===== KPI grid 3 cols — compacta no mobile ===== */
+  .kpi-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+
+    .kpi { padding: 12px 10px; }
+    .kpi-label { font-size: 9.5px; gap: 3px; letter-spacing: 0.10em; }
+    .kpi-value { font-size: 18px; margin-top: 4px; }
+    .kpi-foot  { font-size: 10px; margin-top: 4px; }
+  }
+
+  /* ===== Filter bar: empilha em linhas ===== */
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+
+    /* Separadores viram invisíveis */
+    .sep    { display: none; }
+    .spacer { display: none; }
+  }
+
+  /* Tabs: linha inteira */
+  .seg {
+    flex: 0 0 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  /* Tipo select: divide linha com o toggle e o clear */
+  .filter-select-field {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+  }
+
+  /* Destinatário: linha inteira */
+  .filter-dest-field {
+    flex: 0 0 100%;
+    max-width: none;
+    height: 38px;
+    border-radius: var(--r-sm);
+  }
+
+  /* Date range: linha inteira */
+  .filter-date-range {
+    flex: 0 0 100%;
+    min-width: 0;
+    height: 38px;
+    border-radius: var(--r-sm);
+    padding: 0 10px;
+    gap: 4px;
+  }
+
+  /* Vinculo toggle */
+  .vinculo-toggle {
+    height: 36px;
+    width: 36px;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  /* Contador de resultados */
+  .resultado-count { font-size: 11px; }
+
+  /* ===== Tabela: esconde colunas secundárias ===== */
+  .mat-column-natureza,
+  .mat-column-tipo,
+  .mat-column-saldo,
+  .mat-column-pedido {
+    display: none;
+  }
+
+  /* Reduz padding geral das células */
+  .extrato-table .mat-mdc-cell,
+  .extrato-table .mat-mdc-header-cell {
+    padding: 10px 8px;
+  }
+
+  /* Data: mais compacta */
+  .col-data { width: 76px; }
+  .data-chip { font-size: 11px; padding: 2px 6px; }
+
+  /* Destinatário: sem max-width, texto trunca naturalmente */
+  .col-destinatario {
+    max-width: none;
+    font-size: 12px;
+  }
+
+  /* Valor: um pouco menor */
+  .col-valor { font-size: 12px; }
+
+  /* Botões de ação sempre visíveis (sem hover no touch) */
+  .btn-edit,
+  .btn-identificar { opacity: 1; }
+
+  /* ===== Drawer: sheet de baixo no mobile ===== */
+  .drawer {
+    top: auto;
+    width: 100%;
+    max-width: 100%;
+    height: 88vh;
+    border-left: none;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .drawer-head { padding: 16px 20px 12px; }
+  .drawer-body { padding: 16px 20px; }
+  .drawer-foot { padding: 12px 20px; }
+
+  .painel-lancamento { padding: 10px 20px; }
 }

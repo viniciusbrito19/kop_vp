@@ -6,9 +6,14 @@
     <b>Fornecedores</b>
   </div>
   <div class="spacer"></div>
-  <div class="field" style="width:280px">
+  <div class="field topbar-search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input [(ngModel)]="busca" placeholder="Buscar fornecedor, CNPJ, categoria…"/>
+    <input [ngModel]="busca()" (ngModelChange)="busca.set($event)" placeholder="Buscar fornecedor, CNPJ, categoria…"/>
+    @if (busca()) {
+      <button class="topbar-search-clear" (click)="busca.set('')" type="button" title="Limpar busca">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    }
   </div>
 </header>
 
@@ -16,7 +21,7 @@
 <div class="content">
 
   <!-- Page heading -->
-  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+  <div class="row page-heading-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
     <div>
       <h1 class="page">Cadastro de <span class="accent serif">fornecedores</span></h1>
       <div class="page-sub">{{ fornecedoresFiltrados().length }} fornecedores cadastrados</div>
@@ -68,7 +73,7 @@
 
             <span class="cnpj-text">{{ f.cnpj ?? '—' }}</span>
 
-            <span>
+            <span class="cat-cell">
               @if (f.categoria_fornecedor?.nome) {
                 <span class="pill bordo">{{ f.categoria_fornecedor?.nome }}</span>
               } @else {

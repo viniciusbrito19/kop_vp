@@ -1,4 +1,4 @@
-/* Specific grid columns for the fornecedores list */
+/* ===== Grid columns (desktop) ===== */
 .forn-grid {
   grid-template-columns: 1fr 160px 160px 1fr 80px;
 }
@@ -7,6 +7,35 @@
   cursor: default;
 }
 
+/* ===== Topbar search ===== */
+.topbar-search {
+  width: 280px;
+}
+
+.topbar-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color 0.12s ease;
+
+  &:hover { color: var(--text); }
+}
+
+/* ===== Page heading ===== */
+.page-heading-row {
+  flex-wrap: wrap;
+}
+
+/* ===== Field cells ===== */
 .cnpj-text {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -46,6 +75,7 @@
   &:hover { background: var(--bad-soft) !important; }
 }
 
+/* ===== Loading / empty ===== */
 .load-wrap {
   display: flex;
   justify-content: center;
@@ -69,4 +99,91 @@
   color: var(--text-3);
 
   p { margin: 0; font-size: 14px; }
+}
+
+/* ========================================================================
+   Responsive — tablet (≤ 768px)
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .page-heading-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    .btn.primary { align-self: stretch; justify-content: center; }
+  }
+
+  .forn-grid {
+    grid-template-columns: 1fr 130px 130px 1fr 80px;
+  }
+}
+
+/* ========================================================================
+   Responsive — mobile (≤ 640px)
+   ======================================================================== */
+
+@media (max-width: 640px) {
+
+  /* Topbar: busca vira segunda linha, largura total */
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .topbar-search {
+    width: 100%;
+    border-radius: var(--r-sm) !important;
+    height: 38px;
+  }
+
+  /* Page heading: empilha, botão ocupa linha inteira */
+  .page-heading-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 20px !important;
+
+    > div { flex: 1; }
+
+    .btn.primary {
+      width: 100%;
+      justify-content: center;
+      border-radius: var(--r-md);
+    }
+  }
+
+  /* List header — already hidden globally at 640px */
+  .list-head.forn-grid { display: none; }
+
+  /* ===== Card layout mobile ===== */
+  .row-main.forn-grid {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 14px 76px 14px 14px; /* right padding reserva espaço para as ações */
+
+    /* Reordenação: nome → categoria → CNPJ → chaves */
+    .fornecedor-name { order: 1; font-size: 14px; font-weight: 600; }
+    .cat-cell        { order: 2; }
+    .cnpj-text       { order: 3; font-size: 11px; }
+    .chaves-cell     { order: 4; margin-top: 2px; }
+
+    /* Ações: absoluto no canto superior direito */
+    .row-actions-cell {
+      position: absolute;
+      top: 12px;
+      right: 10px;
+      flex-direction: column;
+      gap: 2px;
+    }
+  }
+
+  /* Chaves: trunca em 2 linhas para não expandir demais o card */
+  .chaves-cell {
+    max-height: 44px;
+    overflow: hidden;
+  }
+
+  .empty-wrap { padding: 40px 20px; }
 }

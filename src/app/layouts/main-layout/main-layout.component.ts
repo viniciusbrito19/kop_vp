@@ -41,19 +41,36 @@ export class MainLayoutComponent implements OnInit {
   darkMode = false;
 
   displayName = signal('');
-  initials = signal('');
+  initials   = signal('');
+  firstName  = signal('');
+  dateLabel  = signal('');
 
   async ngOnInit(): Promise<void> {
     const user = await this.auth.getUser();
     const name: string = user?.user_metadata?.['display_name'] ?? user?.email ?? '';
     this.displayName.set(name);
     this.initials.set(this.toInitials(name));
+    this.firstName.set(this.toFirstName(name));
+    this.dateLabel.set(this.buildDateLabel());
   }
 
   private toInitials(name: string): string {
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  private toFirstName(name: string): string {
+    const raw = name.trim().split(/\s+/)[0] ?? '';
+    return raw.includes('@') ? raw.split('@')[0] : raw;
+  }
+
+  private buildDateLabel(): string {
+    const now = new Date();
+    const weekday = now.toLocaleDateString('pt-BR', { weekday: 'long' });
+    const day     = now.getDate();
+    const month   = now.toLocaleDateString('pt-BR', { month: 'long' });
+    return weekday.charAt(0).toUpperCase() + weekday.slice(1) + ', ' + day + ' de ' + month;
   }
 
   navItems: NavItem[] = [

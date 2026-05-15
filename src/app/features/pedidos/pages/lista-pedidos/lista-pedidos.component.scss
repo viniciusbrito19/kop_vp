@@ -1,5 +1,12 @@
 /* A maior parte dos estilos vem do design system global (styles.scss) */
 
+/* Garante que o calendário do date-picker não seja cortado */
+.filter-bar {
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
 /* Filtros de seleção na filter-bar */
 .filter-select {
   height: 36px;
@@ -60,3 +67,184 @@
 /* Status dos títulos na tabela expandida */
 .items-table tr.pago td   { color: var(--ok); }
 .items-table tr.vencido td { color: var(--bad); }
+
+/* ===== Topbar search ===== */
+.topbar-search {
+  width: 300px;
+}
+
+.topbar-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color 0.12s ease;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+/* ===== Page heading ===== */
+.page-heading-row {
+  flex-wrap: wrap;
+}
+
+/* ========================================================================
+   Responsivo — mobile (≤ 640px)
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .page-heading-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* Topbar: busca vai para segunda linha em largura total */
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .topbar-search {
+    width: 100%;
+    border-radius: var(--r-sm) !important;
+    height: 38px;
+  }
+
+  /* ===== Filter bar — layout empilhado no mobile ===== */
+  .filter-bar {
+    flex-wrap: wrap;
+    border-radius: var(--r-md);
+    padding: 10px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Separadores e spacer viram invisíveis */
+  .filter-bar .sep     { display: none; }
+  .filter-bar .spacer  { display: none; }
+
+  /* Tabs ocupam linha inteira e rolam horizontalmente se necessário */
+  .seg {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    border-radius: var(--r-sm);
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  /* Data range ocupa linha inteira */
+  .filter-date-range {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    gap: 4px;
+    border-radius: var(--r-sm);
+  }
+
+  /* Fornecedor divide linha com o contador e botão limpar */
+  .filter-select {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  /* Contador e botão limpar ficam à direita da linha do fornecedor */
+  .chip-counter {
+    flex-shrink: 0;
+  }
+
+  /* Row card — layout de cartão em 2 linhas */
+  .row-main {
+    display: grid;
+    grid-template-columns: 28px 1fr auto 36px;
+    grid-template-rows: auto auto;
+    row-gap: 6px;
+    padding: 12px 14px;
+    gap: 8px;
+
+    /* 1 — chev: ocupa as 2 linhas */
+    > :nth-child(1) {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      align-self: center;
+    }
+
+    /* 2 — data limite: linha 2 */
+    > :nth-child(2) {
+      grid-column: 2;
+      grid-row: 2;
+      display: flex;
+      align-items: center;
+    }
+
+    /* 3 — código: oculto */
+    > :nth-child(3) { display: none; }
+
+    /* 4 — tipo: oculto */
+    > :nth-child(4) { display: none; }
+
+    /* 5 — fornecedor: linha 1 */
+    > :nth-child(5) {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+
+      .fornecedor-sub { display: none; }
+    }
+
+    /* 6 — valor NF: linha 2, col 3 */
+    > :nth-child(6) {
+      grid-column: 3;
+      grid-row: 2;
+      font-size: 13px;
+    }
+
+    /* 7 — valor pago: oculto */
+    > :nth-child(7) { display: none; }
+
+    /* 8 — status pill: linha 1, col 3 */
+    > :nth-child(8) {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    /* 9 — kebab: ocupa as 2 linhas */
+    > :nth-child(9) {
+      grid-column: 4;
+      grid-row: 1 / 3;
+      align-self: center;
+    }
+  }
+
+  /* Painel expandido — coluna única */
+  .row-expand {
+    padding: 16px 14px;
+  }
+
+  /* Tabela de títulos compacta */
+  .items-table th,
+  .items-table td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}

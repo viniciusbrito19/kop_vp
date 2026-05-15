@@ -219,7 +219,7 @@
         </div>
 
         <div formArrayName="itens" class="col" style="gap:6px">
-          @for (item of itens.controls; track $index; let i = $index) {
+          @for (item of itens.controls; track item; let i = $index) {
             <div class="item-row" [formGroupName]="i">
               <input class="item-input" formControlName="descricao" placeholder="Descrição do item" />
               <input class="item-input center" type="number" formControlName="quantidade" placeholder="0" />

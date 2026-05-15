@@ -179,3 +179,36 @@ button:disabled, a.btn[disabled] {
   cursor: not-allowed;
   pointer-events: none;
 }
+
+/* ========================================================================
+   Responsivo — mobile (≤ 640px)
+   ======================================================================== */
+
+@media (max-width: 640px) {
+
+  /* Upload zone menor */
+  .upload-zone {
+    padding: 20px 16px;
+  }
+
+  /* Cabeçalho da tabela de itens oculto */
+  .items-head {
+    display: none;
+  }
+
+  /* Linhas de item: 2 colunas (descrição full + 2x2 + botão) */
+  .item-row {
+    grid-template-columns: 1fr 1fr;
+
+    /* Descrição — largura total */
+    > :nth-child(1) {
+      grid-column: 1 / -1;
+    }
+
+    /* Botão remover — alinhado à direita */
+    > :nth-child(6) {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
+  }
+}

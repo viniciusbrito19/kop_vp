@@ -8,7 +8,7 @@ export class CorrelacaoService {
   async executar(): Promise<number> {
     const { data: titulos, error: e1 } = await this.db
       .from('titulos')
-      .select('id, valor, data_vencimento, created_at')
+      .select('id, valor, data_vencimento, pedidos(data_emissao, fornecedores(fornecedor_chaves_extrato(chave)))')
       .is('data_pagamento', null)
       .is('lancamento_extrato_id', null)
       .not('pedido_id', 'is', null);   // pass 1 only covers NF-e titles
@@ -17,7 +17,7 @@ export class CorrelacaoService {
     const { data: lancamentos, error: e2 } = await this.db
       .from('lancamentos_extrato')
       .select('id, data_lancamento, valor, destinatario_remetente')
-      .eq('tipo', 'pagamento_efetuado')
+      .eq('natureza', 'saida')
       .order('data_lancamento', { ascending: true });
     if (e2) throw e2;
     if (!lancamentos?.length) return 0;
@@ -40,24 +40,39 @@ export class CorrelacaoService {
 
     // ── Pass 1: exact value match (NF-e titles) ───────────────────────────
     if (titulos?.length) {
-      const porValor = new Map<number, { id: string; data_vencimento: string | null; created_at: string }[]>();
+      type TituloEntry = {
+        id: string;
+        data_vencimento: string | null;
+        data_emissao: string | null;
+        chaves: string[];
+      };
+      const porValor = new Map<number, TituloEntry[]>();
       for (const t of titulos) {
         const key = Math.round(t.valor * 100);
         if (!porValor.has(key)) porValor.set(key, []);
-        porValor.get(key)!.push(t);
+        const pedido = (t as any).pedidos as any;
+        const chaves: string[] = (pedido?.fornecedores?.fornecedor_chaves_extrato as { chave: string }[] | null)
+          ?.map(k => k.chave.toLowerCase()) ?? [];
+        porValor.get(key)!.push({
+          id:              t.id,
+          data_vencimento: t.data_vencimento,
+          data_emissao:    pedido?.data_emissao ?? null,
+          chaves,
+        });
       }
-
-      const ONE_DAY_MS = 86_400_000;
 
       for (const lanc of pendentes) {
         const key       = Math.round(Math.abs(lanc.valor) * 100);
         const dataLancMs = new Date(lanc.data_lancamento).getTime();
+        const dest      = lanc.destinatario_remetente.toLowerCase();
 
-        // A payment cannot settle a título that did not yet exist on its date.
         const candidatos = (porValor.get(key) ?? []).filter(t => {
           if (usadosTitulos.has(t.id)) return false;
-          const createdMs = new Date(t.created_at).getTime();
-          return dataLancMs >= createdMs - ONE_DAY_MS;
+          // Payment must not predate the invoice emission
+          if (t.data_emissao && lanc.data_lancamento < t.data_emissao) return false;
+          // If supplier keys are configured, destinatário must match at least one
+          if (t.chaves.length && !t.chaves.some(k => dest.includes(k))) return false;
+          return true;
         });
         if (!candidatos.length) continue;
 

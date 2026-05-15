@@ -53,7 +53,7 @@ export class ListaPedidosComponent implements OnInit {
   filtroFornecedor  = signal<string>('todos');
   filtroDataInicio  = signal<string>('');
   filtroDataFim     = signal<string>('');
-  busca             = '';
+  busca             = signal<string>('');
 
   tabs = [
     { label: 'Todos',     value: 'todos' },
@@ -89,7 +89,7 @@ export class ListaPedidosComponent implements OnInit {
     const fornecedor = this.filtroFornecedor();
     const ini        = this.filtroDataInicio();
     const fim        = this.filtroDataFim();
-    const q          = this.busca.toLowerCase();
+    const q          = this.busca().toLowerCase();
 
     return this.pedidosUnicos().filter(p => {
       if (status !== 'todos' && this.statusPedido(p) !== status) return false;
@@ -147,6 +147,14 @@ export class ListaPedidosComponent implements OnInit {
       total: lista.reduce((s, p) => s + (p.valor_total ?? 0), 0),
     };
   });
+
+  filtrosAtivos = computed(() =>
+    this.filtroStatus() !== 'todos' ||
+    this.filtroFornecedor() !== 'todos' ||
+    !!this.filtroDataInicio() ||
+    !!this.filtroDataFim() ||
+    !!this.busca()
+  );
 
   ticketMedio = computed(() => {
     const lista = this.pedidosUnicos().filter(p => p.valor_total);
@@ -314,6 +322,14 @@ export class ListaPedidosComponent implements OnInit {
     } catch {
       this.snack.open('Erro ao excluir título.', 'OK', { duration: 4000 });
     }
+  }
+
+  limparFiltros() {
+    this.filtroStatus.set('todos');
+    this.filtroFornecedor.set('todos');
+    this.filtroDataInicio.set('');
+    this.filtroDataFim.set('');
+    this.busca.set('');
   }
 
   // ── Pedidos ──────────────────────────────────────────────────────────────────

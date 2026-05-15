@@ -289,3 +289,215 @@
   background: var(--bg);
   overflow-y: auto;
 }
+
+/* ===== Mobile shell ===== */
+@media (max-width: 640px) {
+  .kop-sb {
+    display: none;
+  }
+
+  .kop-main {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ===== Bottom navigation ===== */
+.kop-bottom-nav {
+  display: none;
+
+  @media (max-width: 640px) {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: var(--sb-bg);
+    border-top: 1px solid var(--sb-rule);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
+  }
+}
+
+.kop-bnav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  flex: 0 0 calc(100% / 5);
+  min-width: 52px;
+  color: var(--sb-fg-dim);
+  text-decoration: none;
+  transition: color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &.active {
+    color: var(--gold);
+  }
+
+  &:active {
+    background: var(--sb-hover);
+  }
+}
+
+.kop-bnav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+
+  svg { display: block; }
+}
+
+.kop-bnav-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
+/* ===== Mobile top header ===== */
+.kop-mobile-header {
+  display: none;
+
+  @media (max-width: 640px) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+.kop-mh-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kop-mh-logo {
+  flex-shrink: 0;
+}
+
+.kop-mh-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.kop-mh-name {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.kop-mh-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-top: 1px;
+}
+
+.kop-mh-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kop-mh-bell {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: var(--surface-2);
+  }
+}
+
+.kop-mh-bell-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bad);
+  border: 1.5px solid var(--surface);
+}
+
+.kop-mh-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  color: #1a0e08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Mobile greeting ===== */
+.kop-mobile-greeting {
+  display: none;
+
+  @media (max-width: 640px) {
+    display: block;
+    padding: 22px 20px 4px;
+    flex-shrink: 0;
+
+    h1 {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 36px;
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+      margin: 0;
+      color: var(--text);
+
+      em {
+        color: var(--bordo);
+        font-style: italic;
+      }
+    }
+
+    p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--text-3);
+      letter-spacing: 0.005em;
+    }
+  }
+}
