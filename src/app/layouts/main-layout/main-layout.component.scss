@@ -259,6 +259,27 @@
   white-space: nowrap;
 }
 
+.kop-logout-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--sb-fg-dim);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--sb-hover);
+    color: var(--sb-fg);
+  }
+}
+
 /* ===== Main content area ===== */
 .kop-main {
   flex: 1;

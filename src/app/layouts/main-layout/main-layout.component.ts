@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { AuthService } from '../../core/services/auth.service';
 
 interface NavItem {
   label: string;
@@ -32,11 +33,28 @@ const ICONS: Record<string, string> = {
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
-export class MainLayoutComponent {
+export class MainLayoutComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
+  private auth = inject(AuthService);
 
   collapsed = false;
   darkMode = false;
+
+  displayName = signal('');
+  initials = signal('');
+
+  async ngOnInit(): Promise<void> {
+    const user = await this.auth.getUser();
+    const name: string = user?.user_metadata?.['display_name'] ?? user?.email ?? '';
+    this.displayName.set(name);
+    this.initials.set(this.toInitials(name));
+  }
+
+  private toInitials(name: string): string {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
 
   navItems: NavItem[] = [
     { label: 'Pedidos',         route: '/pedidos',               iconSvg: this.safe(ICONS['orders']) },
@@ -54,5 +72,9 @@ export class MainLayoutComponent {
 
   toggleCollapse(): void {
     this.collapsed = !this.collapsed;
+  }
+
+  logout(): void {
+    this.auth.logout();
   }
 }
