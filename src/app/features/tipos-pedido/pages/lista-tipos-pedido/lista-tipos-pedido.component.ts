@@ -1,15 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
 import { TipoPedido } from '../../models/tipo-pedido.model';
 import { TipoPedidoDialogComponent } from './tipo-pedido-dialog.component';
@@ -18,17 +10,9 @@ import { TipoPedidoDialogComponent } from './tipo-pedido-dialog.component';
   selector: 'app-lista-tipos-pedido',
   standalone: true,
   imports: [
-    ReactiveFormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSlideToggleModule,
+    FormsModule,
     MatDialogModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
-    MatCardModule,
   ],
   templateUrl: './lista-tipos-pedido.component.html',
   styleUrl: './lista-tipos-pedido.component.scss',
@@ -40,7 +24,13 @@ export class ListaTiposPedidoComponent implements OnInit {
 
   tipos = signal<TipoPedido[]>([]);
   carregando = signal(false);
-  colunas = ['nome', 'ativo', 'acoes'];
+  busca = signal('');
+
+  tiposFiltrados = computed(() => {
+    const q = this.busca().toLowerCase().trim();
+    if (!q) return this.tipos();
+    return this.tipos().filter(t => t.nome.toLowerCase().includes(q));
+  });
 
   async ngOnInit() {
     await this.carregar();
@@ -58,6 +48,7 @@ export class ListaTiposPedidoComponent implements OnInit {
   abrirDialog(tipo?: TipoPedido) {
     const ref = this.dialog.open(TipoPedidoDialogComponent, {
       width: '400px',
+      panelClass: 'kop-dialog',
       data: tipo ?? null,
     });
     ref.afterClosed().subscribe(async (salvo) => {

@@ -1,10 +1,6 @@
-import { Component, inject, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
 import { TipoPedido } from '../../models/tipo-pedido.model';
 
@@ -14,35 +10,38 @@ import { TipoPedido } from '../../models/tipo-pedido.model';
   imports: [
     ReactiveFormsModule,
     MatDialogModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatProgressSpinnerModule,
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Editar' : 'Novo' }} Tipo de Pedido</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="dialog-form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Nome</mat-label>
-          <input matInput formControlName="nome" placeholder="Ex.: Produtos de linha" />
-          @if (form.get('nome')?.hasError('required')) {
-            <mat-error>Nome é obrigatório</mat-error>
+        <label class="input">
+          <span>Nome</span>
+          <input formControlName="nome" placeholder="Ex.: Produtos de linha" />
+          @if (form.get('nome')?.invalid && form.get('nome')?.touched) {
+            <span class="hint" style="color:var(--bad)">Nome é obrigatório</span>
           }
-        </mat-form-field>
+        </label>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [disabled]="form.invalid || salvando" (click)="salvar()">
-        @if (salvando) { <mat-spinner diameter="18" /> } @else { Salvar }
+      <button class="btn outline sm" mat-dialog-close>Cancelar</button>
+      <button class="btn primary sm" [disabled]="form.invalid || salvando" (click)="salvar()">
+        @if (salvando) {
+          <svg class="spin-ring-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+            <path d="M18 3 A15 15 0 0 1 33 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        } @else {
+          Salvar
+        }
       </button>
     </mat-dialog-actions>
   `,
   styles: [`
     .dialog-form { padding-top: 8px; }
-    .full-width { width: 100%; }
-    mat-dialog-content { min-width: 320px; }
+    .spin-ring-sm { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
 export class TipoPedidoDialogComponent {

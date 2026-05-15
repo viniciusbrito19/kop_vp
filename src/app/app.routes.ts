@@ -27,13 +27,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'estoque',
-        loadComponent: () =>
-          import('./features/pedidos/pages/lista-pedidos/lista-pedidos.component').then(
-            m => m.ListaPedidosComponent
-          ),
-      },
-      {
         path: 'financeiro',
         loadChildren: () =>
           import('./features/extrato/extrato.routes').then(m => m.extratoRoutes),
@@ -42,6 +35,13 @@ export const routes: Routes = [
         path: 'despesas',
         loadChildren: () =>
           import('./features/despesas/despesas.routes').then(m => m.despesasRoutes),
+      },
+      {
+        path: 'fluxo-caixa',
+        loadChildren: () =>
+          import('./features/fluxo-caixa/fluxo-caixa.routes').then(
+            m => m.fluxoCaixaRoutes
+          ),
       },
       {
         path: 'categorias-fornecedor',

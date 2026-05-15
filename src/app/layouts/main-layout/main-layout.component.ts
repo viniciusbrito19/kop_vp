@@ -41,8 +41,7 @@ export class MainLayoutComponent {
   navItems: NavItem[] = [
     { label: 'Pedidos',         route: '/pedidos',               iconSvg: this.safe(ICONS['orders']) },
     { label: 'Fornecedores',    route: '/fornecedores',          iconSvg: this.safe(ICONS['suppliers']) },
-    { label: 'Estoque',         route: '/estoque',               iconSvg: this.safe(ICONS['stock']) },
-    { label: 'Financeiro',      route: '/financeiro',            iconSvg: this.safe(ICONS['finance']) },
+{ label: 'Financeiro',      route: '/financeiro',            iconSvg: this.safe(ICONS['finance']) },
     { label: 'Despesas',        route: '/despesas',              iconSvg: this.safe(ICONS['wallet']) },
     { label: 'Fluxo de Caixa',  route: '/fluxo-caixa',          iconSvg: this.safe(ICONS['trend']) },
     { label: 'Tipos de Pedido', route: '/tipos-pedido',          iconSvg: this.safe(ICONS['tags']) },

@@ -1,13 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
 import { CategoriasFornecedorService } from '../../services/categorias-fornecedor.service';
 import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
 
@@ -16,116 +9,204 @@ import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
   standalone: true,
   imports: [
     FormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
-    MatCardModule,
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h1>Categorias de Fornecedor</h1>
+    <!-- ===== Topbar ===== -->
+    <header class="topbar">
+      <div class="crumbs row gap-2">
+        <span>Configurações</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        <b>Categorias de Fornecedor</b>
+      </div>
+      <div class="spacer"></div>
+      <div class="field" style="width:240px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input [ngModel]="busca()" (ngModelChange)="busca.set($event)" placeholder="Buscar categoria…" />
+      </div>
+    </header>
+
+    <!-- ===== Content ===== -->
+    <div class="content">
+
+      <!-- Page heading -->
+      <div style="margin-bottom:28px">
+        <h1 class="page">Categorias de <span class="accent serif">fornecedor</span></h1>
+        <div class="page-sub">{{ categoriasFiltradas().length }} categoria{{ categoriasFiltradas().length !== 1 ? 's' : '' }} cadastrada{{ categoriasFiltradas().length !== 1 ? 's' : '' }}</div>
       </div>
 
-      @if (carregando()) {
-        <div class="loading">
-          <mat-spinner diameter="40" />
+      <!-- Add form -->
+      <div class="add-form">
+        <div class="field" style="flex:1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <input [(ngModel)]="novoNome" (keydown.enter)="salvarNova()"
+                 placeholder="Ex: Insumos, Embalagens, Serviços…" />
         </div>
+        <button class="btn primary" [disabled]="!novoNome.trim() || salvando()" (click)="salvarNova()">
+          @if (salvando()) {
+            <svg class="spin-ring" width="16" height="16" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+              <path d="M18 3 A15 15 0 0 1 33 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          } @else {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar
+          }
+        </button>
+      </div>
+
+      <!-- Loading state -->
+      @if (carregando()) {
+        <div class="load-wrap">
+          <svg class="spin-ring" width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="15" stroke="var(--line-2)" stroke-width="3"/>
+            <path d="M18 3 A15 15 0 0 1 33 18" stroke="var(--bordo)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+      } @else if (!categoriasFiltradas().length) {
+        <div class="empty-wrap">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+          @if (busca()) {
+            <p>Nenhuma categoria encontrada para "<b>{{ busca() }}</b>".</p>
+          } @else {
+            <p>Nenhuma categoria cadastrada ainda.</p>
+            <p class="hint-text">Use o campo acima para adicionar a primeira categoria.</p>
+          }
+        </div>
+
       } @else {
-        <mat-card class="add-card">
-          <div class="add-row">
-            <mat-form-field appearance="outline" class="nome-field">
-              <mat-label>Nome da categoria</mat-label>
-              <input matInput [(ngModel)]="novoNome" (keydown.enter)="salvarNova()"
-                     placeholder="Ex: Insumos, Embalagens, Serviços..." />
-            </mat-form-field>
-            <button mat-flat-button color="primary"
-                    [disabled]="!novoNome.trim() || salvando()"
-                    (click)="salvarNova()">
-              <mat-icon>add</mat-icon> Adicionar
-            </button>
+        <div class="list">
+          <div class="list-head cat-grid">
+            <span>Nome</span>
+            <span></span>
           </div>
-        </mat-card>
 
-        <mat-card>
-          <table mat-table [dataSource]="categorias()" class="full-table">
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let c">
+          @for (c of categoriasFiltradas(); track c.id) {
+            <div class="row-card" [class.editing]="editandoId() === c.id">
+              <div class="row-main cat-grid">
+
                 @if (editandoId() === c.id) {
-                  <input class="edit-input" [(ngModel)]="editandoNome"
+                  <input class="inline-edit" [(ngModel)]="editandoNome"
                          (keydown.enter)="confirmarEdicao(c)"
-                         (keydown.escape)="cancelarEdicao()" />
+                         (keydown.escape)="cancelarEdicao()"
+                         autofocus />
                 } @else {
-                  {{ c.nome }}
+                  <span class="cat-name">{{ c.nome }}</span>
                 }
-              </td>
-            </ng-container>
 
-            <ng-container matColumnDef="acoes">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let c" class="acoes-cell">
-                @if (editandoId() === c.id) {
-                  <button mat-icon-button color="primary"
-                          [disabled]="!editandoNome.trim()"
-                          (click)="confirmarEdicao(c)" title="Confirmar">
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                } @else {
-                  <button mat-icon-button (click)="iniciarEdicao(c)" title="Editar">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button color="warn" (click)="excluir(c.id)" title="Excluir">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
-              </td>
-            </ng-container>
+                <div class="row-actions-cell">
+                  @if (editandoId() === c.id) {
+                    <button class="btn ghost icon sm ok-btn"
+                            [disabled]="!editandoNome.trim()"
+                            (click)="confirmarEdicao(c)" title="Confirmar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </button>
+                    <button class="btn ghost icon sm" (click)="cancelarEdicao()" title="Cancelar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                  } @else {
+                    <button class="btn ghost icon sm" (click)="iniciarEdicao(c)" title="Editar">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    </button>
+                    <button class="btn ghost icon sm del-btn" (click)="excluir(c.id)" title="Excluir">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                    </button>
+                  }
+                </div>
 
-            <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-            <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
-
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell empty-state" colspan="2">
-                Nenhuma categoria cadastrada ainda.
-              </td>
-            </tr>
-          </table>
-        </mat-card>
+              </div>
+            </div>
+          }
+        </div>
       }
+
     </div>
   `,
   styles: [`
-    .page-container { padding: 24px; max-width: 640px; }
-    .page-header { display: flex; align-items: center; margin-bottom: 16px; }
-    h1 { margin: 0; font-size: 22px; font-weight: 600; }
-    .loading { display: flex; justify-content: center; padding: 48px 0; }
-    .full-table { width: 100%; }
-    .add-card { margin-bottom: 16px; padding: 16px; }
-    .add-row {
+    .add-form {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
+      margin-bottom: 20px;
     }
-    .nome-field { flex: 1; }
-    .acoes-cell { white-space: nowrap; text-align: right; width: 88px; }
-    .empty-state { text-align: center; padding: 24px; color: #888; }
-    .edit-input {
+
+    .cat-grid {
+      grid-template-columns: 1fr 80px;
+    }
+
+    .row-main.cat-grid {
+      cursor: default;
+    }
+
+    .row-card.editing {
+      border-color: var(--bordo);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .cat-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .inline-edit {
       width: 100%;
-      height: 32px;
-      padding: 0 8px;
-      border: 1px solid #90282a;
-      border-radius: 4px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1.5px solid var(--bordo);
+      border-radius: var(--r-sm);
       font-size: 14px;
       font-family: inherit;
+      color: var(--text);
+      background: var(--surface);
       outline: none;
+      box-shadow: 0 0 0 3px var(--bordo-tint);
+    }
+
+    .row-actions-cell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .ok-btn {
+      color: var(--ok);
+      &:hover { background: var(--ok-soft) !important; }
+    }
+
+    .del-btn {
+      color: var(--bad);
+      &:hover { background: var(--bad-soft) !important; }
+    }
+
+    .load-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 64px;
+    }
+
+    .spin-ring {
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .empty-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 64px;
+      color: var(--text-3);
+
+      p { margin: 0; font-size: 14px; }
+      .hint-text { color: var(--text-4); font-size: 13px; }
     }
   `],
 })
@@ -133,13 +214,19 @@ export class ListaCategoriasComponent implements OnInit {
   private service = inject(CategoriasFornecedorService);
   private snack   = inject(MatSnackBar);
 
-  categorias  = signal<CategoriaFornecedor[]>([]);
-  carregando  = signal(false);
-  salvando    = signal(false);
-  editandoId  = signal<string | null>(null);
+  categorias   = signal<CategoriaFornecedor[]>([]);
+  carregando   = signal(false);
+  salvando     = signal(false);
+  editandoId   = signal<string | null>(null);
+  busca        = signal('');
   editandoNome = '';
   novoNome     = '';
-  colunas      = ['nome', 'acoes'];
+
+  categoriasFiltradas = computed(() => {
+    const q = this.busca().toLowerCase().trim();
+    if (!q) return this.categorias();
+    return this.categorias().filter(c => c.nome.toLowerCase().includes(q));
+  });
 
   async ngOnInit() {
     await this.carregar();

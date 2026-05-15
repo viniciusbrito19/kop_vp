@@ -10,6 +10,7 @@ export interface TituloDespesa {
   data_vencimento: string | null;
   data_pagamento: string | null;
   lancamento_extrato_id: string | null;
+  despesa_recorrente_id: string | null;
   fornecedores: { nome: string; categoria_fornecedor?: { id: string; nome: string } | null } | null;
 }
 
@@ -97,7 +98,7 @@ export class DespesasService {
   async listarTitulosDespesa(): Promise<TituloDespesa[]> {
     const { data, error } = await this.db
       .from('titulos')
-      .select('id, codigo, descricao, valor, data_vencimento, data_pagamento, lancamento_extrato_id, fornecedores(nome, categoria_fornecedor:categorias_fornecedor(id, nome))')
+      .select('id, codigo, descricao, valor, data_vencimento, data_pagamento, lancamento_extrato_id, despesa_recorrente_id, fornecedores(nome, categoria_fornecedor:categorias_fornecedor(id, nome))')
       .is('pedido_id', null)
       .order('data_vencimento', { ascending: false });
     if (error) throw error;
