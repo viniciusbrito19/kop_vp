@@ -26,6 +26,7 @@ const ICONS: Record<string, string> = {
   receive:   icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   layers:    icon('<path d="m2 7 10-5 10 5-10 5-10-5Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>'),
   box:       icon('<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
+  calculate: icon('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>'),
 };
 
 @Component({
@@ -76,11 +77,12 @@ export class MainLayoutComponent implements OnInit {
   }
 
   navOperacao: NavItem[] = [
-    { label: 'Pedidos',        route: '/pedidos',      iconSvg: this.safe(ICONS['orders'])  },
-    { label: 'Receitas',       route: '/receitas',     iconSvg: this.safe(ICONS['receive']) },
-    { label: 'Despesas',       route: '/despesas',     iconSvg: this.safe(ICONS['wallet'])  },
-    { label: 'Financeiro',     route: '/financeiro',   iconSvg: this.safe(ICONS['finance']) },
-    { label: 'Fluxo de Caixa', route: '/fluxo-caixa', iconSvg: this.safe(ICONS['trend'])   },
+    { label: 'Pedidos',        route: '/pedidos',        iconSvg: this.safe(ICONS['orders'])     },
+    { label: 'Receitas',       route: '/receitas',       iconSvg: this.safe(ICONS['receive'])    },
+    { label: 'Despesas',       route: '/despesas',       iconSvg: this.safe(ICONS['wallet'])     },
+    { label: 'Financeiro',     route: '/financeiro',     iconSvg: this.safe(ICONS['finance'])    },
+    { label: 'Fluxo de Caixa', route: '/fluxo-caixa',   iconSvg: this.safe(ICONS['trend'])      },
+    { label: 'Apuração CRM',   route: '/apuracao-crm',  iconSvg: this.safe(ICONS['calculate'])  },
   ];
 
   navConfiguracoes: NavItem[] = [

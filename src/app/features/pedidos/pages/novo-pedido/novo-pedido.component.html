@@ -202,9 +202,11 @@
         <div class="items-head">
           <span>Descrição</span>
           <span>Qtd</span>
-          <span>Unidade</span>
-          <span style="text-align:right">Vl. Unit.</span>
-          <span style="text-align:right">Vl. Total</span>
+          <span>Un.</span>
+          <span style="text-align:right">Un. NF</span>
+          <span style="text-align:right">Total NF</span>
+          <span style="text-align:right">Un. Venda</span>
+          <span style="text-align:right">Total Venda</span>
           <span></span>
         </div>
 
@@ -216,12 +218,21 @@
               <input class="item-input center" formControlName="unidade" placeholder="KG, UN…" />
               <input class="item-input r" type="number" formControlName="valor_unitario" placeholder="0,00" />
               <input class="item-input r" type="number" formControlName="valor_total" placeholder="0,00" />
+              <input class="item-input r venda" type="number" formControlName="venda_unitario" placeholder="0,00" />
+              <input class="item-input r venda" type="number" formControlName="venda_total" placeholder="0,00" />
               <button type="button" class="btn ghost sm remove-btn" (click)="removerItem(i)" title="Remover item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
               </button>
             </div>
           }
         </div>
+
+        @if (totalVenda != null) {
+          <div class="items-total-venda">
+            <span>Total de Venda:</span>
+            <span>{{ totalVenda | currency:'BRL' }}</span>
+          </div>
+        }
       }
     </div>
 

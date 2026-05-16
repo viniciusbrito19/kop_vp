@@ -67,6 +67,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/produtos/produtos.routes').then(m => m.produtosRoutes),
       },
+      {
+        path: 'apuracao-crm',
+        loadChildren: () =>
+          import('./features/apuracao-crm/apuracao-crm.routes').then(
+            m => m.APURACAO_CRM_ROUTES
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

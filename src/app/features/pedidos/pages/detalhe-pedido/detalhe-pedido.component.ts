@@ -36,7 +36,7 @@ export class DetalhePedidoComponent implements OnInit {
   pedido = signal<Pedido | null>(null);
   itens = signal<ItemPedido[]>([]);
   carregando = signal(true);
-  colunasItens = ['descricao', 'quantidade', 'unidade', 'valor_unitario', 'valor_total'];
+  colunasItens = ['descricao', 'quantidade', 'unidade', 'valor_unitario', 'valor_total', 'venda_unitario', 'venda_total'];
 
   private statusLabel: Record<StatusPedido, string> = {
     recebido: 'Recebido',

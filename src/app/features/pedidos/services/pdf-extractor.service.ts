@@ -109,21 +109,24 @@ export class PdfExtractorService {
     const itens: ItemPedidoForm[] = [];
     const unidades = 'UN|KG|CX|PC|LT|M|PAR|GR|MT|TON|L|ML|FD|SC|BD|CT|DZ|PT|RL|VD|AMP|BIS|CAP|ENV|FR|TB';
     const regex = new RegExp(
-      `\\d{7,13}\\s+(.+?)\\s+\\d{4}\\.\\d{2}\\.\\d{2}\\s+\\d{3}\\s+\\d{4}\\s+(${unidades})\\s+([\\d.,]+)\\s+([\\d.,]+)\\s+([\\d.,]+)`,
+      `(\\d{7,13})\\s+(.+?)\\s+\\d{4}\\.\\d{2}\\.\\d{2}\\s+\\d{3}\\s+\\d{4}\\s+(${unidades})\\s+([\\d.,]+)\\s+([\\d.,]+)\\s+([\\d.,]+)`,
       'g'
     );
 
     let match;
     while ((match = regex.exec(texto)) !== null) {
-      const descricao = match[1].trim();
+      const descricao = match[2].trim();
       if (/^Lote:/i.test(descricao)) continue;
 
       itens.push({
+        ean:            match[1] || null,
         descricao,
-        unidade:        match[2],
-        quantidade:     this.parseMoeda(match[3]),
-        valor_unitario: this.parseMoeda(match[4]),
-        valor_total:    this.parseMoeda(match[5]),
+        unidade:        match[3],
+        quantidade:     this.parseMoeda(match[4]),
+        valor_unitario: this.parseMoeda(match[5]),
+        valor_total:    this.parseMoeda(match[6]),
+        venda_unitario: null,
+        venda_total:    null,
       });
     }
     return itens;

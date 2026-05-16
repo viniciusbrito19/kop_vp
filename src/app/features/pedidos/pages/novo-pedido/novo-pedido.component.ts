@@ -176,13 +176,23 @@ export class NovoPedidoComponent implements OnInit {
     this.duplicatasExtraidas = dados.duplicatas;
   }
 
+  get totalVenda(): number | null {
+    const soma = (this.itens.value as any[]).reduce(
+      (acc: number, item: any) => acc + (item.venda_total ?? 0), 0
+    );
+    return soma > 0 ? soma : null;
+  }
+
   private criarItemGroup(valores?: any) {
     return this.fb.group({
-      descricao: [valores?.descricao ?? '', Validators.required],
-      quantidade: [valores?.quantidade ?? null],
-      unidade: [valores?.unidade ?? ''],
-      valor_unitario: [valores?.valor_unitario ?? null],
-      valor_total: [valores?.valor_total ?? null],
+      ean:             [valores?.ean ?? null],
+      descricao:       [valores?.descricao ?? '', Validators.required],
+      quantidade:      [valores?.quantidade ?? null],
+      unidade:         [valores?.unidade ?? ''],
+      valor_unitario:  [valores?.valor_unitario ?? null],
+      valor_total:     [valores?.valor_total ?? null],
+      venda_unitario:  [valores?.venda_unitario ?? null],
+      venda_total:     [valores?.venda_total ?? null],
     });
   }
 
@@ -204,6 +214,10 @@ export class NovoPedidoComponent implements OnInit {
         );
       }
       const v = this.form.value;
+      const itensRaw = (v.itens as any[]) ?? [];
+      const valorVenda = itensRaw.reduce(
+        (acc: number, item: any) => acc + (item.venda_total ?? 0), 0
+      ) || null;
       const formData = {
         codigo: v.codigo || null,
         data_limite: v.data_limite || null,
@@ -212,11 +226,12 @@ export class NovoPedidoComponent implements OnInit {
         numero_nf: v.numero_nf || null,
         data_emissao: v.data_emissao || null,
         valor_total: v.valor_total ?? null,
+        valor_venda: valorVenda,
         status: (v.status as any) ?? 'recebido',
         observacoes: v.observacoes || null,
         pdf_url: pdfUrl,
       };
-      const itens = (v.itens as any[]) ?? [];
+      const itens = itensRaw;
 
       if (this.modoEdicao() && this.pedidoId) {
         await this.pedidosService.atualizar(this.pedidoId, formData, itens);

@@ -43,6 +43,7 @@
     <div class="list">
       <div class="list-head tipos-grid">
         <span>Nome</span>
+        <span>Royalties / FPP</span>
         <span>Status</span>
         <span></span>
       </div>
@@ -52,6 +53,14 @@
           <div class="row-main tipos-grid">
 
             <span class="tipo-name">{{ t.nome }}</span>
+
+            <span>
+              @if (t.incide_royalties) {
+                <span class="badge-royalties">{{ t.tipo_royalties === 'linha' ? 'Linha 37%' : 'Sazonal 27,5%' }}</span>
+              } @else {
+                <span class="badge-isento">Isento</span>
+              }
+            </span>
 
             <button class="pill-toggle" [class.ativo]="t.ativo" (click)="alternarAtivo(t)" title="Clique para alternar">
               <span class="dot"></span>

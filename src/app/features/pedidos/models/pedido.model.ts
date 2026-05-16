@@ -8,6 +8,9 @@ export interface ItemPedido {
   unidade: string | null;
   valor_unitario: number | null;
   valor_total: number | null;
+  ean: string | null;
+  venda_unitario: number | null;
+  venda_total: number | null;
 }
 
 export type ItemPedidoForm = Omit<ItemPedido, 'id' | 'pedido_id'>;
@@ -24,6 +27,7 @@ export interface Pedido {
   status: StatusPedido;
   pdf_url: string | null;
   observacoes: string | null;
+  valor_venda: number | null;
   created_at: string;
   fornecedor?: { nome: string };
   tipo_pedido?: { nome: string };

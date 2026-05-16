@@ -61,7 +61,7 @@
 /* Cabeçalho da tabela de itens */
 .items-head {
   display: grid;
-  grid-template-columns: 3fr 80px 90px 120px 120px 36px;
+  grid-template-columns: 3fr 70px 80px 110px 110px 110px 110px 36px;
   gap: 8px;
   padding: 0 0 8px;
   font-size: 11px;
@@ -76,9 +76,28 @@
 /* Linha de item */
 .item-row {
   display: grid;
-  grid-template-columns: 3fr 80px 90px 120px 120px 36px;
+  grid-template-columns: 3fr 70px 80px 110px 110px 110px 110px 36px;
   gap: 8px;
   align-items: center;
+}
+
+/* Inputs de venda em destaque sutil */
+.item-input.venda {
+  background: var(--bordo-tint);
+  border-color: rgba(122, 31, 43, 0.2);
+}
+
+/* Rodapé de total de venda */
+.items-total-venda {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 8px 46px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bordo);
 }
 
 /* Input inline nos itens */
@@ -206,7 +225,7 @@ button:disabled, a.btn[disabled] {
     }
 
     /* Botão remover — alinhado à direita */
-    > :nth-child(6) {
+    > :nth-child(8) {
       grid-column: 1 / -1;
       justify-self: end;
     }

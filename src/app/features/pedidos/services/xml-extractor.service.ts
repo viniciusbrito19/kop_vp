@@ -42,12 +42,16 @@ export class XmlExtractorService {
     for (let i = 0; i < dets.length; i++) {
       const det = dets[i];
       const f = (t: string) => det.getElementsByTagNameNS('*', t)[0]?.textContent?.trim() ?? '';
+      const cEAN = f('cEAN');
       itens.push({
         descricao:      f('xProd'),
         quantidade:     parseFloat(f('qCom')) || 0,
         unidade:        f('uCom') || null,
         valor_unitario: parseFloat(f('vUnCom')) || null,
         valor_total:    parseFloat(f('vProd')) || null,
+        ean:            (cEAN && cEAN !== 'SEM GTIN') ? cEAN : null,
+        venda_unitario: null,
+        venda_total:    null,
       });
     }
 

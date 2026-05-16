@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
@@ -22,6 +22,22 @@ import { TipoPedido } from '../../models/tipo-pedido.model';
             <span class="hint" style="color:var(--bad)">Nome é obrigatório</span>
           }
         </label>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="incide_royalties" />
+          <span>Incide Royalties / FPP</span>
+        </label>
+
+        @if (form.get('incide_royalties')?.value) {
+          <label class="input">
+            <span>Tipo de cobrança</span>
+            <select formControlName="tipo_royalties">
+              <option value="">Selecione…</option>
+              <option value="linha">Produtos de Linha (37%)</option>
+              <option value="sazonal">Sazonal — Páscoa, Natal, Datas (27,5%)</option>
+            </select>
+          </label>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -39,7 +55,9 @@ import { TipoPedido } from '../../models/tipo-pedido.model';
     </mat-dialog-actions>
   `,
   styles: [`
-    .dialog-form { padding-top: 8px; }
+    .dialog-form { padding-top: 8px; display: flex; flex-direction: column; gap: 12px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+    .checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary, #82622F); }
     .spin-ring-sm { animation: spin 0.9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
@@ -54,17 +72,26 @@ export class TipoPedidoDialogComponent {
 
   form = this.fb.group({
     nome: [this.data?.nome ?? '', Validators.required],
+    incide_royalties: [this.data?.incide_royalties ?? false],
+    tipo_royalties: [this.data?.tipo_royalties ?? null as 'linha' | 'sazonal' | null],
   });
 
   async salvar() {
     if (this.form.invalid) return;
     this.salvando = true;
     try {
-      const nome = this.form.value.nome as string;
+      const v = this.form.value;
+      const incide = !!v.incide_royalties;
+      const formData = {
+        nome: v.nome as string,
+        ativo: this.data?.ativo ?? true,
+        incide_royalties: incide,
+        tipo_royalties: incide ? (v.tipo_royalties as 'linha' | 'sazonal' | null) : null,
+      };
       if (this.data) {
-        await this.service.atualizar(this.data.id, { nome });
+        await this.service.atualizar(this.data.id, formData);
       } else {
-        await this.service.salvar({ nome, ativo: true });
+        await this.service.salvar(formData);
       }
       this.dialogRef.close(true);
     } finally {
