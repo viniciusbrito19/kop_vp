@@ -342,25 +342,6 @@
   }
 }
 
-/* ===== Topbar ===== */
-.topbar {
-  min-height: 56px;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-
-.crumbs {
-  font-size: 13px;
-  color: var(--text-3);
-
-  svg { color: var(--text-4); }
-  b   { color: var(--text); font-weight: 600; }
-}
 
 /* ===== Destinatário field (filter bar) ===== */
 .filter-dest-field {
@@ -387,33 +368,6 @@
    ======================================================================== */
 
 @media (max-width: 640px) {
-
-  /* ===== Topbar: linha única, botões icon-only ===== */
-  .topbar {
-    padding: 0 16px;
-    gap: 8px;
-    /* Override do flex-wrap:wrap global — tudo cabe em uma linha */
-    flex-wrap: nowrap;
-
-    /* Crumbs: largura natural; o spacer empurra os botões para a direita */
-    .crumbs {
-      flex: none;
-      white-space: nowrap;
-      overflow: hidden;
-      min-width: 0;
-    }
-
-    /* Esconde label, mantém só o ícone */
-    .btn-label { display: none; }
-
-    .btn.outline.sm,
-    .btn.primary.sm {
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      flex-shrink: 0;
-    }
-  }
 
   /* ===== Content padding ===== */
   .content { padding: 16px 14px 32px; }

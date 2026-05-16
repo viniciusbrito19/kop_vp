@@ -12,27 +12,19 @@ import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
     MatSnackBarModule,
   ],
   template: `
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="crumbs row gap-2">
-        <span>Configurações</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-        <b>Categorias de Fornecedor</b>
-      </div>
-      <div class="spacer"></div>
-      <div class="field" style="width:240px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input [ngModel]="busca()" (ngModelChange)="busca.set($event)" placeholder="Buscar categoria…" />
-      </div>
-    </header>
-
     <!-- ===== Content ===== -->
     <div class="content">
 
       <!-- Page heading -->
-      <div style="margin-bottom:28px">
-        <h1 class="page">Categorias de <span class="accent serif">fornecedor</span></h1>
-        <div class="page-sub">{{ categoriasFiltradas().length }} categoria{{ categoriasFiltradas().length !== 1 ? 's' : '' }} cadastrada{{ categoriasFiltradas().length !== 1 ? 's' : '' }}</div>
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:28px">
+        <div>
+          <h1 class="page">Categorias de <span class="accent serif">fornecedor</span></h1>
+          <div class="page-sub">{{ categoriasFiltradas().length }} categoria{{ categoriasFiltradas().length !== 1 ? 's' : '' }} cadastrada{{ categoriasFiltradas().length !== 1 ? 's' : '' }}</div>
+        </div>
+        <div class="field" style="width:240px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input [ngModel]="busca()" (ngModelChange)="busca.set($event)" placeholder="Buscar categoria…" />
+        </div>
       </div>
 
       <!-- Add form -->

@@ -68,12 +68,17 @@
 .items-table tr.pago td   { color: var(--ok); }
 .items-table tr.vencido td { color: var(--bad); }
 
-/* ===== Topbar search ===== */
-.topbar-search {
-  width: 300px;
+/* ===== Inline search (filter-bar) ===== */
+.filter-search {
+  height: 36px;
+  padding: 0 12px;
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
-.topbar-search-clear {
+.search-clear {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -88,9 +93,7 @@
   padding: 0;
   transition: color 0.12s ease;
 
-  &:hover {
-    color: var(--text);
-  }
+  &:hover { color: var(--text); }
 }
 
 /* ===== Page heading ===== */
@@ -111,17 +114,6 @@
 }
 
 @media (max-width: 640px) {
-
-  /* Topbar: busca vai para segunda linha em largura total */
-  .topbar {
-    flex-wrap: wrap;
-  }
-
-  .topbar-search {
-    width: 100%;
-    border-radius: var(--r-sm) !important;
-    height: 38px;
-  }
 
   /* ===== Filter bar — layout empilhado no mobile ===== */
   .filter-bar {

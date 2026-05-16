@@ -32,9 +32,9 @@
 
     <div class="kop-section-label">Operação</div>
 
-    <!-- Nav -->
+    <!-- Nav: Operação -->
     <nav class="kop-nav">
-      @for (item of navItems; track item.route) {
+      @for (item of navOperacao; track item.route) {
         <a class="kop-nav-item"
            [routerLink]="item.route"
            routerLinkActive="active"
@@ -44,6 +44,21 @@
           @if (item.badge) {
             <span class="kop-nav-badge">{{ item.badge }}</span>
           }
+        </a>
+      }
+    </nav>
+
+    <div class="kop-section-label">Configurações</div>
+
+    <!-- Nav: Configurações -->
+    <nav class="kop-nav kop-nav-config">
+      @for (item of navConfiguracoes; track item.route) {
+        <a class="kop-nav-item"
+           [routerLink]="item.route"
+           routerLinkActive="active"
+           [title]="collapsed ? item.label : ''">
+          <span class="kop-nav-icon" [innerHTML]="item.iconSvg"></span>
+          <span class="kop-nav-label">{{ item.label }}</span>
         </a>
       }
     </nav>
@@ -129,7 +144,7 @@
 
   <!-- ===== Bottom navigation (mobile only) ===== -->
   <nav class="kop-bottom-nav">
-    @for (item of navItems; track item.route) {
+    @for (item of allNavItems; track item.route) {
       <a class="kop-bnav-item"
          [routerLink]="item.route"
          routerLinkActive="active">

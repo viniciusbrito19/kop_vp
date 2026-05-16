@@ -1,34 +1,3 @@
-<!-- ===== Topbar ===== -->
-<header class="topbar">
-  <div class="crumbs row gap-2">
-    <span>Financeiro</span>
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-    <b>Extrato Bancário</b>
-  </div>
-  <div class="spacer"></div>
-  <button
-    class="btn outline sm"
-    (click)="conciliar()"
-    [disabled]="conciliando() || carregando() || importando()"
-    title="Conciliar despesas"
-    type="button"
-  >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-    <span class="btn-label">{{ conciliando() ? 'Conciliando…' : 'Conciliar despesas' }}</span>
-  </button>
-  <button
-    class="btn primary sm"
-    (click)="fileInput.click()"
-    [disabled]="importando() || carregando()"
-    title="Importar CSV"
-    type="button"
-  >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span class="btn-label">{{ importando() ? 'Importando…' : 'Importar CSV' }}</span>
-  </button>
-  <input #fileInput type="file" accept=".csv" hidden (change)="onArquivoSelecionado($event)" />
-</header>
-
 <!-- ===== Content ===== -->
 <div class="content">
 
@@ -40,6 +9,29 @@
         @if (carregando()) { Carregando lançamentos… }
         @else { {{ totalLancamentos() }} lançamentos importados }
       </div>
+    </div>
+    <div class="row gap-2">
+      <button
+        class="btn outline sm"
+        (click)="conciliar()"
+        [disabled]="conciliando() || carregando() || importando()"
+        title="Conciliar despesas"
+        type="button"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        <span class="btn-label">{{ conciliando() ? 'Conciliando…' : 'Conciliar despesas' }}</span>
+      </button>
+      <button
+        class="btn primary sm"
+        (click)="fileInput.click()"
+        [disabled]="importando() || carregando()"
+        title="Importar CSV"
+        type="button"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span class="btn-label">{{ importando() ? 'Importando…' : 'Importar CSV' }}</span>
+      </button>
+      <input #fileInput type="file" accept=".csv" hidden (change)="onArquivoSelecionado($event)" />
     </div>
   </div>
 

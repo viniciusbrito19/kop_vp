@@ -3,7 +3,7 @@ import {
   HostListener, ElementRef, inject, computed, signal,
 } from '@angular/core';
 
-type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean };
+type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean; disabled: boolean };
 
 @Component({
   selector: 'app-date-picker',
@@ -45,6 +45,8 @@ type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean
               [class.dp-other]="!cell.cur"
               [class.dp-today]="cell.today"
               [class.dp-sel]="cell.sel"
+              [class.dp-disabled]="cell.disabled"
+              [disabled]="cell.disabled || null"
               (click)="pick(cell, $event)">
               {{ cell.d }}
             </button>
@@ -167,12 +169,19 @@ type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean
       color: #fff;
       font-weight: 600;
     }
+    .dp-cell.dp-disabled {
+      color: var(--text-4);
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .dp-cell.dp-disabled:hover { background: transparent; }
   `],
 })
 export class DatePickerComponent {
   private host = inject(ElementRef);
 
   @Input() placeholder = 'dd/mm/aaaa';
+  @Input() min = '';
   @Output() valueChange = new EventEmitter<string>();
 
   @Input() set value(iso: string) {
@@ -201,9 +210,11 @@ export class DatePickerComponent {
   readonly cells = computed((): Cell[] => {
     const y = this._viewYear(), m = this._viewMonth(), sel = this._selected();
     const todayIso = new Date().toISOString().slice(0, 10);
+    const minIso   = this.min;
     const pad = (n: number) => String(n).padStart(2, '0');
     const mkIso = (yr: number, mo: number, day: number) =>
       `${yr}-${pad(mo + 1)}-${pad(day)}`;
+    const isDisabled = (iso: string) => !!minIso && iso < minIso;
 
     const firstDow    = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -214,16 +225,16 @@ export class DatePickerComponent {
       const d = daysInPrev - i;
       const [py, pm] = m === 0 ? [y - 1, 11] : [y, m - 1];
       const iso = mkIso(py, pm, d);
-      result.push({ d, iso, cur: false, today: iso === todayIso, sel: iso === sel });
+      result.push({ d, iso, cur: false, today: iso === todayIso, sel: iso === sel, disabled: isDisabled(iso) });
     }
     for (let d = 1; d <= daysInMonth; d++) {
       const iso = mkIso(y, m, d);
-      result.push({ d, iso, cur: true, today: iso === todayIso, sel: iso === sel });
+      result.push({ d, iso, cur: true, today: iso === todayIso, sel: iso === sel, disabled: isDisabled(iso) });
     }
     for (let d = 1; result.length < 42; d++) {
       const [ny, nm] = m === 11 ? [y + 1, 0] : [y, m + 1];
       const iso = mkIso(ny, nm, d);
-      result.push({ d, iso, cur: false, today: iso === todayIso, sel: iso === sel });
+      result.push({ d, iso, cur: false, today: iso === todayIso, sel: iso === sel, disabled: isDisabled(iso) });
     }
     return result;
   });
@@ -249,6 +260,7 @@ export class DatePickerComponent {
 
   pick(cell: Cell, e: MouseEvent) {
     e.stopPropagation();
+    if (cell.disabled) return;
     this._selected.set(cell.iso);
     const [y, m, d] = cell.iso.split('-');
     this._display.set(`${d}/${m}/${y}`);
@@ -271,6 +283,7 @@ export class DatePickerComponent {
       const date = new Date(yyyy, mm, dd);
       if (date.getFullYear() === yyyy && date.getMonth() === mm && date.getDate() === dd) {
         const iso = `${yyyy}-${String(mm + 1).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+        if (this.min && iso < this.min) return;
         this._selected.set(iso);
         this._viewYear.set(yyyy);
         this._viewMonth.set(mm);

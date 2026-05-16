@@ -44,6 +44,11 @@ export const routes: Routes = [
           import('./features/despesas/despesas.routes').then(m => m.despesasRoutes),
       },
       {
+        path: 'receitas',
+        loadChildren: () =>
+          import('./features/receitas/receitas.routes').then(m => m.receitasRoutes),
+      },
+      {
         path: 'fluxo-caixa',
         loadChildren: () =>
           import('./features/fluxo-caixa/fluxo-caixa.routes').then(
@@ -56,6 +61,11 @@ export const routes: Routes = [
           import('./features/categorias-fornecedor/categorias-fornecedor.routes').then(
             m => m.categoriasFornecedorRoutes
           ),
+      },
+      {
+        path: 'produtos',
+        loadChildren: () =>
+          import('./features/produtos/produtos.routes').then(m => m.produtosRoutes),
       },
     ],
   },

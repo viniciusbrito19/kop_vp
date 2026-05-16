@@ -1,31 +1,21 @@
-<!-- ===== Topbar ===== -->
-<header class="topbar">
-  <div class="crumbs row gap-2">
-    <span>Operação</span>
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-    <a routerLink="/pedidos" style="color:var(--text-3);text-decoration:none">Pedidos a Fornecedores</a>
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-    <b>{{ modoEdicao() ? 'Editar Pedido' : 'Novo Pedido' }}</b>
-  </div>
-  <div class="spacer"></div>
-  <a class="btn outline sm" routerLink="/pedidos">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-    Voltar
-  </a>
-</header>
-
 <!-- ===== Content ===== -->
 <div class="content">
 
   <!-- Page heading -->
-  <div style="margin-bottom:28px">
-    <h1 class="page">
-      {{ modoEdicao() ? 'Editar' : 'Novo' }} <span class="accent serif">pedido</span>
-    </h1>
-    <div class="page-sub">
-      @if (modoEdicao()) { Atualize os dados do pedido abaixo }
-      @else { Preencha os dados ou faça upload da NF para extração automática }
+  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+    <div>
+      <h1 class="page">
+        {{ modoEdicao() ? 'Editar' : 'Novo' }} <span class="accent serif">pedido</span>
+      </h1>
+      <div class="page-sub">
+        @if (modoEdicao()) { Atualize os dados do pedido abaixo }
+        @else { Preencha os dados ou faça upload da NF para extração automática }
+      </div>
     </div>
+    <a class="btn outline sm" routerLink="/pedidos">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Voltar
+    </a>
   </div>
 
   <form [formGroup]="form" class="col" style="gap:16px">

@@ -404,15 +404,6 @@ label.input > textarea { resize: vertical; min-height: 72px; }
   box-shadow: 0 0 0 3px var(--ok-soft);
 }
 
-/* ===== Topbar ===== */
-.topbar {
-  display: flex; align-items: center; gap: 16px;
-  padding: 18px 32px; background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  flex: 0 0 auto;
-}
-.topbar .crumbs { font-size: 13px; color: var(--text-3); }
-.topbar .crumbs b { color: var(--text-2); font-weight: 600; }
 
 /* ===== Content area ===== */
 .content { padding: 28px 32px 40px; flex: 1; }
@@ -502,6 +493,5 @@ mat-card {
   .kpi       { padding: 14px 16px; }
   .kpi-value { font-size: 26px; }
   .content   { padding: 20px 16px 32px; }
-  .topbar    { padding: 14px 16px; flex-wrap: wrap; gap: 8px; }
   .list-head { display: none; }
 }

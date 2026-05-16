@@ -27,7 +27,32 @@
       "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\services\")",
       "Bash(New-Item -ItemType Directory -Force \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\pages\\\\lista-extrato\")",
       "Bash(Write-Host \"Directories created.\")",
-      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\\" -Recurse -Directory | Select-Object FullName)"
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\\" -Recurse -Directory | Select-Object FullName)",
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp \"C:/Users/yanne/.claude/projects/d--Projetos-Kop-VP/f808033d-f3bb-40e6-aea3-65f0f7e4a57e/tool-results/webfetch-1778781860074-ov42ci.bin\" /tmp/design.tar.gz)",
+      "Bash(tar -xzf /tmp/design.tar.gz)",
+      "Read(//tmp/**)",
+      "Bash(tar -tzf /tmp/design.tar.gz)",
+      "Bash(not exist *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(awk '{for\\(i=1;i<=length\\($0\\);i++\\)if\\(substr\\($0,i,1\\)==\"/\"\\)printf \"  \"; print substr\\($0\\)}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Angular:', d.get\\('dependencies',{}\\).get\\('@angular/core',''\\)\\); print\\('Backend?:', [k for k in d.get\\('dependencies',{}\\) if any\\(x in k for x in ['express','fastify','nest','supabase','firebase','http']\\)]\\)\")",
+      "Bash(node -e \"const d=require\\('./package.json'\\); console.log\\('Angular:', d.dependencies['@angular/core']\\); console.log\\('Supabase:', d.dependencies['@supabase/supabase-js']\\); console.log\\('Firebase:', d.dependencies['firebase']\\); console.log\\('HttpClient:', d.dependencies['@angular/common']\\)\")",
+      "PowerShell(npx ng build --configuration development 2>&1)",
+      "Read(//d/d/Projetos/**)",
+      "Bash(grep -E \"\\\\.\\(ts|html\\)$\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\extrato\\\\pages\\\\\" -Force)",
+      "Bash(ls \"d:\\\\\\\\Projetos\\\\\\\\Kop_VP\\\\\\\\src\\\\\\\\app\\\\\\\\features\\\\\\\\extrato\\\\\\\\pages\\\\\\\\\")",
+      "Bash(ls -la \"d:\\\\\\\\Projetos\\\\\\\\Kop_VP\\\\\\\\src\\\\\\\\app\\\\\\\\features\\\\\\\\extrato\\\\\\\\pages\\\\\\\\lista-extrato\\\\\\\\\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\pedidos\\\\pages\\\\lista-pedidos\\\\\" -Force | Select-Object Name, FullName)",
+      "Bash(git -C \"d:/Projetos/Kop_VP\" status)",
+      "Bash(git -C \"d:/Projetos/Kop_VP\" log --oneline -5)",
+      "Bash(git -C \"d:/Projetos/Kop_VP\" diff --stat)",
+      "Bash(git -C \"d:/Projetos/Kop_VP\" add src/app/features/produtos/ src/app/features/receitas/ .claude/settings.local.json src/app/app.routes.ts src/app/features/categorias-fornecedor/pages/lista-categorias/lista-categorias.component.ts src/app/features/extrato/pages/lista-extrato/lista-extrato.component.html src/app/features/extrato/pages/lista-extrato/lista-extrato.component.scss src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.html src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.scss src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.html src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.scss src/app/features/pedidos/pages/novo-pedido/novo-pedido.component.html src/app/features/tipos-pedido/pages/lista-tipos-pedido/lista-tipos-pedido.component.html src/app/layouts/main-layout/main-layout.component.html src/app/layouts/main-layout/main-layout.component.scss src/app/layouts/main-layout/main-layout.component.ts src/app/shared/components/date-picker.component.ts src/styles.scss)"
     ]
   }
 }
