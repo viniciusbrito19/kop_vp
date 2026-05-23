@@ -203,12 +203,17 @@ button:disabled, a.btn[disabled] {
    Responsivo — mobile (≤ 640px)
    ======================================================================== */
 
+/* Alinhamento desktop do heading */
+.page-heading-row {
+  align-items: flex-end;
+}
+
 @media (max-width: 768px) {
   /* Heading quebra linha em tablet */
   .page-heading-row {
     flex-wrap: wrap;
     gap: 12px;
-    align-items: flex-start !important;
+    align-items: flex-start;
   }
 }
 
@@ -217,7 +222,7 @@ button:disabled, a.btn[disabled] {
   /* Heading: título em cima, botão Voltar abaixo */
   .page-heading-row {
     flex-direction: column;
-    align-items: flex-start !important;
+    align-items: flex-start;
     margin-bottom: 20px !important;
 
     a.btn { align-self: flex-start; }
