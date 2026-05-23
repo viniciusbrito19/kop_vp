@@ -184,11 +184,15 @@ export class ApuracaoCrmService {
   }
 
   async reconciliarEans(): Promise<ResultadoReconciliacao> {
-    // 1. Itens de pedido sem EAN (com join para obter numero_nf do pedido)
+    // 0. Restringir apenas a pedidos CRM (tipo_pedido com incide_royalties = true)
+    const pedidosCrmIds = await this.buscarPedidosCrmIds();
+
+    // 1. Itens sem EAN apenas de pedidos CRM
     const { data: semEan, error: e1 } = await this.db
       .from('itens_pedido')
       .select('id, descricao, ean, pedido_id, pedido:pedidos(numero_nf)')
-      .is('ean', null);
+      .is('ean', null)
+      .in('pedido_id', pedidosCrmIds);
     if (e1) throw e1;
 
     // 2. Catálogo de produtos com EAN
@@ -285,14 +289,30 @@ export class ApuracaoCrmService {
   }
 
   async aplicarMatchManual(descricao: string, ean: string): Promise<number> {
+    const pedidosCrmIds = await this.buscarPedidosCrmIds();
     const { data, error } = await this.db
       .from('itens_pedido')
       .update({ ean })
       .ilike('descricao', descricao)
       .is('ean', null)
+      .in('pedido_id', pedidosCrmIds)
       .select('id');
     if (error) throw error;
     return (data ?? []).length;
+  }
+
+  private async buscarPedidosCrmIds(): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('pedidos')
+      .select('id, tipo_pedido:tipos_pedido(incide_royalties)')
+      .not('tipo_pedido_id', 'is', null);
+    if (error) throw error;
+    return (data ?? [])
+      .filter((p: any) => {
+        const tp = Array.isArray(p.tipo_pedido) ? p.tipo_pedido[0] : p.tipo_pedido;
+        return tp?.incide_royalties === true;
+      })
+      .map((p: any) => p.id as string);
   }
 
   private normalizar(s: string): string {
