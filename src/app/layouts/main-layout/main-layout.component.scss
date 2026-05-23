@@ -8,6 +8,7 @@
 .kop-shell {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* iOS 16+: acompanha a viewport real conforme a barra do browser aparece/some */
   overflow: hidden;
   background: var(--bg);
   font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -279,10 +280,52 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--sb-hover);
     color: var(--sb-fg);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .kop-sb.collapsed & {
+    margin-left: 0;
+  }
+}
+
+.kop-mh-logout {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s ease;
+
+  &:active:not(:disabled) {
+    background: var(--surface-2);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+@keyframes kop-spin {
+  to { transform: rotate(360deg); }
+}
+
+.kop-spin {
+  animation: kop-spin 0.8s linear infinite;
 }
 
 /* ===== Main content area ===== */
@@ -302,7 +345,9 @@
   }
 
   .kop-main {
-    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+    /* 72px = altura real do bottom nav (~56px) + folga extra de 16px
+       env(safe-area-inset-bottom, 20px): home indicator iPhone (≈34px) ou 20px de fallback */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 20px));
   }
 }
 
@@ -379,7 +424,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     flex-shrink: 0;

@@ -1,0 +1,24 @@
+{
+  "name": "Kop VP Chocolataria",
+  "short_name": "Kop VP",
+  "description": "Gestão operacional e financeira da Kop VP Chocolataria",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF7F4",
+  "theme_color": "#7A1F2B",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
