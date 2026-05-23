@@ -52,7 +52,30 @@
       "Bash(git -C \"d:/Projetos/Kop_VP\" status)",
       "Bash(git -C \"d:/Projetos/Kop_VP\" log --oneline -5)",
       "Bash(git -C \"d:/Projetos/Kop_VP\" diff --stat)",
-      "Bash(git -C \"d:/Projetos/Kop_VP\" add src/app/features/produtos/ src/app/features/receitas/ .claude/settings.local.json src/app/app.routes.ts src/app/features/categorias-fornecedor/pages/lista-categorias/lista-categorias.component.ts src/app/features/extrato/pages/lista-extrato/lista-extrato.component.html src/app/features/extrato/pages/lista-extrato/lista-extrato.component.scss src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.html src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.scss src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.html src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.scss src/app/features/pedidos/pages/novo-pedido/novo-pedido.component.html src/app/features/tipos-pedido/pages/lista-tipos-pedido/lista-tipos-pedido.component.html src/app/layouts/main-layout/main-layout.component.html src/app/layouts/main-layout/main-layout.component.scss src/app/layouts/main-layout/main-layout.component.ts src/app/shared/components/date-picker.component.ts src/styles.scss)"
+      "Bash(git -C \"d:/Projetos/Kop_VP\" add src/app/features/produtos/ src/app/features/receitas/ .claude/settings.local.json src/app/app.routes.ts src/app/features/categorias-fornecedor/pages/lista-categorias/lista-categorias.component.ts src/app/features/extrato/pages/lista-extrato/lista-extrato.component.html src/app/features/extrato/pages/lista-extrato/lista-extrato.component.scss src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.html src/app/features/fornecedores/pages/lista-fornecedores/lista-fornecedores.component.scss src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.html src/app/features/pedidos/pages/lista-pedidos/lista-pedidos.component.scss src/app/features/pedidos/pages/novo-pedido/novo-pedido.component.html src/app/features/tipos-pedido/pages/lista-tipos-pedido/lista-tipos-pedido.component.html src/app/layouts/main-layout/main-layout.component.html src/app/layouts/main-layout/main-layout.component.scss src/app/layouts/main-layout/main-layout.component.ts src/app/shared/components/date-picker.component.ts src/styles.scss)",
+      "Bash(git -C d:/Projetos/Kop_VP commit -m ' *)",
+      "Bash(git -C \"d:/Projetos/Kop_VP\" push origin master)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Projetos\\\\Kop_VP\" -Recurse -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Projetos\\\\Kop_VP\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(xargs ls -la)",
+      "Bash(xargs wc -l)",
+      "mcp__ide__getDiagnostics",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projetos\\\\Kop_VP\\\\src\\\\app\\\\features\\\\apuracao-crm\\\\\" -Recurse -File | Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Projetos\\\\Kop_VP\" -Recurse -Force -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Format-Table FullName)",
+      "Bash(xargs cat)",
+      "Bash(xargs grep -l \"innerHTML\\\\|bypassSecurityTrust\")",
+      "Bash(xargs grep -l \"eval\\\\|Function\\\\|dangerouslySetInnerHTML\")",
+      "Bash(xargs grep -i \"localhost\\\\|127.0.0.1\\\\|192.168\\\\|10.0\\\\|172.16\")",
+      "Bash(xargs grep -E \"\\(hardcode|TODO|FIXME|XXX|HACK\\)\")",
+      "Bash(git log *)",
+      "Bash(xargs grep -i \"example\\\\|test\\\\|demo\")",
+      "Bash(xargs grep -n \"document\\\\.\\\\|window\\\\.\\\\|eval\")",
+      "Bash(xargs grep -l \"getPublicUrl\\\\|publicUrl\")",
+      "Bash(xargs grep -n \"sanitizer\\\\|bypassSecurityTrust\\\\|DomSanitizer\")"
     ]
   }
 }

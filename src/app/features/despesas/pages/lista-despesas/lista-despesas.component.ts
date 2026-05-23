@@ -51,15 +51,15 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         <mat-spinner diameter="40"/>
       </div>
     } @else {
-      <div style="padding:28px 32px 48px;max-width:1600px">
+      <div class="page-wrap">
 
         <!-- ── Header ────────────────────────────────────────── -->
-        <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+        <div class="row header-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
           <div>
             <h1 class="page">Despesas <span class="accent serif">fixas</span></h1>
             <div class="page-sub">O que a loja gasta todo mês para abrir as portas · {{ mesLabel }}</div>
           </div>
-          <div class="row gap-2">
+          <div class="row gap-2 header-actions">
             <button class="btn ghost sm" type="button" (click)="toggleTitulos()">
               <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">receipt_long</mat-icon>
               Títulos
@@ -76,10 +76,10 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         </div>
 
         <!-- ── KPI row ───────────────────────────────────────── -->
-        <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px">
+        <div class="kpi-grid">
 
           <!-- KPI principal bordô -->
-          <div class="kpi bordo" style="padding:22px">
+          <div class="kpi bordo kpi-main" style="padding:22px">
             <div class="kpi-label">
               <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
               CUSTO FIXO MENSAL
@@ -137,7 +137,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         </div>
 
         <!-- ── 2-column layout ───────────────────────────────── -->
-        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:22px">
+        <div class="main-grid">
 
           <!-- ── Left: lista de despesas ──────────────────────── -->
           <div class="card" style="padding:22px">
@@ -259,7 +259,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
               <!-- Donut SVG -->
               <div style="display:flex;justify-content:center;margin-bottom:20px">
-                <div style="position:relative;width:160px;height:160px">
+                <div class="donut-wrap" style="position:relative;width:160px;height:160px">
                   <svg width="160" height="160" viewBox="0 0 160 160">
                     @if (categoriasData.length === 0) {
                       <circle cx="80" cy="80" r="56" fill="none"
@@ -446,6 +446,14 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
     </mat-menu>
   `,
   styles: [`
+    :host { display: block; }
+
+    /* ── Layout base ─────────────────────────────────────── */
+    .page-wrap  { padding: 28px 32px 48px; max-width: 1600px; }
+    .kpi-grid   { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .main-grid  { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; }
+
+    /* ── Tabela de títulos ───────────────────────────────── */
     .full-table  { width: 100%; }
     .num-header  { text-align: right !important; }
     .num-cell    { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -453,6 +461,44 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
     .empty-state { text-align: center; padding: 48px 32px; color: var(--text-4); display: table-cell; }
     .menu-danger { color: var(--bad) !important; }
     .menu-danger mat-icon { color: var(--bad) !important; }
+
+    /* ── Responsividade mobile ───────────────────────────── */
+    @media (max-width: 680px) {
+      .page-wrap { padding: 14px 14px 28px; }
+
+      /* Header: empilha título e botões */
+      .header-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px;
+        margin-bottom: 16px !important;
+      }
+      .header-row h1.page { font-size: 22px !important; }
+
+      /* Oculta botões secundários; mantém só Nova Despesa */
+      .header-actions .btn.ghost,
+      .header-actions .btn.outline { display: none !important; }
+
+      /* KPIs: card principal ocupa linha inteira, demais em 2 colunas */
+      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+      .kpi-main { grid-column: 1 / -1; }
+
+      /* KPI principal: reduz fonte do valor */
+      .kpi-main .serif[style*="font-size:44px"] { font-size: 32px !important; }
+
+      /* Layout principal: coluna única */
+      .main-grid { grid-template-columns: 1fr; gap: 14px; }
+
+      /* Donut: reduz tamanho no mobile */
+      .donut-wrap { width: 130px !important; height: 130px !important; }
+      .donut-wrap svg { width: 130px !important; height: 130px !important; }
+
+      /* Segmented control menor */
+      .seg button { padding: 4px 8px !important; font-size: 11px !important; }
+
+      /* Rodapé da lista */
+      .main-grid .serif[style*="font-size:26px"] { font-size: 20px !important; }
+    }
   `],
 })
 export class ListaDespesasComponent implements OnInit {
