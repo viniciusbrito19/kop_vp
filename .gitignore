@@ -43,5 +43,11 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
+# Environment files with real credentials (use environment.prod.ts for CI/CD)
+src/environments/environment.ts
+.env
+.env.*
+!.env.example
+
 # Claude Code local config
 .claude/settings.local.json
