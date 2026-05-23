@@ -22,37 +22,37 @@ const CH = 300;  // total viewBox height
         <mat-spinner diameter="40"/>
       </div>
     } @else {
-      <div style="padding:28px 32px 48px;max-width:1600px">
+      <div class="page-wrapper">
 
         <!-- ── Header ─────────────────────────────────────────── -->
-        <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
-          <div>
+        <div class="fc-header">
+          <div class="fc-header-title">
             <h1 class="page">Fluxo de <span class="accent serif">caixa</span></h1>
-            <div class="page-sub">Quanto sua loja custa por mês · o que entra e o que sai · onde você estará daqui a 3 meses</div>
+            <div class="page-sub fc-sub">Quanto sua loja custa por mês · o que entra e o que sai · onde você estará daqui a 3 meses</div>
           </div>
-          <div class="row gap-2">
+          <div class="fc-header-controls">
             <div class="seg">
               @for (opt of periodoOpts; track opt.value) {
                 <button [class.on]="periodo() === opt.value" (click)="periodo.set(opt.value)">{{ opt.label }}</button>
               }
             </div>
-            <button class="btn outline" type="button">
+            <button class="btn outline fc-export-btn" type="button">
               <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">download</mat-icon>
-              Exportar
+              <span class="fc-export-label">Exportar</span>
             </button>
           </div>
         </div>
 
         <!-- ── KPI row ─────────────────────────────────────────── -->
-        <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px">
+        <div class="fc-kpi-grid">
 
           <!-- Saldo do mês (bordô) -->
-          <div class="kpi bordo" style="padding:22px">
+          <div class="kpi kpi-saldo bordo" style="padding:22px">
             <div class="kpi-label">
               <mat-icon style="font-size:14px;width:14px;height:14px">account_balance</mat-icon>
               SALDO DO MÊS
             </div>
-            <div class="serif" style="font-size:44px;line-height:1.05;margin-top:4px">
+            <div class="serif fc-saldo-valor" style="line-height:1.05;margin-top:4px">
               {{ moedaCompact(atual?.saldo ?? 0) }}
             </div>
             <div style="font-size:12px;opacity:0.78;margin-top:6px;line-height:1.5">
@@ -95,7 +95,7 @@ const CH = 300;  // total viewBox height
           </div>
 
           <!-- Margem operacional (gold) -->
-          <div class="kpi gold">
+          <div class="kpi kpi-margem gold">
             <div class="kpi-label">
               <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
               MARGEM OPERACIONAL
@@ -113,14 +113,14 @@ const CH = 300;  // total viewBox height
         <div class="card" style="padding:22px">
 
           <!-- Card header + legend -->
-          <div class="row" style="align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+          <div class="fc-chart-header">
             <div>
               <h3 class="serif" style="margin:0;font-size:22px;font-weight:400">Histórico & Projeção</h3>
               <div style="font-size:12px;color:var(--text-3);margin-top:2px">
                 Últimos 12 meses + projeção de 3 meses (intervalo de confiança 85%)
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:20px;font-size:12px;color:var(--text-2)">
+            <div class="fc-legend">
               <span style="display:flex;align-items:center;gap:6px">
                 <span style="width:10px;height:10px;border-radius:2px;background:#4A8C6A;flex:none"></span>Entradas
               </span>
@@ -211,21 +211,21 @@ const CH = 300;  // total viewBox height
           </svg>
 
           <!-- Stats row -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);padding-top:16px;margin-top:12px">
+          <div class="fc-stats-row">
 
             <!-- Maior mês -->
-            <div style="padding-right:24px;border-right:1px solid var(--line)">
+            <div class="fc-stat-item">
               <div class="kpi-label" style="margin-bottom:6px">MAIOR MÊS</div>
-              <div class="serif" style="font-size:26px;font-weight:400;line-height:1.1">{{ maiorMesLabel }}</div>
+              <div class="serif fc-stat-valor">{{ maiorMesLabel }}</div>
               <div style="font-size:11px;color:var(--bordo);margin-top:4px">
                 {{ moedaCompact(maiorMesEntradas) }} — pico do período
               </div>
             </div>
 
             <!-- Total 12 meses -->
-            <div style="padding:0 24px;border-right:1px solid var(--line)">
+            <div class="fc-stat-item">
               <div class="kpi-label" style="margin-bottom:6px">TOTAL 12 MESES</div>
-              <div class="serif" style="font-size:26px;font-weight:400;line-height:1.1">{{ moedaCompact(totalSaldo12) }}</div>
+              <div class="serif fc-stat-valor">{{ moedaCompact(totalSaldo12) }}</div>
               <div style="font-size:11px;margin-top:4px">
                 <span [class]="totalSaldo12 >= 0 ? 'trend up' : 'trend down'">
                   {{ totalSaldo12 >= 0 ? '↑ saldo positivo' : '↓ saldo negativo' }}
@@ -235,9 +235,9 @@ const CH = 300;  // total viewBox height
             </div>
 
             <!-- Projeção último mês -->
-            <div style="padding:0 24px;border-right:1px solid var(--line)">
+            <div class="fc-stat-item">
               <div class="kpi-label" style="margin-bottom:6px">PROJEÇÃO {{ ultimaProjecaoLabel }}</div>
-              <div class="serif" style="font-size:26px;font-weight:400;line-height:1.1"
+              <div class="serif fc-stat-valor"
                    [style.color]="(projecao[2]?.saldo ?? 0) >= 0 ? '' : 'var(--bad)'">
                 {{ moedaCompact(projecao[2]?.saldo ?? 0) }}
               </div>
@@ -245,9 +245,9 @@ const CH = 300;  // total viewBox height
             </div>
 
             <!-- Reserva de caixa -->
-            <div style="padding-left:24px">
+            <div class="fc-stat-item">
               <div class="kpi-label" style="margin-bottom:6px">RESERVA DE CAIXA</div>
-              <div class="serif" style="font-size:26px;font-weight:400;line-height:1.1">{{ reservaCaixa }} meses</div>
+              <div class="serif fc-stat-valor">{{ reservaCaixa }} meses</div>
               <div style="font-size:11px;margin-top:4px">
                 <span [class]="reservaCaixaNum >= 3 ? 'trend up' : 'trend down'">
                   {{ reservaCaixaNum >= 3 ? '↑' : '↓' }} recomendado: 3 meses
@@ -261,7 +261,141 @@ const CH = 300;  // total viewBox height
       </div>
     }
   `,
-  styles: [],
+  styles: [`
+    /* ── Wrapper ──────────────────────────────────────────────── */
+    .page-wrapper {
+      padding: 28px 32px 48px;
+      max-width: 1600px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    .fc-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .fc-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* ── KPI grid ─────────────────────────────────────────────── */
+    .fc-kpi-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .fc-saldo-valor { font-size: 44px; }
+
+    /* ── Chart card ───────────────────────────────────────────── */
+    .fc-chart-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .fc-legend {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    /* ── Stats row ────────────────────────────────────────────── */
+    .fc-stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      margin-top: 12px;
+    }
+    .fc-stat-item { min-width: 0; }
+    .fc-stat-item:not(:last-child) { border-right: 1px solid var(--line); }
+    .fc-stat-item:first-child      { padding-right: 24px; }
+    .fc-stat-item:nth-child(2),
+    .fc-stat-item:nth-child(3)     { padding: 0 24px; }
+    .fc-stat-item:last-child       { padding-left: 24px; }
+    .fc-stat-valor { font-size: 26px; font-weight: 400; line-height: 1.1; }
+
+    /* ── Tablet (≤ 900px) ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .fc-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .kpi-saldo { grid-column: 1 / -1; }
+    }
+
+    /* ── Mobile (≤ 640px) ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .page-wrapper {
+        padding: 16px 16px 32px;
+      }
+
+      /* Header */
+      .fc-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 16px;
+        gap: 12px;
+      }
+      .fc-sub { display: none; }
+      .fc-header-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .fc-export-label { display: none; }
+      .fc-export-btn   { min-width: 40px; padding: 0 12px; }
+
+      /* KPI grid: saldo full-width, entradas+saídas em 2 cols, margem full-width */
+      .fc-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .kpi-saldo  { grid-column: 1 / -1; }
+      .kpi-margem { grid-column: 1 / -1; }
+      .fc-saldo-valor { font-size: 32px; }
+
+      /* Chart card */
+      .fc-chart-header {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .fc-legend { gap: 14px; flex-wrap: wrap; }
+
+      /* Stats: 2×2 grid */
+      .fc-stats-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+      }
+      .fc-stat-item {
+        padding: 12px 0 !important;
+        border-right: none !important;
+        border-bottom: none;
+      }
+      .fc-stat-item:nth-child(odd)  {
+        padding-right: 12px !important;
+        border-right: 1px solid var(--line) !important;
+      }
+      .fc-stat-item:nth-child(even) { padding-left: 12px !important; }
+      .fc-stat-item:nth-child(-n+2) {
+        border-bottom: 1px solid var(--line) !important;
+        padding-bottom: 14px !important;
+      }
+      .fc-stat-item:nth-child(3),
+      .fc-stat-item:nth-child(4)    { padding-top: 14px !important; }
+      .fc-stat-valor { font-size: 20px; }
+    }
+  `],
 })
 export class FluxoCaixaComponent implements OnInit {
   private svc   = inject(FluxoCaixaService);
