@@ -364,7 +364,7 @@ h1.page .accent { color: var(--bordo); font-style: italic; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-grid.single { grid-template-columns: 1fr; }
 .form-grid .full { grid-column: 1 / -1; }
-label.input { display: flex; flex-direction: column; gap: 6px; }
+label.input { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 label.input > span { font-size: 12px; color: var(--text-3); font-weight: 600; letter-spacing: 0.01em; }
 label.input > input,
 label.input > select,
@@ -372,12 +372,13 @@ label.input > textarea {
   font-family: inherit; font-size: 14px; color: var(--text);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm);
   padding: 12px 14px; outline: none; transition: all 0.15s ease;
+  width: 100%; min-width: 0; box-sizing: border-box;
 }
 label.input > input:focus,
 label.input > select:focus,
 label.input > textarea:focus { border-color: var(--bordo); box-shadow: 0 0 0 3px var(--bordo-tint); }
 label.input > textarea { resize: vertical; min-height: 72px; }
-.hint { font-size: 11px; color: var(--text-4); margin-top: 2px; }
+.hint { font-size: 11px; color: var(--text-4); margin-top: 2px; overflow-wrap: break-word; word-break: break-word; }
 
 /* ===== Misc ===== */
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
@@ -492,6 +493,9 @@ mat-card {
   .page-sub  { font-size: 13px; }
   .kpi       { padding: 14px 16px; }
   .kpi-value { font-size: 26px; }
-  .content   { padding: 20px 16px 32px; }
+  .content   { padding: 20px 16px 32px; overflow-x: hidden; }
   .list-head { display: none; }
+
+  /* Garante que células de grid nunca ultrapassem o container */
+  .form-grid > * { min-width: 0; }
 }
