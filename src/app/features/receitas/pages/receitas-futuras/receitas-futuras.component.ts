@@ -31,15 +31,15 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
         <mat-spinner diameter="40"/>
       </div>
     } @else {
-      <div style="padding:28px 32px 48px;max-width:1600px">
+      <div class="outer-wrap" style="padding:28px 32px 48px;max-width:1600px">
 
         <!-- ── Header ─────────────────────────────────────── -->
-        <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+        <div class="row header-row" style="justify-content:space-between;margin-bottom:22px">
           <div>
             <h1 class="page">Receitas <span class="accent serif">futuras</span></h1>
             <div class="page-sub">O que a loja vai receber nos próximos dias · {{ mesLabel }}</div>
           </div>
-          <div class="row gap-2">
+          <div class="row gap-2 header-btns">
             <button class="btn ghost sm" type="button" (click)="toggleTitulos()">
               <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">receipt_long</mat-icon>
               Títulos
@@ -57,10 +57,10 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
         <input #fileInput type="file" accept=".csv" style="display:none" (change)="onFileChange($event)">
 
         <!-- ── KPIs ─────────────────────────────────────────── -->
-        <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px">
+        <div class="kpi-grid-resp" style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px">
 
           <!-- KPI 1 – Total previsto -->
-          <div class="kpi bordo" style="padding:22px">
+          <div class="kpi bordo kpi-main" style="padding:22px">
             <div class="kpi-label">
               <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
               TOTAL PREVISTO · {{ mesAbrev }}
@@ -128,19 +128,19 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
         </div>
 
         <!-- ── 2-column layout ──────────────────────────────── -->
-        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:22px">
+        <div class="two-col" style="display:grid;grid-template-columns:1.4fr 1fr;gap:22px">
 
           <!-- ── Left: lista por dia ──────────────────────────── -->
           <div class="card" style="padding:22px">
 
-            <div class="row" style="justify-content:space-between;margin-bottom:18px;align-items:flex-start">
+            <div class="row receitas-header" style="margin-bottom:18px">
               <div>
                 <h3 class="serif" style="margin:0;font-size:22px;font-weight:400">Receitas previstas</h3>
                 <div style="font-size:12px;color:var(--text-3);margin-top:2px">
                   {{ countAReceber }} títulos · {{ gruposFuturos.length }} dias com entrada · vencimentos em {{ mesLabel }}
                 </div>
               </div>
-              <div class="field filter-date-range">
+              <div class="field filter-date-range date-filter-resp">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text-3)"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
                 <app-date-picker placeholder="De" [min]="_amanhaIso" [value]="dataInicio()" (valueChange)="setDataInicio($event)"/>
                 <span style="color:var(--text-4);font-size:13px;flex-shrink:0">–</span>
@@ -230,8 +230,9 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
               </div>
 
               <!-- Donut SVG representando a distribuição temporal -->
-              <div style="display:flex;justify-content:center;margin-bottom:20px">
-                <div style="position:relative;width:160px;height:160px">
+              <div class="categoria-inner">
+              <div class="donut-wrap" style="display:flex;justify-content:center;margin-bottom:20px">
+                <div class="donut-outer" style="position:relative;width:160px;height:160px">
                   <svg width="160" height="160" viewBox="0 0 160 160">
                     @if (donutSegments.length === 0) {
                       <circle cx="80" cy="80" r="56" fill="none" stroke="var(--line-2)" stroke-width="24"/>
@@ -255,7 +256,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
               </div>
 
               <!-- Top dias -->
-              <div class="col gap-2">
+              <div class="col gap-2 legend-list">
                 @for (item of topDias; track item.data) {
                   <div class="row gap-3" style="align-items:center">
                     <span [style.background]="item.cor"
@@ -277,6 +278,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
                   </div>
                 }
               </div>
+              </div><!-- /categoria-inner -->
             </div>
 
             <!-- Insight -->
@@ -309,6 +311,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
                 <mat-icon>close</mat-icon>
               </button>
             </div>
+            <div class="titulo-scroll">
             <table mat-table [dataSource]="dsTabela" matSort class="full-table">
 
               <ng-container matColumnDef="data_prevista">
@@ -332,6 +335,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
                 <td [attr.colspan]="cols.length" class="empty-state">Nenhum registro encontrado.</td>
               </tr>
             </table>
+            </div><!-- /titulo-scroll -->
             <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons/>
           </div>
         }
@@ -344,6 +348,35 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
     .num-header  { text-align: right !important; }
     .num-cell    { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .empty-state { text-align: center; padding: 48px 32px; color: var(--text-4); display: table-cell; }
+
+    /* ── Layout helpers ── */
+    .header-row      { align-items: flex-end; }
+    .receitas-header { justify-content: space-between; align-items: flex-start; }
+    .titulo-scroll   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .titulo-scroll .full-table { min-width: 400px; }
+
+    /* ── Tablet (≤ 768px) ── */
+    @media (max-width: 768px) {
+      .two-col         { grid-template-columns: 1fr !important; }
+      .kpi-grid-resp   { grid-template-columns: 1fr 1fr !important; }
+      .kpi-main        { grid-column: 1 / -1; }
+      .header-row      { flex-direction: column; align-items: flex-start !important; gap: 12px; }
+      .receitas-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+      .date-filter-resp { width: 100% !important; min-width: 0; }
+    }
+
+    /* ── Mobile (≤ 640px) ── */
+    @media (max-width: 640px) {
+      .outer-wrap  { padding: 20px 16px 40px !important; }
+      .header-btns { flex-wrap: wrap; gap: 6px; }
+
+      /* Donut + legenda lado a lado */
+      .categoria-inner { display: flex; gap: 14px; align-items: flex-start; }
+      .donut-wrap      { margin-bottom: 0 !important; flex: 0 0 auto; }
+      .donut-outer     { width: 120px !important; height: 120px !important; }
+      .donut-outer svg { width: 120px !important; height: 120px !important; }
+      .legend-list     { flex: 1; min-width: 0; }
+    }
   `],
 })
 export class ReceitasFuturasComponent implements OnInit {
