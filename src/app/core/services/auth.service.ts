@@ -14,7 +14,8 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    await this.db.auth.signOut();
+    const { error } = await this.db.auth.signOut();
+    if (error) throw error;
     this.router.navigate(['/login']);
   }
 

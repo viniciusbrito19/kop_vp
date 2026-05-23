@@ -42,6 +42,7 @@ export class MainLayoutComponent implements OnInit {
 
   collapsed = false;
   darkMode = false;
+  loggingOut = signal(false);
 
   displayName = signal('');
   initials   = signal('');
@@ -104,7 +105,13 @@ export class MainLayoutComponent implements OnInit {
     this.collapsed = !this.collapsed;
   }
 
-  logout(): void {
-    this.auth.logout();
+  async logout(): Promise<void> {
+    if (this.loggingOut()) return;
+    this.loggingOut.set(true);
+    try {
+      await this.auth.logout();
+    } catch {
+      this.loggingOut.set(false);
+    }
   }
 }
