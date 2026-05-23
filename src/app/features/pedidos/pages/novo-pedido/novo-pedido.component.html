@@ -2,7 +2,7 @@
 <div class="content">
 
   <!-- Page heading -->
-  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+  <div class="row page-heading-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:28px">
     <div>
       <h1 class="page">
         {{ modoEdicao() ? 'Editar' : 'Novo' }} <span class="accent serif">pedido</span>
@@ -237,7 +237,7 @@
     </div>
 
     <!-- ===== Rodapé de ações ===== -->
-    <div class="row gap-3" style="justify-content:flex-end;padding:4px 0 20px">
+    <div class="row gap-3 form-actions" style="justify-content:flex-end;padding:4px 0 20px">
       <a class="btn outline" routerLink="/pedidos">Cancelar</a>
       <button type="button" class="btn primary" [disabled]="salvando()" (click)="salvar()">
         @if (salvando()) {

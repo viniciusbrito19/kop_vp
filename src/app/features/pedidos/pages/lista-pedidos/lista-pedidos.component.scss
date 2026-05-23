@@ -228,9 +228,32 @@
     }
   }
 
+  /* Busca ocupa linha inteira */
+  .filter-search {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+  }
+
+  /* Contador e limpar ficam numa linha própria */
+  .chip-counter {
+    margin-left: auto;
+  }
+
   /* Painel expandido — coluna única */
   .row-expand {
     padding: 16px 14px;
+  }
+
+  /* Tabela de títulos: scroll horizontal para não quebrar */
+  .row-expand > div:last-child {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .items-table {
+    min-width: 380px;
   }
 
   /* Tabela de títulos compacta */

@@ -203,7 +203,30 @@ button:disabled, a.btn[disabled] {
    Responsivo — mobile (≤ 640px)
    ======================================================================== */
 
+@media (max-width: 768px) {
+  /* Heading quebra linha em tablet */
+  .page-heading-row {
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start !important;
+  }
+}
+
 @media (max-width: 640px) {
+
+  /* Heading: título em cima, botão Voltar abaixo */
+  .page-heading-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    margin-bottom: 20px !important;
+
+    a.btn { align-self: flex-start; }
+  }
+
+  /* Reduz padding interno dos cards */
+  .card {
+    padding: 16px !important;
+  }
 
   /* Upload zone menor */
   .upload-zone {
@@ -218,6 +241,8 @@ button:disabled, a.btn[disabled] {
   /* Linhas de item: 2 colunas (descrição full + 2x2 + botão) */
   .item-row {
     grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px;
 
     /* Descrição — largura total */
     > :nth-child(1) {
@@ -228,6 +253,25 @@ button:disabled, a.btn[disabled] {
     > :nth-child(8) {
       grid-column: 1 / -1;
       justify-self: end;
+    }
+  }
+
+  /* Total de venda: ajusta padding direito ao botão remover */
+  .items-total-venda {
+    padding-right: 0;
+  }
+
+  /* Botões de ação: coluna, largura total */
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 0 16px !important;
+
+    a.btn,
+    button.btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 }
