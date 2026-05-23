@@ -2,15 +2,15 @@
 <div class="content">
 
   <!-- Page heading -->
-  <div class="row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
-    <div>
+  <div class="page-header">
+    <div class="page-header-title">
       <h1 class="page">Extrato <span class="accent serif">financeiro</span></h1>
       <div class="page-sub">
         @if (carregando()) { Carregando lançamentos… }
         @else { {{ totalLancamentos() }} lançamentos importados }
       </div>
     </div>
-    <div class="row gap-2">
+    <div class="page-header-actions">
       <button
         class="btn outline sm"
         (click)="conciliar()"
@@ -133,8 +133,8 @@
       </button>
     </div>
 
-    <!-- Tabela -->
-    <div class="card table-card">
+    <!-- Tabela (desktop) -->
+    <div class="card table-card table-section">
       <table mat-table [dataSource]="dataSource" matSort class="extrato-table">
 
         <!-- Data -->
@@ -266,6 +266,84 @@
       </table>
 
       <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons />
+    </div>
+
+    <!-- Cards mobile (≤640px) -->
+    <div class="mobile-list">
+      @if (dataSource.filteredData.length === 0) {
+        <div class="empty-state">
+          @if (dataSource.data.length === 0) {
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <p>Nenhum lançamento encontrado.</p>
+            <p style="color:var(--text-4);font-size:13px">Importe um arquivo CSV para começar.</p>
+            <button class="btn primary sm" (click)="fileInput.click()" type="button">Importar CSV</button>
+          } @else {
+            <p>Nenhum lançamento corresponde aos filtros aplicados.</p>
+            <button class="btn ghost sm" (click)="limparFiltros()" type="button">Limpar filtros</button>
+          }
+        </div>
+      }
+
+      <div class="card mobile-card-list">
+        @for (l of dataSource.filteredData; track l.id) {
+          <div class="mobile-card" [class.row-editando]="editandoId() === l.id">
+
+            <div class="mc-icon" [class.mc-icon-entrada]="l.natureza === 'entrada'" [class.mc-icon-saida]="l.natureza === 'saida'">
+              @if (l.natureza === 'entrada') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              } @else {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              }
+            </div>
+
+            <div class="mc-body">
+              <div class="mc-dest">{{ l.destinatario_remetente }}</div>
+              <div class="mc-meta">
+                <span class="mc-tipo">{{ labelTipo(l.tipo) }}</span>
+                <span class="mc-sep">·</span>
+                <span class="mc-data-chip">{{ formatarData(l.data_lancamento) }}</span>
+              </div>
+              @if (l.pedido || l.despesa) {
+                <div class="mc-vinculo">
+                  @if (l.pedido) {
+                    <span class="mc-vinculo-tag">Pedido {{ l.pedido.codigo }}</span>
+                  } @else if (l.despesa) {
+                    <span class="mc-vinculo-tag">{{ l.despesa.descricao ?? 'Despesa' }}</span>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="mc-right">
+              <div class="mc-valor"
+                   [class.mc-entrada]="l.natureza === 'entrada'"
+                   [class.mc-saida]="l.natureza === 'saida'">
+                {{ l.natureza === 'entrada' ? '+' : '' }}{{ formatarMoeda(l.valor) }}
+              </div>
+              <div class="mc-saldo">saldo {{ formatarMoeda(l.saldo) }}</div>
+              <div class="mc-acoes">
+                @if (isIdentificavel(l)) {
+                  <button mat-icon-button (click)="abrirPainel(l)" title="Identificar despesa" type="button" class="btn-identificar mc-btn">
+                    <mat-icon>manage_search</mat-icon>
+                  </button>
+                }
+                @if (isEditavel(l)) {
+                  @if (editandoId() === l.id) {
+                    <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar" type="button" class="mc-btn">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  } @else {
+                    <button mat-icon-button (click)="iniciarEdicao(l)" title="Reclassificar tipo" type="button" class="btn-edit mc-btn">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  }
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
     </div>
 
   }

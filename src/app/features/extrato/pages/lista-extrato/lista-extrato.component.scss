@@ -6,6 +6,27 @@
   max-width: 1400px;
 }
 
+/* ===== Page header ===== */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  gap: 12px;
+}
+
+.page-header-title { flex: 1; min-width: 0; }
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Mobile list: oculto por padrão (desktop) */
+.mobile-list { display: none; }
+
 /* ===== KPI grid 3 colunas ===== */
 .kpi-grid-3 {
   grid-template-columns: repeat(3, 1fr);
@@ -372,10 +393,26 @@
   /* ===== Content padding ===== */
   .content { padding: 16px 14px 32px; }
 
+  /* ===== Page header: empilha título e ações ===== */
+  .page-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .page-header-title { flex: 1 1 100%; }
+
+  .page-header-actions { width: 100%; justify-content: flex-end; }
+
+  /* Oculta texto dos botões, mantém ícones */
+  .btn-label { display: none; }
+
   /* ===== KPI grid 3 cols — compacta no mobile ===== */
   .kpi-grid-3 {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
+    margin-bottom: 14px !important;
 
     .kpi { padding: 12px 10px; }
     .kpi-label { font-size: 9.5px; gap: 3px; letter-spacing: 0.10em; }
@@ -392,7 +429,6 @@
     border: 1px solid var(--line);
     border-radius: var(--r-md);
 
-    /* Separadores viram invisíveis */
     .sep    { display: none; }
     .spacer { display: none; }
   }
@@ -444,32 +480,147 @@
   /* Contador de resultados */
   .resultado-count { font-size: 11px; }
 
-  /* ===== Tabela: esconde colunas secundárias ===== */
-  .mat-column-natureza,
-  .mat-column-tipo,
-  .mat-column-saldo,
-  .mat-column-pedido {
-    display: none;
+  /* ===== Esconde tabela desktop; exibe lista mobile ===== */
+  .table-section { display: none !important; }
+  .mobile-list   { display: block; }
+
+  /* ===== Cards mobile ===== */
+  .mobile-card-list {
+    overflow: hidden;
+    padding: 0;
   }
 
-  /* Reduz padding geral das células */
-  .extrato-table .mat-mdc-cell,
-  .extrato-table .mat-mdc-header-cell {
-    padding: 10px 8px;
+  .mobile-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.1s;
+
+    &:last-child { border-bottom: none; }
+    &:active     { background: var(--surface-2); }
+    &.row-editando { background: var(--bordo-tint); }
   }
 
-  /* Data: mais compacta */
-  .col-data { width: 76px; }
-  .data-chip { font-size: 11px; padding: 2px 6px; }
-
-  /* Destinatário: sem max-width, texto trunca naturalmente */
-  .col-destinatario {
-    max-width: none;
-    font-size: 12px;
+  /* Ícone circular */
+  .mc-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--surface-2);
+    color: var(--text-4);
   }
 
-  /* Valor: um pouco menor */
-  .col-valor { font-size: 12px; }
+  .mc-icon-entrada {
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    color: var(--ok);
+  }
+
+  .mc-icon-saida {
+    background: color-mix(in srgb, var(--bad) 12%, transparent);
+    color: var(--bad);
+  }
+
+  /* Corpo */
+  .mc-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mc-dest {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+
+  .mc-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+  }
+
+  .mc-tipo {
+    font-size: 11px;
+    color: var(--text-4);
+    white-space: nowrap;
+  }
+
+  .mc-sep {
+    font-size: 11px;
+    color: var(--text-4);
+  }
+
+  .mc-data-chip {
+    font-size: 11px;
+    color: var(--text-4);
+    white-space: nowrap;
+  }
+
+  .mc-vinculo {
+    margin-top: 4px;
+  }
+
+  .mc-vinculo-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--bordo-tint);
+    color: var(--bordo);
+    font-weight: 500;
+  }
+
+  /* Lado direito */
+  .mc-right {
+    flex-shrink: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .mc-valor {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .mc-entrada { color: var(--ok); }
+  .mc-saida   { color: var(--bad); }
+
+  .mc-saldo {
+    font-size: 10px;
+    color: var(--text-4);
+    white-space: nowrap;
+  }
+
+  .mc-acoes {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 2px;
+  }
+
+  .mc-btn {
+    opacity: 1 !important;
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 16px !important;
+
+    .mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  }
 
   /* Botões de ação sempre visíveis (sem hover no touch) */
   .btn-edit,
