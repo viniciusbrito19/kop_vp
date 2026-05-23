@@ -136,6 +136,7 @@ html, body {
   padding: 0;
   overflow: hidden;
   color-scheme: light;
+  background: var(--bg); /* impede fundo branco ao redor da app em iOS */
 }
 
 body {
@@ -498,4 +499,7 @@ mat-card {
 
   /* Garante que células de grid nunca ultrapassem o container */
   .form-grid > * { min-width: 0; }
+
+  /* Impede auto-zoom do iOS Safari ao focar inputs com font-size < 16px */
+  input, select, textarea { font-size: 16px !important; }
 }

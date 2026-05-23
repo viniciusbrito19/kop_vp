@@ -156,8 +156,8 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
                   <span>MAIOR DIA</span>
                 </div>
                 <div class="row" style="justify-content:space-between;align-items:baseline">
-                  <span class="serif" style="font-size:22px;color:var(--bordo)">{{ moeda(totalPeriodo) }}</span>
-                  <span style="font-size:13px;font-weight:600;color:var(--text-2)">{{ maiorDiaLabel }}</span>
+                  <span class="serif resumo-valor" style="color:var(--bordo)">{{ moedaCompact(totalPeriodo) }}</span>
+                  <span class="resumo-label" style="font-size:13px;font-weight:600;color:var(--text-2)">{{ maiorDiaLabel }}</span>
                 </div>
               </div>
             }
@@ -261,7 +261,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
                   <div class="row gap-3" style="align-items:center">
                     <span [style.background]="item.cor"
                           style="width:10px;height:10px;border-radius:3px;flex:0 0 auto"></span>
-                    <span style="flex:1;font-size:12px;font-weight:500">
+                    <span class="legend-item-label" style="font-size:12px;font-weight:500">
                       {{ item.diaNum }}/{{ item.mesAbrev }}
                     </span>
                     <span style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">
@@ -355,6 +355,17 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
     .titulo-scroll   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .titulo-scroll .full-table { min-width: 400px; }
 
+    /* Impede que filhos de grid ultrapassem a célula */
+    .two-col > *       { min-width: 0; }
+    .kpi-grid-resp > * { min-width: 0; }
+
+    /* Resumo do período */
+    .resumo-valor { font-size: 22px; flex-shrink: 0; max-width: 55%; }
+    .resumo-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Legenda do donut */
+    .legend-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* ── Tablet (≤ 768px) ── */
     @media (max-width: 768px) {
       .two-col         { grid-template-columns: 1fr !important; }
@@ -367,8 +378,9 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 
     /* ── Mobile (≤ 640px) ── */
     @media (max-width: 640px) {
-      .outer-wrap  { padding: 20px 16px 40px !important; }
-      .header-btns { flex-wrap: wrap; gap: 6px; }
+      .outer-wrap   { padding: 20px 16px 40px !important; }
+      .header-btns  { flex-wrap: wrap; gap: 6px; }
+      .resumo-valor { font-size: 16px; }
 
       /* Donut + legenda lado a lado */
       .categoria-inner { display: flex; gap: 14px; align-items: flex-start; }

@@ -347,6 +347,7 @@
   .kop-main {
     /* 72px = altura real do bottom nav (~56px) + folga extra de 16px
        env(safe-area-inset-bottom, 20px): home indicator iPhone (≈34px) ou 20px de fallback */
+    overflow-x: hidden;
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 20px));
   }
 }
@@ -364,7 +365,7 @@
     z-index: 200;
     background: var(--sb-bg);
     border-top: 1px solid var(--sb-rule);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 20px);
     overflow-x: auto;
     scrollbar-width: none;
 
