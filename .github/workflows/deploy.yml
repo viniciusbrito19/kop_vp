@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create environment.ts for TypeScript resolution
+        run: cp src/environments/environment.ts.example src/environments/environment.ts
+
       - name: Inject environment variables
         run: |
           sed -i "s|%%SUPABASE_URL%%|${{ secrets.SUPABASE_URL }}|g" src/environments/environment.prod.ts
