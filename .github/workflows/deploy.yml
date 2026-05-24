@@ -39,7 +39,7 @@ jobs:
         run: |
           sed -i "s|%%SUPABASE_URL%%|${{ secrets.SUPABASE_URL }}|g" src/environments/environment.prod.ts
           sed -i "s|%%SUPABASE_ANON_KEY%%|${{ secrets.SUPABASE_ANON_KEY }}|g" src/environments/environment.prod.ts
-          APP_VERSION="$(git rev-parse --short HEAD) · $(date -u +'%d/%m/%Y %H:%M')"
+          APP_VERSION="$(git rev-parse --short HEAD) · $(TZ=America/Sao_Paulo date +'%d/%m/%Y %H:%M')"
           sed -i "s|%%APP_VERSION%%|${APP_VERSION}|g" src/environments/environment.prod.ts
 
       - name: Build production
