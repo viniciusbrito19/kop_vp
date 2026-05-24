@@ -139,6 +139,12 @@ html, body {
   background: var(--bg); /* impede fundo branco ao redor da app em iOS */
 }
 
+/* No mobile, o safe-area inferior pode mostrar o fundo do html atrás do bottom nav.
+   Usar a cor do nav garante que qualquer franja visível seja da cor correta. */
+@media (max-width: 640px) {
+  html { background: #5A1620; }
+}
+
 body {
   background: var(--bg);
   color: var(--text);
