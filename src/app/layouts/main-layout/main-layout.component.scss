@@ -352,8 +352,7 @@
 
   .kop-main {
     overflow-x: hidden;
-    /* Em browser mode: 72px cobre o nav (sem safe area) */
-    padding-bottom: 72px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -370,28 +369,13 @@
     z-index: 200;
     background: var(--sb-bg);
     border-top: 1px solid var(--sb-rule);
-    /* Em browser mode a toolbar do sistema já cobre o home indicator:
-       nenhuma padding extra necessária. */
-    padding-bottom: 0;
-    /* Extende o background para baixo cobrindo qualquer faixa residual do iOS */
-    box-shadow: 0 100px 0 100px var(--sb-bg);
+    /* env(safe-area-inset-bottom) = 0 no browser normal, ~34px no PWA standalone.
+       Aplicar sempre é mais confiável do que detectar display-mode no iOS. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     overflow-x: auto;
     scrollbar-width: none;
 
     &::-webkit-scrollbar { display: none; }
-  }
-}
-
-/* Em modo PWA (standalone) o home indicator fica exposto:
-   aplica padding para cobri-lo com a cor do nav. */
-@media (display-mode: standalone) and (max-width: 640px) {
-  .kop-bottom-nav {
-    padding-bottom: env(safe-area-inset-bottom, 20px);
-  }
-
-  .kop-main {
-    /* 72px nav + safe area do home indicator */
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 20px));
   }
 }
 
