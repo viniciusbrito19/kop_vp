@@ -74,7 +74,7 @@
           }
         </svg>
       </button>
-      <div class="kop-sb-avatar">{{ initials() }}</div>
+      <button class="kop-sb-avatar" (click)="toggleInfo()" title="Informações">{{ initials() }}</button>
       @if (!collapsed) {
         <div class="kop-sb-who">
           <span class="kop-sb-who-name">{{ displayName() }}</span>
@@ -148,7 +148,7 @@
             </svg>
           }
         </button>
-        <div class="kop-mh-avatar">{{ initials() }}</div>
+        <button class="kop-mh-avatar" (click)="toggleInfo()" title="Informações">{{ initials() }}</button>
       </div>
     </header>
 
@@ -160,6 +160,25 @@
 
     <router-outlet />
   </div>
+
+  <!-- ===== Info panel ===== -->
+  @if (showInfo()) {
+    <div class="kop-info-backdrop" (click)="closeInfo()"></div>
+    <div class="kop-info-panel">
+      <div class="kop-info-user">
+        <div class="kop-info-avatar">{{ initials() }}</div>
+        <div class="kop-info-user-details">
+          <span class="kop-info-name">{{ displayName() }}</span>
+          <span class="kop-info-role">Gestão</span>
+        </div>
+      </div>
+      <div class="kop-info-divider"></div>
+      <div class="kop-info-version">
+        <span class="kop-info-ver-label">Versão</span>
+        <span class="kop-info-ver-value">{{ appVersion }}</span>
+      </div>
+    </div>
+  }
 
   <!-- ===== Bottom navigation (mobile only) ===== -->
   <nav class="kop-bottom-nav">

@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 interface NavItem {
   label: string;
@@ -43,11 +44,14 @@ export class MainLayoutComponent implements OnInit {
   collapsed = false;
   darkMode = false;
   loggingOut = signal(false);
+  showInfo = signal(false);
 
   displayName = signal('');
   initials   = signal('');
   firstName  = signal('');
   dateLabel  = signal('');
+
+  readonly appVersion = environment.appVersion;
 
   async ngOnInit(): Promise<void> {
     const user = await this.auth.getUser();
@@ -103,6 +107,14 @@ export class MainLayoutComponent implements OnInit {
 
   toggleCollapse(): void {
     this.collapsed = !this.collapsed;
+  }
+
+  toggleInfo(): void {
+    this.showInfo.update(v => !v);
+  }
+
+  closeInfo(): void {
+    this.showInfo.set(false);
   }
 
   async logout(): Promise<void> {
