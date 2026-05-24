@@ -139,12 +139,6 @@ html, body {
   background: var(--bg); /* impede fundo branco ao redor da app em iOS */
 }
 
-/* No mobile, a área física abaixo do viewport CSS é pintada pelo iOS usando o
-   background do body. Usar a cor do nav elimina a faixa visível abaixo do bottom nav.
-   O kop-shell cobre o viewport com seu próprio background, então o app não é afetado. */
-@media (max-width: 640px) {
-  html, body { background: #5A1620; }
-}
 
 body {
   background: var(--bg);
