@@ -352,7 +352,7 @@
 
   .kop-main {
     overflow-x: hidden;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 20px));
   }
 }
 
@@ -369,9 +369,11 @@
     z-index: 200;
     background: var(--sb-bg);
     border-top: 1px solid var(--sb-rule);
-    /* env(safe-area-inset-bottom) = 0 no browser normal, ~34px no PWA standalone.
-       Aplicar sempre é mais confiável do que detectar display-mode no iOS. */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* env(safe-area-inset-bottom) = 0 no browser normal, ~34px no PWA/standalone.
+       Fallback 20px cobre o home indicator caso env() não resolva.
+       box-shadow estende visualmente o fundo abaixo do padding. */
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+    box-shadow: 0 100px 0 100px var(--sb-bg);
     overflow-x: auto;
     scrollbar-width: none;
 
