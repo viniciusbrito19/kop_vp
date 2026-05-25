@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo } from '../models/apuracao.model';
+import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao } from '../models/apuracao.model';
 
 const ALIQUOTA_FPP      = 0.04;
 const ALIQUOTA_LINHA    = 0.37;
@@ -46,7 +46,7 @@ export class ApuracaoCrmService {
     const pedidoIds = elegíveis.map((p: any) => p.id);
     const { data: itensPedido, error: errItens } = await this.db
       .from('itens_pedido')
-      .select('pedido_id, ean, quantidade')
+      .select('pedido_id, ean, quantidade, descricao, valor_unitario, valor_total')
       .in('pedido_id', pedidoIds);
     if (errItens) throw errItens;
 
@@ -69,9 +69,10 @@ export class ApuracaoCrmService {
       }
     }
 
-    // 4. Calcular valor_venda por pedido
-    const itensPorPedido = new Map<string, { ean: string | null; quantidade: number }[]>();
-    for (const item of (itensPedido ?? [])) {
+    // 4. Calcular valor_venda e itens por pedido
+    type RawItem = { pedido_id: string; ean: string | null; quantidade: number; descricao: string | null; valor_unitario: number | null; valor_total: number | null };
+    const itensPorPedido = new Map<string, RawItem[]>();
+    for (const item of (itensPedido ?? []) as RawItem[]) {
       const lista = itensPorPedido.get(item.pedido_id) ?? [];
       lista.push(item);
       itensPorPedido.set(item.pedido_id, lista);
@@ -80,23 +81,48 @@ export class ApuracaoCrmService {
     const pedidosApuracao: PedidoApuracao[] = [];
     for (const p of elegíveis) {
       const itens = itensPorPedido.get(p.id) ?? [];
+      const tp = Array.isArray(p.tipo_pedido) ? p.tipo_pedido[0] : p.tipo_pedido;
+      const tipoRoy = tp?.tipo_royalties as 'linha' | 'sazonal';
+      const aliquota = tipoRoy === 'linha' ? ALIQUOTA_LINHA : ALIQUOTA_SAZONAL;
+
       let valorVenda = 0;
       let itensSemEan = 0;
+      const itensApuracao: ItemApuracao[] = [];
+
       for (const item of itens) {
-        if (item.ean && precoPorEan[item.ean] != null) {
-          valorVenda += item.quantidade * precoPorEan[item.ean];
-        } else {
-          itensSemEan++;
-        }
+        const temEan = !!(item.ean && precoPorEan[item.ean] != null);
+        const precoVenda = temEan ? precoPorEan[item.ean!] : 0;
+        const precoTotalVenda = precoVenda * item.quantidade;
+        const fppItem = precoTotalVenda * ALIQUOTA_FPP;
+        const baseRoy = precoTotalVenda * (1 - ALIQUOTA_FPP);
+        const royItem = baseRoy * aliquota;
+
+        if (temEan) valorVenda += precoTotalVenda;
+        else itensSemEan++;
+
+        const custoTotal = item.valor_total ?? (item.valor_unitario != null ? item.valor_unitario * item.quantidade : null);
+
+        itensApuracao.push({
+          descricao: item.descricao ?? '',
+          quantidade: item.quantidade,
+          custo_unitario: item.valor_unitario ?? null,
+          custo_total: custoTotal,
+          preco_total_venda: precoTotalVenda,
+          fpp: fppItem,
+          base_royalties: baseRoy,
+          royalties: royItem,
+          sem_ean: !temEan,
+        });
       }
-      const tp = Array.isArray(p.tipo_pedido) ? p.tipo_pedido[0] : p.tipo_pedido;
+
       pedidosApuracao.push({
         pedido_id:    p.id,
         numero_nf:    p.numero_nf,
         data_emissao: p.data_emissao,
-        tipo:         tp?.tipo_royalties as 'linha' | 'sazonal',
+        tipo:         tipoRoy,
         valor_venda:  valorVenda,
         itens_sem_ean: itensSemEan,
+        itens: itensApuracao,
       });
     }
 

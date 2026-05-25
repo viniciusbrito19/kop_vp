@@ -9,10 +9,22 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
-import { DespesasService, TituloDespesa } from '../../services/despesas.service';
+import { DespesasService, TituloDespesa, TituloPedidoMes } from '../../services/despesas.service';
 import { DespesaRecorrente, LABELS_CATEGORIA, CategoriaDespesa } from '../../models/despesa.model';
 import { TemplateDespesaDialogComponent } from './template-despesa-dialog.component';
 import { GerarMesDialogComponent } from './gerar-mes-dialog.component';
+
+const PEDIDOS_COR = '#2A7A8C';
+
+interface ItemAVencer {
+  id: string;
+  label: string;
+  subLabel: string;
+  dia: number;
+  valor: number;
+  tipo: 'fixa' | 'pedido';
+  fixa?: DespesaRecorrente;
+}
 
 const CAT_COR: Record<CategoriaDespesa, string> = {
   fornecedor:  '#7A1F2B',
@@ -56,7 +68,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         <!-- ── Header ────────────────────────────────────────── -->
         <div class="row header-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
           <div>
-            <h1 class="page">Despesas <span class="accent serif">fixas</span></h1>
+            <h1 class="page">Despesas</h1>
             <div class="page-sub">O que a loja gasta todo mês para abrir as portas · {{ mesLabel }}</div>
           </div>
           <div class="row gap-2 header-actions">
@@ -78,60 +90,119 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         <!-- ── KPI row ───────────────────────────────────────── -->
         <div class="kpi-grid">
 
-          <!-- KPI principal bordô -->
-          <div class="kpi bordo kpi-main" style="padding:22px">
-            <div class="kpi-label">
-              <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
-              CUSTO FIXO MENSAL
-            </div>
-            <div class="serif" style="font-size:44px;line-height:1.05;margin-top:4px">
-              {{ moedaCompact(totalFixo) }}
-            </div>
-            <div style="font-size:12px;opacity:0.78;margin-top:6px;line-height:1.5">
-              É quanto a loja gasta todo mês para abrir as portas.<br>
-              <b style="opacity:1">{{ moedaCompact(breakEvenDia) }}/dia</b> é o custo diário da operação.
-            </div>
-            <div style="margin-top:14px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.10);display:flex;align-items:center;gap:12px">
-              <div style="height:6px;flex:1;background:rgba(255,255,255,0.20);border-radius:999px;overflow:hidden">
-                <div [style.width.%]="pctPago" style="height:100%;background:var(--gold);border-radius:999px;transition:width 0.4s ease"></div>
+          <!-- KPIs bordô empilhados: custo fixo + custo de pedidos -->
+          <div class="col kpi-stack kpi-main-stack">
+
+            <div class="kpi bordo kpi-half" style="padding:16px 18px">
+              <div class="kpi-label">
+                <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
+                CUSTO FIXO MENSAL
               </div>
-              <span style="font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap">
-                {{ fmtPct(pctPago) }}% pago
-              </span>
+              <div class="serif" style="font-size:30px;line-height:1.05;margin-top:4px">
+                {{ moedaCompact(totalFixo) }}
+              </div>
+              <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
+                Custo fixo da loja por mês.<br>
+                <b style="opacity:1">{{ moedaCompact(breakEvenDia) }}/dia</b> de operação.
+              </div>
+              <div style="margin-top:10px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,0.10);display:flex;align-items:center;gap:10px">
+                <div style="height:5px;flex:1;background:rgba(255,255,255,0.20);border-radius:999px;overflow:hidden">
+                  <div [style.width.%]="pctPago" style="height:100%;background:var(--gold);border-radius:999px;transition:width 0.4s ease"></div>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap">{{ fmtPct(pctPago) }}% pago</span>
+              </div>
             </div>
+
+            <div class="kpi bordo kpi-half" style="padding:16px 18px">
+              <div class="kpi-label">
+                <mat-icon style="font-size:14px;width:14px;height:14px">receipt_long</mat-icon>
+                CUSTO DE PEDIDOS DO MÊS
+              </div>
+              <div class="serif" style="font-size:30px;line-height:1.05;margin-top:4px">
+                {{ moedaCompact(totalPedidosFixo) }}
+              </div>
+              <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
+                Total dos títulos de pedidos do mês.<br>
+                <b style="opacity:1">{{ paidPedidosCount }} de {{ titulosPedidos().length }}</b> títulos pagos.
+              </div>
+              <div style="margin-top:10px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,0.10);display:flex;align-items:center;gap:10px">
+                <div style="height:5px;flex:1;background:rgba(255,255,255,0.20);border-radius:999px;overflow:hidden">
+                  <div [style.width.%]="pctPedidosPago" style="height:100%;background:var(--gold);border-radius:999px;transition:width 0.4s ease"></div>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap">{{ fmtPct(pctPedidosPago) }}% pago</span>
+              </div>
+            </div>
+
           </div>
 
-          <!-- KPI Pagas -->
-          <div class="kpi">
-            <div class="kpi-label">
-              <mat-icon style="font-size:14px;width:14px;height:14px">check_circle</mat-icon>
-              PAGAS ESTE MÊS
+          <!-- KPI 2×2: fixas pagas / pedidos pagos / fixas a vencer / pedidos a vencer -->
+          <div class="col kpi-stack">
+
+            <!-- linha superior: fixas -->
+            <div class="kpi-row-pair">
+              <div class="kpi kpi-half">
+                <div class="kpi-label">
+                  <mat-icon style="font-size:14px;width:14px;height:14px">check_circle</mat-icon>
+                  FIXAS PAGAS ESTE MÊS
+                </div>
+                <div class="kpi-value serif">{{ moedaCompact(totalPago) }}</div>
+                <div class="kpi-foot">{{ paidCount }} de {{ templatesAtivos.length }} categorias</div>
+              </div>
+
+              <div class="kpi kpi-half">
+                <div class="kpi-label">
+                  <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
+                  FIXAS A VENCER
+                </div>
+                <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalDevido) }}</div>
+                <div class="kpi-foot">{{ dueCount }} categorias pendentes</div>
+              </div>
             </div>
-            <div class="kpi-value serif">{{ moedaCompact(totalPago) }}</div>
-            <div class="kpi-foot">
-              <span class="trend up">↑ {{ fmtPct(pctPago) }}%</span>
-              <span>{{ paidCount }} de {{ templatesAtivos.length }} categorias</span>
+
+            <!-- linha inferior: pedidos -->
+            <div class="kpi-row-pair">
+              <div class="kpi kpi-half">
+                <div class="kpi-label">
+                  <mat-icon style="font-size:14px;width:14px;height:14px">check_circle</mat-icon>
+                  PEDIDOS PAGOS ESTE MÊS
+                </div>
+                <div class="kpi-value serif">{{ moedaCompact(totalPedidosPago) }}</div>
+                <div class="kpi-foot">{{ paidPedidosCount }} de {{ titulosPedidos().length }} títulos</div>
+              </div>
+
+              <div class="kpi kpi-half">
+                <div class="kpi-label">
+                  <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
+                  PEDIDOS A VENCER
+                </div>
+                <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalPedidosDevido) }}</div>
+                <div class="kpi-foot">{{ duePedidosCount }} títulos pendentes</div>
+              </div>
             </div>
+
           </div>
 
-          <!-- KPI A vencer -->
-          <div class="kpi">
-            <div class="kpi-label">
-              <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-              A VENCER
-            </div>
-            <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalDevido) }}</div>
-            <div class="kpi-foot">{{ dueCount }} categorias pendentes</div>
-          </div>
+          <!-- KPI Break-even empilhado: fixo + pedidos -->
+          <div class="col kpi-stack">
 
-          <!-- KPI Break-even -->
-          <div class="kpi gold">
-            <div class="kpi-label">
-              <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
-              BREAK-EVEN / DIA
+            <div class="kpi gold kpi-half">
+              <div class="kpi-label">
+                <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
+                BREAK-EVEN / DIA
+              </div>
+              <div class="kpi-value serif">{{ moedaCompact(breakEvenDia) }}</div>
+              <div class="kpi-foot">meta diária · custos fixos</div>
             </div>
-            <div class="kpi-value serif">{{ moedaCompact(breakEvenDia) }}</div>
-            <div class="kpi-foot">meta diária de faturamento</div>
+
+            <div class="kpi gold kpi-half">
+              <div class="kpi-label">
+                <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
+                BREAK-EVEN PEDIDOS / DIA
+              </div>
+              <div class="kpi-value serif">{{ moedaCompact(breakEvenPedidosDia) }}</div>
+              <div class="kpi-foot">meta diária · custos de pedidos</div>
+            </div>
+
           </div>
 
         </div>
@@ -139,7 +210,8 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         <!-- ── 2-column layout ───────────────────────────────── -->
         <div class="main-grid">
 
-          <!-- ── Left: lista de despesas ──────────────────────── -->
+          <!-- ── Left: lista de despesas + por categoria ────────── -->
+          <div class="col gap-4">
           <div class="card" style="padding:22px">
 
             <!-- cabeçalho da lista -->
@@ -154,7 +226,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                 <div class="seg">
                   @for (opt of filtroOpts; track opt.value) {
                     <button [class.on]="filtroLista() === opt.value"
-                            (click)="filtroLista.set(opt.value)">{{ opt.label }}</button>
+                            (click)="filtroLista.set(opt.value); paginaFixas.set(0)">{{ opt.label }}</button>
                   }
                 </div>
                 <button class="btn icon ghost" type="button" style="width:32px;height:32px"
@@ -185,7 +257,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
             <!-- linhas de despesa -->
             <div>
-              @for (t of templatesFiltrados; track t.id; let i = $index) {
+              @for (t of templatesPaginados; track t.id; let i = $index) {
                 <div class="row gap-3"
                      style="padding:12px 0;align-items:center"
                      [style.border-top]="i > 0 ? '1px solid var(--line)' : 'none'">
@@ -240,6 +312,23 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
               }
             </div>
 
+            <!-- paginação -->
+            @if (totalPaginasFixas > 1) {
+              <div class="pag-bar">
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaFixas() === 0"
+                        (click)="paginaFixas.set(paginaFixas() - 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <span class="pag-info">{{ paginaFixas() + 1 }} / {{ totalPaginasFixas }}</span>
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaFixas() >= totalPaginasFixas - 1"
+                        (click)="paginaFixas.set(paginaFixas() + 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            }
+
             <!-- rodapé total -->
             <div class="row" style="margin-top:14px;padding-top:14px;border-top:2px solid var(--bordo-tint)">
               <div style="flex:1;font-size:13px;color:var(--text-2);font-weight:600">Total mensal recorrente</div>
@@ -247,69 +336,178 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
             </div>
           </div>
 
-          <!-- ── Right: categorias + próximas ─────────────────── -->
-          <div class="col gap-4">
+          <!-- Por categoria -->
+          <div class="card" style="padding:22px">
+            <h3 class="serif" style="margin:0;font-size:20px;font-weight:400">Por categoria</h3>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px;margin-bottom:18px">
+              onde o dinheiro vai · {{ mesLabel }}
+            </div>
 
-            <!-- Por categoria -->
-            <div class="card" style="padding:22px">
-              <h3 class="serif" style="margin:0;font-size:20px;font-weight:400">Por categoria</h3>
-              <div style="font-size:12px;color:var(--text-3);margin-top:2px;margin-bottom:18px">
-                onde o dinheiro vai · {{ mesLabel }}
-              </div>
-
-              <!-- Donut SVG -->
-              <div style="display:flex;justify-content:center;margin-bottom:20px">
-                <div class="donut-wrap" style="position:relative;width:160px;height:160px">
-                  <svg width="160" height="160" viewBox="0 0 160 160">
-                    @if (categoriasData.length === 0) {
+            <!-- Donut SVG -->
+            <div style="display:flex;justify-content:center;margin-bottom:20px">
+              <div class="donut-wrap" style="position:relative;width:160px;height:160px">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  @if (categoriasData.length === 0) {
+                    <circle cx="80" cy="80" r="56" fill="none"
+                            stroke="var(--line-2)" stroke-width="24"/>
+                  }
+                  <g transform="rotate(-90 80 80)">
+                    @for (seg of donutSegments; track $index) {
                       <circle cx="80" cy="80" r="56" fill="none"
-                              stroke="var(--line-2)" stroke-width="24"/>
+                              [attr.stroke]="seg.cor"
+                              stroke-width="24"
+                              stroke-linecap="butt"
+                              [attr.stroke-dasharray]="seg.dashArray"
+                              [attr.stroke-dashoffset]="seg.dashOffset"/>
                     }
-                    <g transform="rotate(-90 80 80)">
-                      @for (seg of donutSegments; track $index) {
-                        <circle cx="80" cy="80" r="56" fill="none"
-                                [attr.stroke]="seg.cor"
-                                stroke-width="24"
-                                stroke-linecap="butt"
-                                [attr.stroke-dasharray]="seg.dashArray"
-                                [attr.stroke-dashoffset]="seg.dashOffset"/>
-                      }
-                    </g>
-                  </svg>
-                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                    <div class="serif" style="font-size:20px;line-height:1">{{ moedaCompact(totalFixo) }}</div>
-                    <div style="font-size:10px;color:var(--text-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:2px">TOTAL</div>
-                  </div>
+                  </g>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+                  <div class="serif" style="font-size:20px;line-height:1">{{ moedaCompact(totalGeralDespesas) }}</div>
+                  <div style="font-size:10px;color:var(--text-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:2px">TOTAL</div>
                 </div>
               </div>
+            </div>
 
-              <!-- lista de categorias -->
-              <div class="col gap-2">
-                @for (c of categoriasData; track c.label) {
-                  <div class="row gap-3" style="align-items:center">
-                    <span [style.background]="c.cor"
-                          style="width:10px;height:10px;border-radius:3px;flex:0 0 auto"></span>
-                    <span style="flex:1;font-size:12px;font-weight:500">{{ c.label }}</span>
-                    <span style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">
-                      {{ fmtPct(c.pct) }}%
-                    </span>
-                    <span class="mono" style="font-size:12px;font-weight:600;min-width:72px;text-align:right">
-                      {{ moedaCompact(c.valor) }}
-                    </span>
-                  </div>
+            <!-- lista de categorias -->
+            <div class="col gap-2">
+              @for (c of categoriasData; track c.label) {
+                <div class="row gap-3" style="align-items:center">
+                  <span [style.background]="c.cor"
+                        style="width:10px;height:10px;border-radius:3px;flex:0 0 auto"></span>
+                  <span style="flex:1;font-size:12px;font-weight:500">{{ c.label }}</span>
+                  <span style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">
+                    {{ fmtPct(c.pct) }}%
+                  </span>
+                  <span class="mono" style="font-size:12px;font-weight:600;min-width:72px;text-align:right">
+                    {{ moedaCompact(c.valor) }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+
+          </div><!-- fim col left -->
+
+          <!-- ── Right: pagamentos de pedidos + próximas a vencer ── -->
+          <div class="col gap-4">
+          <div class="card" style="padding:22px">
+
+            <!-- cabeçalho -->
+            <div class="row" style="justify-content:space-between;margin-bottom:18px;align-items:flex-start">
+              <div>
+                <h3 class="serif" style="margin:0;font-size:22px;font-weight:400">Pagamentos de pedidos</h3>
+                <div style="font-size:12px;color:var(--text-3);margin-top:2px">
+                  {{ paidPedidosCount }} pagos · {{ duePedidosCount }} a vencer · vencimentos em {{ mesLabel }}
+                </div>
+              </div>
+              <div class="seg">
+                @for (opt of filtroOpts; track opt.value) {
+                  <button [class.on]="filtroListaPedidos() === opt.value"
+                          (click)="filtroListaPedidos.set(opt.value); paginaPedidos.set(0)">{{ opt.label }}</button>
                 }
               </div>
             </div>
 
+            <!-- barra de progresso -->
+            <div style="margin-bottom:22px;padding:14px 16px;background:var(--surface-2);border-radius:12px">
+              <div class="row" style="justify-content:space-between;font-size:12px;margin-bottom:8px">
+                <span style="color:var(--text-3)">Progresso do mês</span>
+                <span style="font-weight:700">
+                  <span style="color:var(--ok)">{{ moedaCompact(totalPedidosPago) }}</span>
+                  <span style="color:var(--text-3)"> de {{ moedaCompact(totalPedidosFixo) }}</span>
+                </span>
+              </div>
+              <div style="height:8px;background:var(--line-2);border-radius:999px;overflow:hidden;position:relative">
+                <div [style.width.%]="pctPedidosPago"
+                     style="position:absolute;inset:0;background:linear-gradient(90deg,var(--bordo) 0%,var(--bordo-2) 100%);border-radius:999px;transition:width 0.4s ease"></div>
+              </div>
+              <div class="row" style="justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-3)">
+                <span>{{ fmtPct(pctPedidosPago) }}% liquidado</span>
+                <span style="color:var(--bad);font-weight:600">faltam {{ moedaCompact(totalPedidosDevido) }}</span>
+              </div>
+            </div>
+
+            <!-- linhas de título de pedido -->
+            <div>
+              @for (t of titulosPedidosPaginados; track t.id; let i = $index) {
+                <div class="row gap-3"
+                     style="padding:12px 0;align-items:center"
+                     [style.border-top]="i > 0 ? '1px solid var(--line)' : 'none'">
+
+                  <!-- ícone -->
+                  <div style="width:40px;height:40px;border-radius:11px;background:var(--surface-2);color:var(--text-3);display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+                    <mat-icon style="font-size:18px;width:18px;height:18px">receipt_long</mat-icon>
+                  </div>
+
+                  <!-- info -->
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      {{ t.pedido?.fornecedor?.nome ?? t.pedido?.codigo ?? t.codigo }}
+                    </div>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+                      vence {{ data(t.data_vencimento) }} · {{ t.pedido?.codigo ?? t.codigo }}
+                    </div>
+                  </div>
+
+                  <!-- valor e status -->
+                  <div style="text-align:right;flex-shrink:0">
+                    <div class="serif" style="font-size:16px;line-height:1.1">{{ moeda(t.valor) }}</div>
+                    <div style="margin-top:5px">
+                      @if (t.data_pagamento) {
+                        <span class="pill ok" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">check</mat-icon> pago
+                        </span>
+                      } @else {
+                        <span class="pill warn" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">schedule</mat-icon> a vencer
+                        </span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (titulosPedidosFiltrados.length === 0) {
+                <div style="text-align:center;padding:32px;color:var(--text-4);font-size:14px">
+                  Nenhum pagamento encontrado.
+                </div>
+              }
+            </div>
+
+            <!-- paginação pedidos -->
+            @if (totalPaginasPedidos > 1) {
+              <div class="pag-bar">
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaPedidos() === 0"
+                        (click)="paginaPedidos.set(paginaPedidos() - 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <span class="pag-info">{{ paginaPedidos() + 1 }} / {{ totalPaginasPedidos }}</span>
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaPedidos() >= totalPaginasPedidos - 1"
+                        (click)="paginaPedidos.set(paginaPedidos() + 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            }
+
+            <!-- rodapé total -->
+            <div class="row" style="margin-top:14px;padding-top:14px;border-top:2px solid var(--bordo-tint)">
+              <div style="flex:1;font-size:13px;color:var(--text-2);font-weight:600">Total de pedidos no mês</div>
+              <div class="serif" style="font-size:26px;color:var(--bordo)">{{ moeda(totalPedidosFixo) }}</div>
+            </div>
+          </div>
+
             <!-- Próximas a vencer -->
-            @if (templatesAVencer.length > 0) {
+            @if (itensAVencer.length > 0) {
               <div class="card" style="padding:22px">
                 <h3 class="serif" style="margin:0;font-size:20px;font-weight:400;margin-bottom:14px">
                   Próximas a vencer
                 </h3>
 
                 <div class="col gap-3">
-                  @for (t of templatesAVencer; track t.id; let i = $index) {
+                  @for (item of itensAvencerPaginados; track item.id; let i = $index) {
                     <div class="row gap-3"
                          style="align-items:center;padding:8px 0"
                          [style.border-top]="i > 0 ? '1px dashed var(--line)' : 'none'">
@@ -319,27 +517,38 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                         <span style="font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;opacity:0.7">
                           {{ mesAbrev }}
                         </span>
-                        <span class="serif" style="font-size:18px;line-height:1">{{ t.dia_venc }}</span>
+                        <span class="serif" style="font-size:18px;line-height:1">{{ item.dia }}</span>
                       </div>
 
                       <div style="flex:1;min-width:0">
                         <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                          {{ t.descricao }}
+                          {{ item.label }}
                         </div>
-                        <div style="font-size:11px;color:var(--text-3);margin-top:2px">vence dia {{ t.dia_venc }}</div>
                       </div>
 
                       <div style="text-align:right;flex-shrink:0">
-                        <div class="serif" style="font-size:16px">{{ moeda(t.valor_estimado) }}</div>
-                        <button class="btn sm ghost" type="button"
-                                style="margin-top:2px;padding:0 8px;height:24px;font-size:11px"
-                                (click)="gerarMes(t)">
-                          Pagar
-                        </button>
+                        <div class="serif" style="font-size:16px">{{ moeda(item.valor) }}</div>
                       </div>
                     </div>
                   }
                 </div>
+
+                <!-- paginação -->
+                @if (totalPaginasAvencer > 1) {
+                  <div class="pag-bar">
+                    <button class="btn icon ghost pag-btn" type="button"
+                            [disabled]="paginaAvencer() === 0"
+                            (click)="paginaAvencer.set(paginaAvencer() - 1)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <span class="pag-info">{{ paginaAvencer() + 1 }} / {{ totalPaginasAvencer }}</span>
+                    <button class="btn icon ghost pag-btn" type="button"
+                            [disabled]="paginaAvencer() >= totalPaginasAvencer - 1"
+                            (click)="paginaAvencer.set(paginaAvencer() + 1)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                  </div>
+                }
 
                 <!-- insight -->
                 <div style="margin-top:16px;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--gold-soft) 0%,var(--bordo-tint) 100%);display:flex;gap:12px;align-items:flex-start">
@@ -348,7 +557,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                   </div>
                   <div>
                     <div style="font-size:12px;font-weight:700;margin-bottom:2px">
-                      {{ moedaCompact(totalDevido) }} vencem nos próximos dias
+                      {{ moedaCompact(totalDevidoGeral) }} vencem nos próximos dias
                     </div>
                     <div style="font-size:11px;color:var(--text-2);line-height:1.5">
                       Garanta que o caixa cobre os vencimentos antes das datas.
@@ -450,8 +659,17 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
     /* ── Layout base ─────────────────────────────────────── */
     .page-wrap  { padding: 28px 32px 48px; max-width: 1600px; }
-    .kpi-grid   { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-    .main-grid  { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; }
+    .kpi-grid      { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .main-grid     { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .kpi-stack     { display: flex; flex-direction: column; gap: 14px; }
+    .kpi-main-stack { display: flex; flex-direction: column; gap: 14px; }
+    .kpi-row-pair  { display: flex; gap: 14px; flex: 1; }
+    .kpi-half      { flex: 1; min-width: 0; }
+
+    /* ── Paginação ──────────────────────────────────────── */
+    .pag-bar  { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0 4px; }
+    .pag-btn  { width: 28px; height: 28px; border-radius: 8px; }
+    .pag-info { font-size: 12px; color: var(--text-3); min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
 
     /* ── Tabela de títulos ───────────────────────────────── */
     .full-table  { width: 100%; }
@@ -479,9 +697,11 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
       .header-actions .btn.ghost,
       .header-actions .btn.outline { display: none !important; }
 
-      /* KPIs: card principal ocupa linha inteira, demais em 2 colunas */
+      /* KPIs: bloco bordô ocupa linha inteira, demais em 2 colunas */
       .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-      .kpi-main { grid-column: 1 / -1; }
+      .kpi-main-stack { grid-column: 1 / -1; flex-direction: row; }
+      .kpi-stack    { gap: 10px; }
+      .kpi-row-pair { gap: 10px; }
 
       /* KPI principal: reduz fonte do valor */
       .kpi-main .serif[style*="font-size:44px"] { font-size: 32px !important; }
@@ -509,9 +729,17 @@ export class ListaDespesasComponent implements OnInit {
   @ViewChild(MatPaginator) paginator?: MatPaginator;
   @ViewChild(MatSort)      sort?: MatSort;
 
-  carregando  = signal(false);
-  filtroLista = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
-  showTitulos = false;
+  carregando         = signal(false);
+  filtroLista        = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  filtroListaPedidos = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  paginaFixas        = signal(0);
+  paginaPedidos      = signal(0);
+  paginaAvencer      = signal(0);
+  readonly PAGE_FIXAS   = 5;
+  readonly PAGE_PEDIDOS = 6;
+  readonly PAGE_AVENCER = 5;
+  showTitulos        = false;
+  titulosPedidos     = signal<TituloPedidoMes[]>([]);
 
   dsTemplates = new MatTableDataSource<DespesaRecorrente>([]);
   dsTitulos   = new MatTableDataSource<TituloDespesa>([]);
@@ -563,7 +791,8 @@ export class ListaDespesasComponent implements OnInit {
   get totalPago(): number   { return this.templatesAtivos.filter(t => this.isPago(t)).reduce((s, t) => s + t.valor_estimado, 0); }
   get totalDevido(): number { return this.totalFixo - this.totalPago; }
   get pctPago(): number     { return this.totalFixo > 0 ? (this.totalPago / this.totalFixo) * 100 : 0; }
-  get breakEvenDia(): number { return this.totalFixo / 30; }
+  get breakEvenDia(): number        { return this.totalFixo / 30; }
+  get breakEvenPedidosDia(): number { return this.totalPedidosFixo / 30; }
 
   get templatesFiltrados(): DespesaRecorrente[] {
     const f = this.filtroLista();
@@ -572,12 +801,74 @@ export class ListaDespesasComponent implements OnInit {
     return this.templatesAtivos;
   }
 
+  get totalPaginasFixas(): number {
+    return Math.ceil(this.templatesFiltrados.length / this.PAGE_FIXAS);
+  }
+
+  get templatesPaginados(): DespesaRecorrente[] {
+    const inicio = this.paginaFixas() * this.PAGE_FIXAS;
+    return this.templatesFiltrados.slice(inicio, inicio + this.PAGE_FIXAS);
+  }
+
+  get titulosPedidosFiltrados(): TituloPedidoMes[] {
+    const f = this.filtroListaPedidos();
+    if (f === 'a_vencer') return this.titulosPedidos().filter(t => !t.data_pagamento);
+    if (f === 'pagas')    return this.titulosPedidos().filter(t => !!t.data_pagamento);
+    return this.titulosPedidos();
+  }
+
+  get totalPaginasPedidos(): number {
+    return Math.ceil(this.titulosPedidosFiltrados.length / this.PAGE_PEDIDOS);
+  }
+
+  get titulosPedidosPaginados(): TituloPedidoMes[] {
+    const inicio = this.paginaPedidos() * this.PAGE_PEDIDOS;
+    return this.titulosPedidosFiltrados.slice(inicio, inicio + this.PAGE_PEDIDOS);
+  }
+
+  get totalPedidosFixo(): number    { return this.titulosPedidos().reduce((s, t) => s + t.valor, 0); }
+  get totalPedidosPago(): number    { return this.titulosPedidos().filter(t => !!t.data_pagamento).reduce((s, t) => s + t.valor, 0); }
+  get totalPedidosDevido(): number  { return this.totalPedidosFixo - this.totalPedidosPago; }
+  get pctPedidosPago(): number      { return this.totalPedidosFixo > 0 ? (this.totalPedidosPago / this.totalPedidosFixo) * 100 : 0; }
+  get paidPedidosCount(): number    { return this.titulosPedidos().filter(t => !!t.data_pagamento).length; }
+  get duePedidosCount(): number     { return this.titulosPedidos().filter(t => !t.data_pagamento).length; }
+
+  get totalGeralDespesas(): number { return this.totalFixo + this.totalPedidosFixo; }
+  get totalDevidoGeral(): number   { return this.totalDevido + this.totalPedidosDevido; }
+
+  get itensAVencer(): ItemAVencer[] {
+    const fixas: ItemAVencer[] = this.templatesAVencer.map(t => ({
+      id: t.id, label: t.descricao, subLabel: `vence dia ${t.dia_venc}`,
+      dia: t.dia_venc, valor: t.valor_estimado, tipo: 'fixa', fixa: t,
+    }));
+    const pedidos: ItemAVencer[] = this.titulosPedidos()
+      .filter(t => !t.data_pagamento)
+      .map(t => {
+        const dia = t.data_vencimento ? parseInt(t.data_vencimento.split('-')[2], 10) : 99;
+        return {
+          id: t.id,
+          label: t.pedido?.fornecedor?.nome ?? t.pedido?.codigo ?? t.codigo,
+          subLabel: `vence dia ${dia} · pedido`,
+          dia, valor: t.valor, tipo: 'pedido' as const,
+        };
+      });
+    return [...fixas, ...pedidos].sort((a, b) => a.dia - b.dia);
+  }
+
+  get totalPaginasAvencer(): number {
+    return Math.ceil(this.itensAVencer.length / this.PAGE_AVENCER);
+  }
+
+  get itensAvencerPaginados(): ItemAVencer[] {
+    const inicio = this.paginaAvencer() * this.PAGE_AVENCER;
+    return this.itensAVencer.slice(inicio, inicio + this.PAGE_AVENCER);
+  }
+
   get templatesAVencer(): DespesaRecorrente[] {
     return this.templatesAtivos.filter(t => !this.isPago(t));
   }
 
   get categoriasData(): { label: string; valor: number; cor: string; pct: number }[] {
-    const total = this.totalFixo;
     const groups = new Map<string, { valor: number; cor: string }>();
     for (const t of this.templatesAtivos) {
       const label = t.categoria ? LABELS_CATEGORIA[t.categoria] : 'Outro';
@@ -585,6 +876,10 @@ export class ListaDespesasComponent implements OnInit {
       const prev  = groups.get(label);
       groups.set(label, { valor: (prev?.valor ?? 0) + t.valor_estimado, cor });
     }
+    if (this.totalPedidosFixo > 0) {
+      groups.set('Pedidos', { valor: this.totalPedidosFixo, cor: PEDIDOS_COR });
+    }
+    const total = this.totalGeralDespesas;
     return Array.from(groups.entries())
       .sort((a, b) => b[1].valor - a[1].valor)
       .map(([label, { valor, cor }]) => ({
@@ -633,12 +928,15 @@ export class ListaDespesasComponent implements OnInit {
   async carregar() {
     this.carregando.set(true);
     try {
-      const [templates, titulos] = await Promise.all([
+      const now = this._now;
+      const [templates, titulos, titulosPedidos] = await Promise.all([
         this.svc.listarTemplates(),
         this.svc.listarTitulosDespesa(),
+        this.svc.listarTitulosPedidosMes(now.getFullYear(), now.getMonth() + 1),
       ]);
       this.dsTemplates.data = templates;
       this.dsTitulos.data   = titulos;
+      this.titulosPedidos.set(titulosPedidos);
     } finally {
       this.carregando.set(false);
     }

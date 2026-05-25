@@ -16,6 +16,18 @@ export interface ApuracaoCrm {
   created_at: string;
 }
 
+export interface ItemApuracao {
+  descricao: string;
+  quantidade: number;
+  custo_unitario: number | null;
+  custo_total: number | null;
+  preco_total_venda: number;
+  fpp: number;
+  base_royalties: number;
+  royalties: number;
+  sem_ean: boolean;
+}
+
 export interface PedidoApuracao {
   pedido_id: string;
   numero_nf: string | null;
@@ -23,6 +35,7 @@ export interface PedidoApuracao {
   tipo: 'linha' | 'sazonal';
   valor_venda: number;
   itens_sem_ean: number;
+  itens: ItemApuracao[];
 }
 
 export interface PreviewApuracao {

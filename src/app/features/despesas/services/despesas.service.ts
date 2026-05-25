@@ -14,6 +14,15 @@ export interface TituloDespesa {
   fornecedores: { nome: string; categoria_fornecedor?: { id: string; nome: string } | null } | null;
 }
 
+export interface TituloPedidoMes {
+  id: string;
+  codigo: string;
+  valor: number;
+  data_vencimento: string | null;
+  data_pagamento: string | null;
+  pedido: { codigo: string | null; fornecedor: { nome: string } | null } | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DespesasService {
   private db = inject(SupabaseService).client;
@@ -103,6 +112,23 @@ export class DespesasService {
       .order('data_vencimento', { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as TituloDespesa[];
+  }
+
+  async listarTitulosPedidosMes(ano: number, mes: number): Promise<TituloPedidoMes[]> {
+    const mesPad  = String(mes).padStart(2, '0');
+    const nextMes = mes === 12
+      ? `${ano + 1}-01`
+      : `${ano}-${String(mes + 1).padStart(2, '0')}`;
+
+    const { data, error } = await this.db
+      .from('titulos')
+      .select('id, codigo, valor, data_vencimento, data_pagamento, pedido:pedidos(codigo, fornecedor:fornecedores(nome))')
+      .not('pedido_id', 'is', null)
+      .gte('data_vencimento', `${ano}-${mesPad}-01`)
+      .lt('data_vencimento', `${nextMes}-01`)
+      .order('data_vencimento', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as unknown as TituloPedidoMes[];
   }
 
   async identificarLancamento(params: {
