@@ -40,6 +40,14 @@ export class ExtratoService {
     });
   }
 
+  async excluir(id: string): Promise<void> {
+    const { error } = await this.db
+      .from('lancamentos_extrato')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  }
+
   async importarCsv(file: File): Promise<{ inseridos: number; duplicatas: number }> {
     const texto = await this.lerArquivo(file);
     const lancamentos = this.parsearCsv(texto);
@@ -48,18 +56,32 @@ export class ExtratoService {
       throw new Error('Nenhum lançamento encontrado no arquivo.');
     }
 
-    // upsert with ignoreDuplicates avoids the long IN-query URL and 409 conflicts.
-    // Supabase returns only the rows actually inserted, so we can count them.
+    // Validate against existing hashes to prevent duplicates regardless of DB constraints.
+    const hashes = lancamentos.map(l => l.hash);
+    const { data: existentes, error: errExist } = await this.db
+      .from('lancamentos_extrato')
+      .select('hash')
+      .in('hash', hashes);
+    if (errExist) throw errExist;
+
+    const hashesExistentes = new Set((existentes ?? []).map((r: { hash: string }) => r.hash));
+    const novos = lancamentos.filter(l => !hashesExistentes.has(l.hash));
+    const duplicatas = lancamentos.length - novos.length;
+
+    if (novos.length === 0) {
+      return { inseridos: 0, duplicatas };
+    }
+
     const { data, error } = await this.db
       .from('lancamentos_extrato')
-      .upsert(lancamentos, { onConflict: 'hash', ignoreDuplicates: true })
+      .insert(novos)
       .select('id');
 
     if (error) throw error;
 
     const inseridos = (data ?? []).length;
     try { await this.correlacaoSvc.executar(); } catch { /* silent */ }
-    return { inseridos, duplicatas: lancamentos.length - inseridos };
+    return { inseridos, duplicatas };
   }
 
   private async lerArquivo(file: File): Promise<string> {

@@ -239,6 +239,20 @@
                 </button>
               }
             }
+            <button
+              mat-icon-button
+              (click)="excluirLancamento(l)"
+              title="Excluir lançamento"
+              type="button"
+              class="btn-excluir"
+              [disabled]="excluindoId() === l.id"
+            >
+              @if (excluindoId() === l.id) {
+                <mat-spinner diameter="16" />
+              } @else {
+                <mat-icon>delete_outline</mat-icon>
+              }
+            </button>
           </td>
         </ng-container>
 
@@ -338,6 +352,20 @@
                     </button>
                   }
                 }
+                <button
+                  mat-icon-button
+                  (click)="excluirLancamento(l)"
+                  title="Excluir lançamento"
+                  type="button"
+                  class="btn-excluir mc-btn"
+                  [disabled]="excluindoId() === l.id"
+                >
+                  @if (excluindoId() === l.id) {
+                    <mat-spinner diameter="16" />
+                  } @else {
+                    <mat-icon>delete_outline</mat-icon>
+                  }
+                </button>
               </div>
             </div>
 

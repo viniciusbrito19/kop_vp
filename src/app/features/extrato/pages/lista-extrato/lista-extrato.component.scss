@@ -251,14 +251,20 @@
 
 /* ── Botões hover ── */
 .btn-edit,
-.btn-identificar {
+.btn-identificar,
+.btn-excluir {
   opacity: 0;
   transition: opacity 0.12s;
 }
 
 .mat-mdc-row:hover .btn-edit,
-.mat-mdc-row:hover .btn-identificar {
+.mat-mdc-row:hover .btn-identificar,
+.mat-mdc-row:hover .btn-excluir {
   opacity: 1;
+}
+
+.btn-excluir {
+  color: var(--bad);
 }
 
 /* ── Ícone despesa ── */
@@ -624,7 +630,8 @@
 
   /* Botões de ação sempre visíveis (sem hover no touch) */
   .btn-edit,
-  .btn-identificar { opacity: 1; }
+  .btn-identificar,
+  .btn-excluir { opacity: 1; }
 
   /* ===== Drawer: sheet de baixo no mobile ===== */
   .drawer {

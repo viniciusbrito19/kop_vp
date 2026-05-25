@@ -84,8 +84,9 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   carregando   = signal(false);
   importando   = signal(false);
   conciliando  = signal(false);
-  editandoId = signal<string | null>(null);
-  salvando   = signal(false);
+  editandoId  = signal<string | null>(null);
+  salvando    = signal(false);
+  excluindoId = signal<string | null>(null);
 
   private _lancamentos = signal<LancamentoExtrato[]>([]);
 
@@ -382,6 +383,22 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
       this.router.createUrlTree(['/pedidos'], { queryParams: { expandir: pedidoId } })
     );
     window.open(url, '_blank');
+  }
+
+  async excluirLancamento(l: LancamentoExtrato) {
+    const msg = `Excluir lançamento de ${this.formatarMoeda(l.valor)} em ${this.formatarData(l.data_lancamento)}?`;
+    if (!confirm(msg)) return;
+
+    this.excluindoId.set(l.id);
+    try {
+      await this.service.excluir(l.id);
+      this.dataSource.data = this.dataSource.data.filter(r => r.id !== l.id);
+      this._lancamentos.set(this._lancamentos().filter(r => r.id !== l.id));
+    } catch {
+      this.snack.open('Erro ao excluir lançamento.', 'OK', { duration: 4000 });
+    } finally {
+      this.excluindoId.set(null);
+    }
   }
 
   formatarData(data: string): string {
