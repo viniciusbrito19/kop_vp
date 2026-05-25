@@ -165,18 +165,7 @@ import { AuthService } from '../../../../core/services/auth.service';
       <div class="login-card">
 
         <div class="brand">
-          <svg width="38" height="38" viewBox="0 0 40 40" fill="none">
-            <defs>
-              <linearGradient id="kopg" x1="0" y1="0" x2="40" y2="40">
-                <stop offset="0%" stop-color="#C2965A"/>
-                <stop offset="100%" stop-color="#82622F"/>
-              </linearGradient>
-            </defs>
-            <rect x="3" y="7" width="28" height="28" rx="6" transform="rotate(-12 17 21)" fill="#7A1F2B"/>
-            <rect x="3" y="7" width="28" height="28" rx="6" transform="rotate(-12 17 21)" fill="url(#kopg)" opacity="0.18"/>
-            <rect x="18" y="3" width="20" height="20" rx="4" transform="rotate(8 28 13)" fill="url(#kopg)"/>
-            <text x="28" y="18" text-anchor="middle" fill="#5A1620" font-family="Instrument Serif, Georgia" font-size="14" font-style="italic" transform="rotate(8 28 13)">k</text>
-          </svg>
+          <img src="kop-icon.svg" width="48" height="48" alt="Kop VP" style="border-radius:13px;display:block"/>
           <div class="brand-text">
             <span class="brand-name">Kop VP</span>
             <span class="brand-tag">Chocolataria</span>

@@ -1,30 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="kopg" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#C2965A"/>
+    <linearGradient id="g-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E6CC97"/>
+      <stop offset="45%" stop-color="#C2965A"/>
       <stop offset="100%" stop-color="#82622F"/>
     </linearGradient>
+    <linearGradient id="g-bordo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8E2735"/>
+      <stop offset="55%" stop-color="#7A1F2B"/>
+      <stop offset="100%" stop-color="#46101A"/>
+    </linearGradient>
+    <radialGradient id="g-vignette" cx="0.5" cy="0.35" r="0.85">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+    </radialGradient>
   </defs>
 
-  <!-- Background -->
-  <rect width="180" height="180" fill="#FAF7F4"/>
+  <!-- Background bordô -->
+  <rect width="1024" height="1024" fill="url(#g-bordo)"/>
+  <rect width="1024" height="1024" fill="url(#g-vignette)"/>
 
-  <!-- Group centralizado: logo original era 40x40, escalamos 3.6x para ~144px, centrado em 90,90 -->
-  <g transform="translate(90,90) scale(3.6) translate(-20,-20)">
-    <!-- Retângulo escuro traseiro (vermelho bordo) -->
-    <rect x="3" y="7" width="28" height="28" rx="6" transform="rotate(-12 17 21)" fill="#7A1F2B"/>
-    <!-- Overlay dourado translúcido -->
-    <rect x="3" y="7" width="28" height="28" rx="6" transform="rotate(-12 17 21)" fill="url(#kopg)" opacity="0.18"/>
-    <!-- Grade de linhas -->
-    <g transform="rotate(-12 17 21)" stroke="#FAEFE0" stroke-width="1" opacity="0.32">
-      <line x1="12" y1="7" x2="12" y2="35"/>
-      <line x1="22" y1="7" x2="22" y2="35"/>
-      <line x1="3" y1="16" x2="31" y2="16"/>
-      <line x1="3" y1="26" x2="31" y2="26"/>
+  <!-- Chocolate bar grid -->
+  <g opacity="0.18" stroke="#F4E6D0" stroke-width="2" fill="none">
+    <path d="M 0 341 H 1024 M 0 683 H 1024 M 341 0 V 1024 M 683 0 V 1024"/>
+  </g>
+
+  <!-- Gold KPI tile, rotated -->
+  <g transform="translate(512 512) rotate(-6) translate(-300 -300)">
+    <rect x="0" y="0" width="600" height="600" rx="104" fill="url(#g-gold)"/>
+    <rect x="0" y="0" width="600" height="600" rx="104" fill="url(#g-vignette)" opacity="0.55"/>
+    <rect x="14" y="14" width="572" height="572" rx="92" fill="none" stroke="#46101A" stroke-opacity="0.22" stroke-width="2"/>
+    <!-- Italic k -->
+    <text x="96" y="312" font-family="Instrument Serif, Georgia, serif" font-style="italic" font-size="360" fill="#46101A">k</text>
+    <!-- Sparkline bars -->
+    <g fill="#46101A" opacity="0.92">
+      <rect x="96"  y="440" width="58" height="80"  rx="12"/>
+      <rect x="176" y="412" width="58" height="108" rx="12"/>
+      <rect x="256" y="376" width="58" height="144" rx="12"/>
+      <rect x="336" y="332" width="58" height="188" rx="12"/>
+      <rect x="416" y="288" width="58" height="232" rx="12"/>
     </g>
-    <!-- Retângulo dourado frontal -->
-    <rect x="18" y="3" width="20" height="20" rx="4" transform="rotate(8 28 13)" fill="url(#kopg)"/>
-    <!-- Letra k -->
-    <text x="28" y="18" text-anchor="middle" fill="#5A1620" font-family="Georgia, serif" font-size="14" font-style="italic" transform="rotate(8 28 13)">k</text>
   </g>
 </svg>

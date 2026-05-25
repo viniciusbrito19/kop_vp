@@ -67,11 +67,26 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
         <!-- ── Header ────────────────────────────────────────── -->
         <div class="row header-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
-          <div>
-            <h1 class="page">Despesas</h1>
+          <div class="header-title">
+            <h1 class="page">Despesas <em style="color:var(--bordo);font-style:italic">mensais</em></h1>
             <div class="page-sub">O que a loja gasta todo mês para abrir as portas · {{ mesLabel }}</div>
           </div>
           <div class="row gap-2 header-actions">
+            <div class="row gap-1 mes-nav">
+              <button class="btn icon ghost pag-btn" type="button" (click)="mesAnterior()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span class="mes-nav-label">{{ mesLabel }}</span>
+              <button class="btn icon ghost pag-btn" type="button" (click)="proximoMes()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+              @if (!isMesAtual) {
+                <button class="btn ghost sm" type="button" style="font-size:11px;padding:2px 8px;height:24px"
+                        (click)="irParaHoje()">
+                  Hoje
+                </button>
+              }
+            </div>
             <button class="btn ghost sm" type="button" (click)="toggleTitulos()">
               <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">receipt_long</mat-icon>
               Títulos
@@ -98,7 +113,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                 <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
                 CUSTO FIXO MENSAL
               </div>
-              <div class="serif" style="font-size:30px;line-height:1.05;margin-top:4px">
+              <div class="serif kpi-bordo-val" style="font-size:30px;line-height:1.05;margin-top:4px">
                 {{ moedaCompact(totalFixo) }}
               </div>
               <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
@@ -118,7 +133,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                 <mat-icon style="font-size:14px;width:14px;height:14px">receipt_long</mat-icon>
                 CUSTO DE PEDIDOS DO MÊS
               </div>
-              <div class="serif" style="font-size:30px;line-height:1.05;margin-top:4px">
+              <div class="serif kpi-bordo-val" style="font-size:30px;line-height:1.05;margin-top:4px">
                 {{ moedaCompact(totalPedidosFixo) }}
               </div>
               <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
@@ -152,7 +167,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
               <div class="kpi kpi-half">
                 <div class="kpi-label">
                   <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-                  FIXAS A VENCER
+                  FIXAS A VENCER NESTE MÊS
                 </div>
                 <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalDevido) }}</div>
                 <div class="kpi-foot">{{ dueCount }} categorias pendentes</div>
@@ -173,7 +188,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
               <div class="kpi kpi-half">
                 <div class="kpi-label">
                   <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-                  PEDIDOS A VENCER
+                  PEDIDOS A VENCER NESTE MÊS
                 </div>
                 <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalPedidosDevido) }}</div>
                 <div class="kpi-foot">{{ duePedidosCount }} títulos pendentes</div>
@@ -183,7 +198,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
           </div>
 
           <!-- KPI Break-even empilhado: fixo + pedidos -->
-          <div class="col kpi-stack">
+          <div class="col kpi-stack kpi-be-stack">
 
             <div class="kpi gold kpi-half">
               <div class="kpi-label">
@@ -557,7 +572,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                   </div>
                   <div>
                     <div style="font-size:12px;font-weight:700;margin-bottom:2px">
-                      {{ moedaCompact(totalDevidoGeral) }} vencem nos próximos dias
+                      {{ moedaCompact(totalVencendo7Dias) }} vencem nos próximos 7 dias
                     </div>
                     <div style="font-size:11px;color:var(--text-2);line-height:1.5">
                       Garanta que o caixa cobre os vencimentos antes das datas.
@@ -655,16 +670,20 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
     </mat-menu>
   `,
   styles: [`
-    :host { display: block; }
+    :host { display: block; overflow-x: clip; }
 
     /* ── Layout base ─────────────────────────────────────── */
-    .page-wrap  { padding: 28px 32px 48px; max-width: 1600px; }
-    .kpi-grid      { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 14px; margin-bottom: 22px; }
-    .main-grid     { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-    .kpi-stack     { display: flex; flex-direction: column; gap: 14px; }
-    .kpi-main-stack { display: flex; flex-direction: column; gap: 14px; }
-    .kpi-row-pair  { display: flex; gap: 14px; flex: 1; }
-    .kpi-half      { flex: 1; min-width: 0; }
+    .page-wrap  { padding: 28px 32px 48px; max-width: 1600px; box-sizing: border-box; width: 100%; }
+    .kpi-grid      { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr) minmax(0,1fr); gap: 14px; margin-bottom: 22px; }
+    .main-grid     { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; }
+    .kpi-stack     { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .kpi-main-stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .kpi-row-pair  { display: flex; gap: 14px; flex: 1; min-width: 0; }
+    .kpi-half      { flex: 1; min-width: 0; overflow: hidden; }
+
+    /* ── Nav de mês ─────────────────────────────────────── */
+    .mes-nav       { align-items: center; background: var(--surface-2); border-radius: 10px; padding: 3px 6px; gap: 4px; }
+    .mes-nav-label { font-size: 13px; font-weight: 600; min-width: 80px; text-align: center; text-transform: capitalize; }
 
     /* ── Paginação ──────────────────────────────────────── */
     .pag-bar  { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0 4px; }
@@ -682,42 +701,55 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
     /* ── Responsividade mobile ───────────────────────────── */
     @media (max-width: 680px) {
-      .page-wrap { padding: 14px 14px 28px; }
+      .page-wrap { padding: 12px 14px 80px; }
 
-      /* Header: empilha título e botões */
+      /* Header: título em cima, ações embaixo */
       .header-row {
-        flex-direction: column !important;
+        flex-direction: column;
         align-items: flex-start !important;
-        gap: 10px;
-        margin-bottom: 16px !important;
+        gap: 8px;
+        margin-bottom: 14px !important;
       }
-      .header-row h1.page { font-size: 22px !important; }
+      .header-title { width: 100%; }
+      .header-title h1.page { font-size: 20px !important; text-align: left !important; }
+      .header-title .page-sub { text-align: left !important; }
+      .page-sub { font-size: 11px !important; }
 
-      /* Oculta botões secundários; mantém só Nova Despesa */
-      .header-actions .btn.ghost,
-      .header-actions .btn.outline { display: none !important; }
+      /* Ações: ocupa largura toda; oculta botões secundários (filhos diretos ghost/outline) */
+      .header-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+      .header-actions > .btn.ghost,
+      .header-actions > .btn.outline { display: none !important; }
+      .mes-nav-label { min-width: 60px !important; font-size: 12px; }
 
-      /* KPIs: bloco bordô ocupa linha inteira, demais em 2 colunas */
-      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-      .kpi-main-stack { grid-column: 1 / -1; flex-direction: row; }
-      .kpi-stack    { gap: 10px; }
-      .kpi-row-pair { gap: 10px; }
+      /* KPI grid: coluna única — minmax(0) evita overflow do conteúdo */
+      .kpi-grid       { grid-template-columns: minmax(0,1fr); gap: 10px; margin-bottom: 14px; }
+      .kpi-main-stack { flex-direction: row; }   /* bordô lado a lado */
+      .kpi-be-stack   { flex-direction: row; }   /* break-even lado a lado */
+      .kpi-stack      { gap: 10px; }
+      .kpi-row-pair   { gap: 10px; }
 
-      /* KPI principal: reduz fonte do valor */
-      .kpi-main .serif[style*="font-size:44px"] { font-size: 32px !important; }
+      /* Reduz valor dos cards bordô */
+      .kpi-bordo-val  { font-size: 20px !important; }
+      .kpi.bordo      { padding: 12px 12px !important; }
+
+      /* Rótulos longos podem quebrar linha */
+      .kpi-label { white-space: normal !important; line-height: 1.3; }
 
       /* Layout principal: coluna única */
-      .main-grid { grid-template-columns: 1fr; gap: 14px; }
+      .main-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
 
-      /* Donut: reduz tamanho no mobile */
-      .donut-wrap { width: 130px !important; height: 130px !important; }
-      .donut-wrap svg { width: 130px !important; height: 130px !important; }
+      /* Cards da lista: limita largura */
+      .card { overflow: hidden; }
 
-      /* Segmented control menor */
+      /* Donut menor */
+      .donut-wrap     { width: 120px !important; height: 120px !important; }
+      .donut-wrap svg { width: 120px !important; height: 120px !important; }
+
+      /* Segmented control compacto */
       .seg button { padding: 4px 8px !important; font-size: 11px !important; }
 
-      /* Rodapé da lista */
-      .main-grid .serif[style*="font-size:26px"] { font-size: 20px !important; }
+      /* Rodapé totais */
+      .main-grid .serif[style*="font-size:26px"] { font-size: 18px !important; }
     }
   `],
 })
@@ -740,6 +772,9 @@ export class ListaDespesasComponent implements OnInit {
   readonly PAGE_AVENCER = 5;
   showTitulos        = false;
   titulosPedidos     = signal<TituloPedidoMes[]>([]);
+  refAno             = signal(new Date().getFullYear());
+  refMes             = signal(new Date().getMonth() + 1);
+  private readonly _hoje = new Date();
 
   dsTemplates = new MatTableDataSource<DespesaRecorrente>([]);
   dsTitulos   = new MatTableDataSource<TituloDespesa>([]);
@@ -755,7 +790,7 @@ export class ListaDespesasComponent implements OnInit {
   private readonly CIRCUMFERENCE = 2 * Math.PI * 56;
 
   // ── Mês ─────────────────────────────────────────────────────
-  private get _now() { return new Date(); }
+  private get _now() { return new Date(this.refAno(), this.refMes() - 1, 1); }
 
   get mesLabel(): string {
     return this._now.toLocaleDateString('pt-BR', { month: 'long', year: '2-digit' });
@@ -835,6 +870,16 @@ export class ListaDespesasComponent implements OnInit {
 
   get totalGeralDespesas(): number { return this.totalFixo + this.totalPedidosFixo; }
   get totalDevidoGeral(): number   { return this.totalDevido + this.totalPedidosDevido; }
+
+  get totalVencendo7Dias(): number {
+    const hoje     = this._hoje;
+    const hojeOnly = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const em7      = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 7);
+    return this.itensAVencer.reduce((soma, item) => {
+      const dataItem = new Date(hoje.getFullYear(), hoje.getMonth(), item.dia);
+      return (dataItem >= hojeOnly && dataItem <= em7) ? soma + item.valor : soma;
+    }, 0);
+  }
 
   get itensAVencer(): ItemAVencer[] {
     const fixas: ItemAVencer[] = this.templatesAVencer.map(t => ({
@@ -922,17 +967,42 @@ export class ListaDespesasComponent implements OnInit {
     return `${dia}/${m}/${a}`;
   }
 
+  get isMesAtual(): boolean {
+    const h = this._hoje;
+    return this.refAno() === h.getFullYear() && this.refMes() === h.getMonth() + 1;
+  }
+
+  mesAnterior() {
+    if (this.refMes() === 1) { this.refMes.set(12); this.refAno.set(this.refAno() - 1); }
+    else { this.refMes.set(this.refMes() - 1); }
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.carregar();
+  }
+
+  proximoMes() {
+    if (this.refMes() === 12) { this.refMes.set(1); this.refAno.set(this.refAno() + 1); }
+    else { this.refMes.set(this.refMes() + 1); }
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.carregar();
+  }
+
+  irParaHoje() {
+    this.refAno.set(this._hoje.getFullYear());
+    this.refMes.set(this._hoje.getMonth() + 1);
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.carregar();
+  }
+
   // ── Ações ───────────────────────────────────────────────────
   async ngOnInit() { await this.carregar(); }
 
   async carregar() {
     this.carregando.set(true);
     try {
-      const now = this._now;
       const [templates, titulos, titulosPedidos] = await Promise.all([
         this.svc.listarTemplates(),
         this.svc.listarTitulosDespesa(),
-        this.svc.listarTitulosPedidosMes(now.getFullYear(), now.getMonth() + 1),
+        this.svc.listarTitulosPedidosMes(this.refAno(), this.refMes()),
       ]);
       this.dsTemplates.data = templates;
       this.dsTitulos.data   = titulos;

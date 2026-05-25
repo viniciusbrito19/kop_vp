@@ -5,9 +5,15 @@
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FAF7F4",
+  "background_color": "#46101A",
   "theme_color": "#7A1F2B",
   "icons": [
+    {
+      "src": "kop-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
