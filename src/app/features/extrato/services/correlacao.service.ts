@@ -68,8 +68,12 @@ export class CorrelacaoService {
 
         const candidatos = (porValor.get(key) ?? []).filter(t => {
           if (usadosTitulos.has(t.id)) return false;
-          // Payment must not predate the invoice emission
-          if (t.data_emissao && lanc.data_lancamento < t.data_emissao) return false;
+          // Reject payments more than 60 days before or 60 days after vencimento
+          if (t.data_vencimento) {
+            const vencMs = new Date(t.data_vencimento).getTime();
+            const diffDias = (dataLancMs - vencMs) / 86_400_000;
+            if (diffDias < -60 || diffDias > 60) return false;
+          }
           // If supplier keys are configured, destinatário must match at least one
           if (t.chaves.length && !t.chaves.some(k => dest.includes(k))) return false;
           return true;
