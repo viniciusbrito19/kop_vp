@@ -228,6 +228,22 @@
                 <mat-icon>manage_search</mat-icon>
               </button>
             }
+            @if (isVinculado(l)) {
+              <button
+                mat-icon-button
+                (click)="desvincularLancamento(l)"
+                title="Desvincular"
+                type="button"
+                class="btn-desvincular"
+                [disabled]="desvinculandoId() === l.id"
+              >
+                @if (desvinculandoId() === l.id) {
+                  <mat-spinner diameter="16" />
+                } @else {
+                  <mat-icon>link_off</mat-icon>
+                }
+              </button>
+            }
             @if (isEditavel(l)) {
               @if (editandoId() === l.id) {
                 <button mat-icon-button (click)="cancelarEdicao()" title="Cancelar" type="button">
@@ -339,6 +355,22 @@
                 @if (isIdentificavel(l)) {
                   <button mat-icon-button (click)="abrirPainel(l)" title="Identificar despesa" type="button" class="btn-identificar mc-btn">
                     <mat-icon>manage_search</mat-icon>
+                  </button>
+                }
+                @if (isVinculado(l)) {
+                  <button
+                    mat-icon-button
+                    (click)="desvincularLancamento(l)"
+                    title="Desvincular"
+                    type="button"
+                    class="btn-desvincular mc-btn"
+                    [disabled]="desvinculandoId() === l.id"
+                  >
+                    @if (desvinculandoId() === l.id) {
+                      <mat-spinner diameter="16" />
+                    } @else {
+                      <mat-icon>link_off</mat-icon>
+                    }
                   </button>
                 }
                 @if (isEditavel(l)) {

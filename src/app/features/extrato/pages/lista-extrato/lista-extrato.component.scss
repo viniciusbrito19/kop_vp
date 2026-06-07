@@ -252,6 +252,7 @@
 /* ── Botões hover ── */
 .btn-edit,
 .btn-identificar,
+.btn-desvincular,
 .btn-excluir {
   opacity: 0;
   transition: opacity 0.12s;
@@ -259,8 +260,13 @@
 
 .mat-mdc-row:hover .btn-edit,
 .mat-mdc-row:hover .btn-identificar,
+.mat-mdc-row:hover .btn-desvincular,
 .mat-mdc-row:hover .btn-excluir {
   opacity: 1;
+}
+
+.btn-desvincular {
+  color: var(--text-3);
 }
 
 .btn-excluir {
@@ -631,6 +637,7 @@
   /* Botões de ação sempre visíveis (sem hover no touch) */
   .btn-edit,
   .btn-identificar,
+  .btn-desvincular,
   .btn-excluir { opacity: 1; }
 
   /* ===== Drawer: sheet de baixo no mobile ===== */

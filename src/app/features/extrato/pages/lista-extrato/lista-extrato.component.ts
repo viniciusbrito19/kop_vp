@@ -86,7 +86,8 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   conciliando  = signal(false);
   editandoId  = signal<string | null>(null);
   salvando    = signal(false);
-  excluindoId = signal<string | null>(null);
+  excluindoId    = signal<string | null>(null);
+  desvinculandoId = signal<string | null>(null);
 
   private _lancamentos = signal<LancamentoExtrato[]>([]);
 
@@ -159,6 +160,10 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
 
   isIdentificavel(l: LancamentoExtrato): boolean {
     return l.natureza === 'saida' && !l.pedido && !l.despesa;
+  }
+
+  isVinculado(l: LancamentoExtrato): boolean {
+    return !!(l.pedido || l.despesa);
   }
 
   async abrirPainel(l: LancamentoExtrato) {
@@ -390,6 +395,21 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
       this.router.createUrlTree(['/pedidos'], { queryParams: { expandir: pedidoId } })
     );
     window.open(url, '_blank');
+  }
+
+  async desvincularLancamento(l: LancamentoExtrato) {
+    const origem = l.pedido ? `pedido ${l.pedido.codigo}` : 'despesa identificada';
+    if (!confirm(`Desvincular lançamento do ${origem}? O vínculo será removido.`)) return;
+
+    this.desvinculandoId.set(l.id);
+    try {
+      await this.service.desvincular(l.id);
+      await this.carregar();
+    } catch {
+      this.snack.open('Erro ao desvincular lançamento.', 'OK', { duration: 4000 });
+    } finally {
+      this.desvinculandoId.set(null);
+    }
   }
 
   async excluirLancamento(l: LancamentoExtrato) {

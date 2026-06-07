@@ -23,13 +23,25 @@ export class ExtratoService {
   }
 
   async listar(): Promise<LancamentoExtrato[]> {
-    const { data, error } = await this.db
-      .from('lancamentos_extrato')
-      .select('*, titulos(pedido_id, categoria, descricao, pedidos(id, codigo))')
-      .order('data_lancamento', { ascending: false })
-      .order('ordem_original', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(row => {
+    const PAGE = 1000;
+    const raw: any[] = [];
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await this.db
+        .from('lancamentos_extrato')
+        .select('*, titulos(pedido_id, categoria, descricao, pedidos(id, codigo))')
+        .order('data_lancamento', { ascending: false })
+        .order('ordem_original', { ascending: false })
+        .range(offset, offset + PAGE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      raw.push(...page);
+      if (page.length < PAGE) break;
+      offset += PAGE;
+    }
+
+    return raw.map(row => {
       const { titulos: rawTitulos, ...rest } = row as any;
       const titulo = (rawTitulos as any[] | null)?.[0];
       const pedido  = titulo?.pedido_id ? (titulo?.pedidos ?? null) : null;
@@ -46,6 +58,33 @@ export class ExtratoService {
       .delete()
       .eq('id', id);
     if (error) throw error;
+  }
+
+  async desvincular(lancamentoId: string): Promise<void> {
+    const { data: titulos, error: e1 } = await this.db
+      .from('titulos')
+      .select('id, pedido_id, despesa_recorrente_id')
+      .eq('lancamento_extrato_id', lancamentoId);
+    if (e1) throw e1;
+
+    const titulo = titulos?.[0];
+    if (!titulo) return;
+
+    if (titulo.pedido_id || titulo.despesa_recorrente_id) {
+      // Título estruturado: volta a "pendente de pagamento"
+      const { error } = await this.db
+        .from('titulos')
+        .update({ lancamento_extrato_id: null, data_pagamento: null })
+        .eq('id', titulo.id);
+      if (error) throw error;
+    } else {
+      // Despesa avulsa: criada só para este lançamento, pode ser excluída
+      const { error } = await this.db
+        .from('titulos')
+        .delete()
+        .eq('id', titulo.id);
+      if (error) throw error;
+    }
   }
 
   async importarCsv(file: File): Promise<{ inseridos: number; duplicatas: number }> {
