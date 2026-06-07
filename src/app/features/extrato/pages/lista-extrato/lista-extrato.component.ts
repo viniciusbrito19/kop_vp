@@ -323,14 +323,21 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   async conciliar() {
     this.conciliando.set(true);
     try {
+      // Pass 1: correlaciona títulos de NF-e/pedidos (cobre casos onde o título
+      // foi cadastrado após o import do CSV, ou quando executar() falhou silenciosamente)
+      const nfe = await this.correlacaoSvc.executar();
+
+      // Pass 2: correlaciona despesas recorrentes
       const { vinculadas, criadas } = await this.correlacaoSvc.conciliarDespesas();
-      const total = vinculadas + criadas;
+
+      const total = nfe + vinculadas + criadas;
       if (total === 0) {
-        this.snack.open('Nenhuma despesa recorrente identificada.', 'OK', { duration: 4000 });
+        this.snack.open('Nenhum lançamento conciliado.', 'OK', { duration: 4000 });
       } else {
         const partes: string[] = [];
-        if (vinculadas) partes.push(`${vinculadas} vinculada${vinculadas > 1 ? 's' : ''}`);
-        if (criadas)    partes.push(`${criadas} criada${criadas > 1 ? 's' : ''}`);
+        if (nfe)      partes.push(`${nfe} título${nfe > 1 ? 's' : ''} de pedido`);
+        if (vinculadas) partes.push(`${vinculadas} despesa${vinculadas > 1 ? 's' : ''} vinculada${vinculadas > 1 ? 's' : ''}`);
+        if (criadas)    partes.push(`${criadas} despesa${criadas > 1 ? 's' : ''} criada${criadas > 1 ? 's' : ''}`);
         this.snack.open(`Conciliação concluída: ${partes.join(', ')}.`, 'OK', { duration: 5000 });
         await this.carregar();
       }
