@@ -95,30 +95,16 @@ export class ExtratoService {
       throw new Error('Nenhum lançamento encontrado no arquivo.');
     }
 
-    // Validate against existing hashes to prevent duplicates regardless of DB constraints.
-    const hashes = lancamentos.map(l => l.hash);
-    const { data: existentes, error: errExist } = await this.db
-      .from('lancamentos_extrato')
-      .select('hash')
-      .in('hash', hashes);
-    if (errExist) throw errExist;
-
-    const hashesExistentes = new Set((existentes ?? []).map((r: { hash: string }) => r.hash));
-    const novos = lancamentos.filter(l => !hashesExistentes.has(l.hash));
-    const duplicatas = lancamentos.length - novos.length;
-
-    if (novos.length === 0) {
-      return { inseridos: 0, duplicatas };
-    }
-
+    // Relies on UNIQUE(hash) in the DB — duplicates are silently ignored.
     const { data, error } = await this.db
       .from('lancamentos_extrato')
-      .insert(novos)
+      .upsert(lancamentos, { onConflict: 'hash', ignoreDuplicates: true })
       .select('id');
 
     if (error) throw error;
 
     const inseridos = (data ?? []).length;
+    const duplicatas = lancamentos.length - inseridos;
     try { await this.correlacaoSvc.executar(); } catch { /* silent */ }
     return { inseridos, duplicatas };
   }
