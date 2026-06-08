@@ -22,6 +22,8 @@ export interface ItemApuracao {
   custo_unitario: number | null;
   custo_total: number | null;
   preco_total_venda: number;
+  cobra_fpp: boolean;
+  cobra_royalties: boolean;
   fpp: number;
   base_royalties: number;
   royalties: number;
@@ -62,9 +64,17 @@ export interface ItemSemMatch {
   pedidos: { pedido_id: string; numero_nf: string | null }[];
 }
 
+export interface ItemEanSemCatalogo {
+  ean: string;
+  descricoes: string[];
+  ocorrencias: number;
+  pedidos: { pedido_id: string; numero_nf: string | null }[];
+}
+
 export interface ResultadoReconciliacao {
   reconciliados: ItemReconciliado[];
   semMatch: ItemSemMatch[];
+  eanSemCatalogo: ItemEanSemCatalogo[];
   totalItens: number;
   jaComEan: number;
 }

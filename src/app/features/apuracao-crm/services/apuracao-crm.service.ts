@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao } from '../models/apuracao.model';
+import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao, ItemEanSemCatalogo } from '../models/apuracao.model';
 
-const ALIQUOTA_FPP      = 0.04;
+const ALIQUOTA_FPP      = 0.0385;
 const ALIQUOTA_LINHA    = 0.37;
 const ALIQUOTA_SAZONAL  = 0.275;
 
@@ -55,16 +55,23 @@ export class ApuracaoCrmService {
       (itensPedido ?? []).filter((i: any) => i.ean).map((i: any) => i.ean as string)
     )];
 
-    let precoPorEan: Record<string, number> = {};
+    let precoPorEan:  Record<string, number>                              = {};
+    let flagsPorEan:  Record<string, { cobra_fpp: boolean; cobra_royalties: boolean }> = {};
     if (eans.length > 0) {
       const { data: produtos, error: errProd } = await this.db
         .from('itens')
-        .select('ean, preco_venda')
+        .select('ean, preco_venda, cobra_fpp, cobra_royalties')
         .in('ean', eans);
       if (errProd) throw errProd;
       for (const p of (produtos ?? [])) {
         if (p.ean && p.preco_venda != null) {
           precoPorEan[p.ean] = p.preco_venda;
+        }
+        if (p.ean) {
+          flagsPorEan[p.ean] = {
+            cobra_fpp:       p.cobra_fpp       ?? true,
+            cobra_royalties: p.cobra_royalties ?? true,
+          };
         }
       }
     }
@@ -93,9 +100,14 @@ export class ApuracaoCrmService {
         const temEan = !!(item.ean && precoPorEan[item.ean] != null);
         const precoVenda = temEan ? precoPorEan[item.ean!] : 0;
         const precoTotalVenda = precoVenda * item.quantidade;
-        const fppItem = precoTotalVenda * ALIQUOTA_FPP;
-        const baseRoy = precoTotalVenda * (1 - ALIQUOTA_FPP);
-        const royItem = baseRoy * aliquota;
+
+        const flags = temEan
+          ? (flagsPorEan[item.ean!] ?? { cobra_fpp: true, cobra_royalties: true })
+          : { cobra_fpp: false, cobra_royalties: false };
+
+        const fppItem = flags.cobra_fpp ? precoTotalVenda * ALIQUOTA_FPP : 0;
+        const baseRoy = flags.cobra_royalties ? precoTotalVenda - fppItem : 0;
+        const royItem = flags.cobra_royalties ? baseRoy * aliquota : 0;
 
         if (temEan) valorVenda += precoTotalVenda;
         else itensSemEan++;
@@ -108,6 +120,8 @@ export class ApuracaoCrmService {
           custo_unitario: item.valor_unitario ?? null,
           custo_total: custoTotal,
           preco_total_venda: precoTotalVenda,
+          cobra_fpp:       flags.cobra_fpp,
+          cobra_royalties: flags.cobra_royalties,
           fpp: fppItem,
           base_royalties: baseRoy,
           royalties: royItem,
@@ -126,14 +140,13 @@ export class ApuracaoCrmService {
       });
     }
 
-    // 5. Totais e cálculo
+    // 5. Totais — fpp e royalties agregados dos itens para respeitar flags cobra_fpp/cobra_royalties
     const total_linha   = pedidosApuracao.filter(p => p.tipo === 'linha').reduce((s, p) => s + p.valor_venda, 0);
     const total_sazonal = pedidosApuracao.filter(p => p.tipo === 'sazonal').reduce((s, p) => s + p.valor_venda, 0);
     const total_venda   = total_linha + total_sazonal;
-    const fpp           = total_venda * ALIQUOTA_FPP;
-    // FPP deduzido proporcionalmente: base_x = total_x * (1 - ALIQUOTA_FPP)
-    const roy_linha   = total_linha   * (1 - ALIQUOTA_FPP) * ALIQUOTA_LINHA;
-    const roy_sazonal = total_sazonal * (1 - ALIQUOTA_FPP) * ALIQUOTA_SAZONAL;
+    const fpp       = pedidosApuracao.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.fpp,       0), 0);
+    const roy_linha   = pedidosApuracao.filter(p => p.tipo === 'linha')  .reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
+    const roy_sazonal = pedidosApuracao.filter(p => p.tipo === 'sazonal').reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
 
     return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, roy_linha, roy_sazonal };
   }
@@ -224,10 +237,15 @@ export class ApuracaoCrmService {
     // 2. Catálogo de produtos com EAN
     const { data: produtos, error: e2 } = await this.db
       .from('itens')
-      .select('ean, descricao')
+      .select('ean, descricao, preco_venda')
       .not('ean', 'is', null)
       .not('descricao', 'is', null);
     if (e2) throw e2;
+
+    // EANs com preço válido no catálogo (únicos elegíveis para apuração)
+    const eanComPreco = new Set<string>(
+      (produtos ?? []).filter((p: any) => p.preco_venda != null).map((p: any) => p.ean as string)
+    );
 
     const jaComEan = ((await this.db.from('itens_pedido').select('id', { count: 'exact', head: true }).not('ean', 'is', null)).count) ?? 0;
 
@@ -295,9 +313,39 @@ export class ApuracaoCrmService {
       }))
       .sort((a, b) => b.ocorrencias - a.ocorrencias);
 
+    // 6. Itens com EAN preenchido mas ausente/sem preço no catálogo (invisíveis ao fluxo acima)
+    const { data: comEanOrfao, error: e3 } = await this.db
+      .from('itens_pedido')
+      .select('descricao, ean, pedido_id, pedido:pedidos(numero_nf)')
+      .not('ean', 'is', null)
+      .in('pedido_id', pedidosCrmIds);
+    if (e3) throw e3;
+
+    const eanSemCatMap = new Map<string, { descricoes: Set<string>; ocorrencias: number; pedidosSet: Map<string, string | null> }>();
+    for (const item of (comEanOrfao ?? []) as any[]) {
+      if (eanComPreco.has(item.ean)) continue;
+      const entry = eanSemCatMap.get(item.ean) ?? { descricoes: new Set(), ocorrencias: 0, pedidosSet: new Map() };
+      entry.ocorrencias++;
+      if (item.descricao) entry.descricoes.add(item.descricao);
+      if (item.pedido_id) {
+        const nf = Array.isArray(item.pedido) ? item.pedido[0]?.numero_nf : (item.pedido as any)?.numero_nf;
+        entry.pedidosSet.set(item.pedido_id, nf ?? null);
+      }
+      eanSemCatMap.set(item.ean, entry);
+    }
+    const eanSemCatalogo: ItemEanSemCatalogo[] = Array.from(eanSemCatMap.entries())
+      .map(([ean, { descricoes, ocorrencias, pedidosSet }]) => ({
+        ean,
+        descricoes: Array.from(descricoes),
+        ocorrencias,
+        pedidos: Array.from(pedidosSet.entries()).map(([pedido_id, numero_nf]) => ({ pedido_id, numero_nf })),
+      }))
+      .sort((a, b) => b.ocorrencias - a.ocorrencias);
+
     return {
       reconciliados,
       semMatch,
+      eanSemCatalogo,
       totalItens: (semEan ?? []).length,
       jaComEan: Number(jaComEan),
     };
@@ -321,6 +369,18 @@ export class ApuracaoCrmService {
       .update({ ean })
       .ilike('descricao', descricao)
       .is('ean', null)
+      .in('pedido_id', pedidosCrmIds)
+      .select('id');
+    if (error) throw error;
+    return (data ?? []).length;
+  }
+
+  async corrigirEan(eanAtual: string, eanNovo: string): Promise<number> {
+    const pedidosCrmIds = await this.buscarPedidosCrmIds();
+    const { data, error } = await this.db
+      .from('itens_pedido')
+      .update({ ean: eanNovo })
+      .eq('ean', eanAtual)
       .in('pedido_id', pedidosCrmIds)
       .select('id');
     if (error) throw error;

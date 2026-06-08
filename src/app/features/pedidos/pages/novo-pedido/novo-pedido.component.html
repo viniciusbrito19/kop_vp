@@ -134,6 +134,15 @@
         </label>
 
         <label class="input">
+          <span>% Royalties / FPP</span>
+          <input type="number" formControlName="percentual_royalties" min="0" max="100" step="0.01" placeholder="0,00" />
+          <span class="hint">Preenchido automaticamente pelo tipo — editável</span>
+          @if (form.get('percentual_royalties')?.hasError('min') || form.get('percentual_royalties')?.hasError('max')) {
+            <span class="field-error">Deve ser entre 0 e 100</span>
+          }
+        </label>
+
+        <label class="input">
           <span>Número da NF</span>
           <input
             formControlName="numero_nf"

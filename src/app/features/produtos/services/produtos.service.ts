@@ -20,6 +20,11 @@ export class ProdutosService {
     if (error) throw error;
   }
 
+  async toggleFlag(id: string, campo: 'cobra_fpp' | 'cobra_royalties', valor: boolean): Promise<void> {
+    const { error } = await this.db.from('itens').update({ [campo]: valor }).eq('id', id);
+    if (error) throw error;
+  }
+
   async excluir(id: string): Promise<void> {
     const { error } = await this.db.from('itens').delete().eq('id', id);
     if (error) throw error;

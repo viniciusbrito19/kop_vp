@@ -28,6 +28,7 @@ export interface Pedido {
   pdf_url: string | null;
   observacoes: string | null;
   valor_venda: number | null;
+  percentual_royalties: number | null;
   created_at: string;
   fornecedor?: { nome: string };
   tipo_pedido?: { nome: string };

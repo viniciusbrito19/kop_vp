@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApuracaoCrmService } from '../../services/apuracao-crm.service';
-import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ProdutoCatalogo, PedidoApuracao } from '../../models/apuracao.model';
+import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ProdutoCatalogo, PedidoApuracao } from '../../models/apuracao.model';
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -54,6 +54,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               <span class="recon-num">{{ resultadoRecon()!.semMatch.length }}</span>
               <span>descrições sem match</span>
             </div>
+            <div class="recon-stat warn" [class.hidden]="!resultadoRecon()!.eanSemCatalogo.length">
+              <span class="recon-num">{{ resultadoRecon()!.eanSemCatalogo.length }}</span>
+              <span>EANs sem catálogo</span>
+            </div>
             <div class="recon-stat neutral">
               <span class="recon-num">{{ resultadoRecon()!.jaComEan }}</span>
               <span>já tinham EAN</span>
@@ -78,6 +82,36 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                     <div class="sm-row-actions">
                       <span class="sm-count">{{ s.ocorrencias }}×</span>
                       <button class="btn ghost xs" (click)="abrirDialogMapeamento(s)">Mapear</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </details>
+          }
+          @if (resultadoRecon()!.eanSemCatalogo.length > 0) {
+            <details class="sem-match-details">
+              <summary>EANs sem correspondência no catálogo ({{ resultadoRecon()!.eanSemCatalogo.length }})</summary>
+              <div class="sem-match-list">
+                @for (s of resultadoRecon()!.eanSemCatalogo; track s.ean) {
+                  <div class="sem-match-row">
+                    <div class="sm-main">
+                      <span class="sm-desc mono" style="font-size:12px">{{ s.ean }}</span>
+                      @if (s.descricoes.length) {
+                        <div class="sm-pedidos" style="font-style:italic">
+                          {{ s.descricoes.slice(0, 3).join(' · ') }}{{ s.descricoes.length > 3 ? ' …' : '' }}
+                        </div>
+                      }
+                      @if (s.pedidos.length) {
+                        <div class="sm-pedidos">
+                          @for (p of s.pedidos; track p.pedido_id) {
+                            <span class="sm-nf">{{ p.numero_nf ?? 'S/NF' }}</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <div class="sm-row-actions">
+                      <span class="sm-count">{{ s.ocorrencias }}×</span>
+                      <button class="btn ghost xs" (click)="abrirDialogCorrigirEan(s)">Corrigir</button>
                     </div>
                   </div>
                 }
@@ -204,9 +238,21 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                             <td class="td-num">{{ item.custo_unitario != null ? (item.custo_unitario | number:'1.2-2':'pt-BR') : '—' }}</td>
                             <td class="td-num">{{ item.custo_total != null ? (item.custo_total | number:'1.2-2':'pt-BR') : '—' }}</td>
                             <td class="td-num">{{ item.sem_ean ? '—' : (item.preco_total_venda | number:'1.2-2':'pt-BR') }}</td>
-                            <td class="td-num td-fpp">{{ item.sem_ean ? '—' : (item.fpp | number:'1.2-2':'pt-BR') }}</td>
-                            <td class="td-num">{{ item.sem_ean ? '—' : (item.base_royalties | number:'1.2-2':'pt-BR') }}</td>
-                            <td class="td-num td-roy">{{ item.sem_ean ? '—' : (item.royalties | number:'1.2-2':'pt-BR') }}</td>
+                            <td class="td-num td-fpp">
+                              @if (item.sem_ean) { — }
+                              @else if (!item.cobra_fpp) { <span class="badge-isento" title="Produto isento de FPP">Isento</span> }
+                              @else { {{ item.fpp | number:'1.2-2':'pt-BR' }} }
+                            </td>
+                            <td class="td-num">
+                              @if (item.sem_ean) { — }
+                              @else if (!item.cobra_royalties) { <span class="badge-isento" title="Produto isento de Royalties">Isento</span> }
+                              @else { {{ item.base_royalties | number:'1.2-2':'pt-BR' }} }
+                            </td>
+                            <td class="td-num td-roy">
+                              @if (item.sem_ean) { — }
+                              @else if (!item.cobra_royalties) { <span class="badge-isento" title="Produto isento de Royalties">Isento</span> }
+                              @else { {{ item.royalties | number:'1.2-2':'pt-BR' }} }
+                            </td>
                           </tr>
                         }
                       </tbody>
@@ -338,17 +384,19 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
         }
       </div>
 
-      <!-- Dialog mapeamento manual -->
-      @if (mapeandoItem()) {
+      <!-- Dialog mapeamento manual / correção de EAN -->
+      @if (mapeandoItem() || corrigindoEan()) {
         <div class="dialog-overlay" (click)="fecharDialogMapeamento()"></div>
         <div class="dialog-map">
           <div class="dialog-header">
             <div class="dialog-header-info">
-              <div class="dialog-title">Mapeamento Manual</div>
-              <div class="dialog-subtitle" title="{{ mapeandoItem()!.descricao }}">{{ mapeandoItem()!.descricao }}</div>
+              <div class="dialog-title">{{ corrigindoEan() ? 'Corrigir EAN' : 'Mapeamento Manual' }}</div>
+              <div class="dialog-subtitle">
+                {{ corrigindoEan() ? corrigindoEan()!.ean : mapeandoItem()!.descricao }}
+              </div>
               <div class="dialog-ocorr">
-                {{ mapeandoItem()!.ocorrencias }} ocorrência(s) —
-                @for (p of mapeandoItem()!.pedidos; track p.pedido_id; let last = $last) {
+                {{ (corrigindoEan() ?? mapeandoItem())!.ocorrencias }} ocorrência(s) —
+                @for (p of (corrigindoEan() ?? mapeandoItem())!.pedidos; track p.pedido_id; let last = $last) {
                   <span class="dialog-nf">{{ p.numero_nf ?? 'S/NF' }}</span>@if (!last) {, }
                 }
               </div>
@@ -397,7 +445,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 </div>
               }
 
-              <button class="btn primary w-full" [disabled]="!produtoSelecionado() || aplicandoMap()" (click)="confirmarMapeamento()">
+              <button class="btn primary w-full" [disabled]="!produtoSelecionado() || aplicandoMap()"
+                      (click)="corrigindoEan() ? confirmarCorrigirEan() : confirmarMapeamento()">
                 @if (aplicandoMap()) {
                   <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
                     <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
@@ -405,7 +454,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   </svg>
                   Aplicando…
                 } @else {
-                  Confirmar Mapeamento
+                  {{ corrigindoEan() ? 'Confirmar Correção' : 'Confirmar Mapeamento' }}
                 }
               </button>
             }
@@ -561,6 +610,13 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
       background: color-mix(in srgb, #C28A1E 15%, transparent); color: #7A5510;
       vertical-align: middle;
+    }
+
+    .badge-isento {
+      display: inline-block;
+      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
+      background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4);
+      vertical-align: middle; letter-spacing: .04em;
     }
 
     .itens-table tfoot td {
@@ -730,7 +786,8 @@ export class ListaApuracoesComponent implements OnInit {
   resultadoRecon = signal<ResultadoReconciliacao | null>(null);
   expandidos = signal<Set<string>>(new Set());
 
-  mapeandoItem = signal<ItemSemMatch | null>(null);
+  mapeandoItem  = signal<ItemSemMatch | null>(null);
+  corrigindoEan = signal<ItemEanSemCatalogo | null>(null);
   termoBusca = signal('');
   todosProdutos = signal<ProdutoCatalogo[]>([]);
   produtoSelecionado = signal<ProdutoCatalogo | null>(null);
@@ -864,9 +921,49 @@ export class ListaApuracoesComponent implements OnInit {
 
   fecharDialogMapeamento() {
     this.mapeandoItem.set(null);
+    this.corrigindoEan.set(null);
     this.todosProdutos.set([]);
     this.produtoSelecionado.set(null);
     this.termoBusca.set('');
+  }
+
+  async abrirDialogCorrigirEan(item: ItemEanSemCatalogo) {
+    this.corrigindoEan.set(item);
+    this.termoBusca.set('');
+    this.produtoSelecionado.set(null);
+    this.todosProdutos.set([]);
+    this.carregandoProdutos.set(true);
+    try {
+      this.todosProdutos.set(await this.service.buscarProdutos());
+    } catch {
+      this.snack.open('Erro ao carregar catálogo de produtos.', 'OK', { duration: 3000 });
+      this.corrigindoEan.set(null);
+    } finally {
+      this.carregandoProdutos.set(false);
+    }
+  }
+
+  async confirmarCorrigirEan() {
+    const item    = this.corrigindoEan();
+    const produto = this.produtoSelecionado();
+    if (!item || !produto) return;
+    this.aplicandoMap.set(true);
+    try {
+      const count = await this.service.corrigirEan(item.ean, produto.ean);
+      this.snack.open(`${count} item(ns) com EAN corrigido.`, 'OK', { duration: 4000 });
+      const resultado = this.resultadoRecon();
+      if (resultado) {
+        this.resultadoRecon.set({
+          ...resultado,
+          eanSemCatalogo: resultado.eanSemCatalogo.filter(s => s.ean !== item.ean),
+        });
+      }
+      this.fecharDialogMapeamento();
+    } catch {
+      this.snack.open('Erro ao corrigir EAN.', 'OK', { duration: 4000 });
+    } finally {
+      this.aplicandoMap.set(false);
+    }
   }
 
   async confirmarMapeamento() {

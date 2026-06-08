@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
@@ -31,11 +31,19 @@ import { TipoPedido } from '../../models/tipo-pedido.model';
         @if (form.get('incide_royalties')?.value) {
           <label class="input">
             <span>Tipo de cobrança</span>
-            <select formControlName="tipo_royalties">
+            <select formControlName="tipo_royalties" (change)="onTipoRoyaltiesChange()">
               <option value="">Selecione…</option>
-              <option value="linha">Produtos de Linha (37%)</option>
-              <option value="sazonal">Sazonal — Páscoa, Natal, Datas (27,5%)</option>
+              <option value="linha">Produtos de Linha</option>
+              <option value="sazonal">Sazonal — Páscoa, Natal, Datas</option>
             </select>
+          </label>
+          <label class="input">
+            <span>% Royalties / FPP</span>
+            <input type="number" formControlName="percentual_royalties" min="0" max="100" step="0.01" placeholder="0,00" />
+            <span class="hint">Percentual cobrado (0 a 100)</span>
+            @if (form.get('percentual_royalties')?.hasError('min') || form.get('percentual_royalties')?.hasError('max')) {
+              <span class="hint" style="color:var(--bad)">Deve ser entre 0 e 100</span>
+            }
           </label>
         }
       </form>
@@ -70,11 +78,24 @@ export class TipoPedidoDialogComponent {
 
   salvando = false;
 
+  private readonly PERCENTUAIS: Record<string, number> = { linha: 37, sazonal: 27.5 };
+
   form = this.fb.group({
     nome: [this.data?.nome ?? '', Validators.required],
     incide_royalties: [this.data?.incide_royalties ?? false],
     tipo_royalties: [this.data?.tipo_royalties ?? null as 'linha' | 'sazonal' | null],
+    percentual_royalties: [
+      this.data?.percentual_royalties ?? null as number | null,
+      [Validators.min(0), Validators.max(100)],
+    ],
   });
+
+  onTipoRoyaltiesChange() {
+    const tipo = this.form.get('tipo_royalties')?.value as string | null;
+    if (tipo && this.PERCENTUAIS[tipo] != null) {
+      this.form.get('percentual_royalties')?.setValue(this.PERCENTUAIS[tipo]);
+    }
+  }
 
   async salvar() {
     if (this.form.invalid) return;
@@ -87,6 +108,7 @@ export class TipoPedidoDialogComponent {
         ativo: this.data?.ativo ?? true,
         incide_royalties: incide,
         tipo_royalties: incide ? (v.tipo_royalties as 'linha' | 'sazonal' | null) : null,
+        percentual_royalties: incide ? (v.percentual_royalties ?? null) : null,
       };
       if (this.data) {
         await this.service.atualizar(this.data.id, formData);

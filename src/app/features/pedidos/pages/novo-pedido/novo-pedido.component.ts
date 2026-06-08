@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { CurrencyPipe } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -28,7 +29,7 @@ import { DadosExtraidosPdf, DuplicataExtraida } from '../../models/pedido.model'
   templateUrl: './novo-pedido.component.html',
   styleUrl: './novo-pedido.component.scss',
 })
-export class NovoPedidoComponent implements OnInit {
+export class NovoPedidoComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private pedidosService = inject(PedidosService);
   private pdfExtractor = inject(PdfExtractorService);
@@ -52,12 +53,14 @@ export class NovoPedidoComponent implements OnInit {
   pedidoDuplicado = signal<import('../../models/pedido.model').Pedido | null>(null);
   private duplicatasExtraidas: DuplicataExtraida[] = [];
   private uploadSeq = 0;
+  private tipoPedidoSub?: Subscription;
 
   form = this.fb.group({
     codigo: ['', [Validators.pattern(/^(\d{7}KPN|\d+)$/)]],
     data_limite: [''],
     fornecedor_id: [''],
     tipo_pedido_id: [''],
+    percentual_royalties: [null as number | null, [Validators.min(0), Validators.max(100)]],
     numero_nf: ['', [Validators.pattern(/^\d{9}-\d$/)]],
     data_emissao: [''],
     valor_total: [null as number | null],
@@ -79,6 +82,12 @@ export class NovoPedidoComponent implements OnInit {
     this.fornecedores.set(fornecedores);
     this.tiposPedido.set(tiposPedido);
 
+    this.tipoPedidoSub = this.form.get('tipo_pedido_id')!.valueChanges.subscribe(id => {
+      const tipo = this.tiposPedido().find(t => t.id === id);
+      const pct = tipo?.incide_royalties ? (tipo.percentual_royalties ?? null) : null;
+      this.form.get('percentual_royalties')!.setValue(pct, { emitEvent: false });
+    });
+
     if (this.pedidoId) {
       try {
         const [pedido, itens] = await Promise.all([
@@ -87,15 +96,16 @@ export class NovoPedidoComponent implements OnInit {
         ]);
         this.pdfAtualUrl.set(pedido.pdf_url);
         this.form.patchValue({
-          codigo:         pedido.codigo ?? '',
-          data_limite:    pedido.data_limite ?? '',
-          fornecedor_id:  pedido.fornecedor_id ?? '',
-          tipo_pedido_id: pedido.tipo_pedido_id ?? '',
-          numero_nf:      pedido.numero_nf ?? '',
-          data_emissao:   pedido.data_emissao ?? '',
-          valor_total:    pedido.valor_total,
-          status:         pedido.status,
-          observacoes:    pedido.observacoes ?? '',
+          codigo:               pedido.codigo ?? '',
+          data_limite:          pedido.data_limite ?? '',
+          fornecedor_id:        pedido.fornecedor_id ?? '',
+          tipo_pedido_id:       pedido.tipo_pedido_id ?? '',
+          percentual_royalties: pedido.percentual_royalties ?? null,
+          numero_nf:            pedido.numero_nf ?? '',
+          data_emissao:         pedido.data_emissao ?? '',
+          valor_total:          pedido.valor_total,
+          status:               pedido.status,
+          observacoes:          pedido.observacoes ?? '',
         });
         this.itens.clear();
         for (const item of itens) this.adicionarItem(item);
@@ -104,6 +114,10 @@ export class NovoPedidoComponent implements OnInit {
         this.router.navigate(['/pedidos']);
       }
     }
+  }
+
+  ngOnDestroy() {
+    this.tipoPedidoSub?.unsubscribe();
   }
 
   aplicarMascaraNf(event: Event) {
@@ -223,6 +237,7 @@ export class NovoPedidoComponent implements OnInit {
         data_limite: v.data_limite || null,
         fornecedor_id: v.fornecedor_id || null,
         tipo_pedido_id: v.tipo_pedido_id || null,
+        percentual_royalties: v.percentual_royalties ?? null,
         numero_nf: v.numero_nf || null,
         data_emissao: v.data_emissao || null,
         valor_total: v.valor_total ?? null,

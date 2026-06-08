@@ -105,6 +105,7 @@ import { Item } from '../../models/produto.model';
           <span style="text-align:center">Unidade</span>
           <span>EAN</span>
           <span style="text-align:right">Preço Venda</span>
+          <span style="text-align:center">Cobranças</span>
           <span style="text-align:center">Status</span>
           <span></span>
         </div>
@@ -141,6 +142,11 @@ import { Item } from '../../models/produto.model';
                   {{ moeda(item.preco_venda) }}
                 </span>
 
+                <span class="cobrancas-cell">
+                  <span class="mini-pill" [class]="item.cobra_fpp ? 'ok' : 'off'" title="{{ item.cobra_fpp ? 'Cobra FPP' : 'Isento de FPP' }}">FPP</span>
+                  <span class="mini-pill" [class]="item.cobra_royalties ? 'ok' : 'off'" title="{{ item.cobra_royalties ? 'Cobra Royalties' : 'Isento de Royalties' }}">ROY</span>
+                </span>
+
                 <span style="text-align:center">
                   <span class="pill" [class]="item.ativo ? 'ok' : 'neutral'">
                     {{ item.ativo ? 'Ativo' : 'Inativo' }}
@@ -154,6 +160,14 @@ import { Item } from '../../models/produto.model';
                   <button mat-menu-item (click)="toggleAtivo(item)">
                     <mat-icon>{{ item.ativo ? 'toggle_off' : 'toggle_on' }}</mat-icon>
                     <span>{{ item.ativo ? 'Desativar' : 'Ativar' }}</span>
+                  </button>
+                  <button mat-menu-item (click)="toggleFpp(item)">
+                    <mat-icon>{{ item.cobra_fpp ? 'money_off' : 'attach_money' }}</mat-icon>
+                    <span>{{ item.cobra_fpp ? 'Isentar de FPP' : 'Cobrar FPP' }}</span>
+                  </button>
+                  <button mat-menu-item (click)="toggleRoyalties(item)">
+                    <mat-icon>{{ item.cobra_royalties ? 'money_off' : 'attach_money' }}</mat-icon>
+                    <span>{{ item.cobra_royalties ? 'Isentar de Royalties' : 'Cobrar Royalties' }}</span>
                   </button>
                   <button mat-menu-item class="warn-item" (click)="excluir(item.id)">
                     <mat-icon>delete</mat-icon><span>Excluir</span>
@@ -188,11 +202,34 @@ import { Item } from '../../models/produto.model';
   styles: [`
     .pg {
       display: grid;
-      grid-template-columns: 120px 1fr 80px 148px 118px 88px 44px;
+      grid-template-columns: 120px 1fr 80px 148px 118px 100px 88px 44px;
       align-items: center;
       gap: 0 16px;
       padding: 0 16px;
     }
+
+    .cobrancas-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1.4;
+      cursor: default;
+      user-select: none;
+    }
+    .mini-pill.ok  { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+    .mini-pill.off { background: color-mix(in srgb, var(--text-4) 14%, transparent); color: var(--text-4); text-decoration: line-through; }
 
     .filter-search {
       flex: 1;
@@ -335,6 +372,28 @@ export class ListaProdutosComponent implements OnInit {
       );
     } catch {
       this.snack.open('Erro ao atualizar status.', 'OK', { duration: 4000 });
+    }
+  }
+
+  async toggleFpp(item: Item) {
+    try {
+      await this.svc.toggleFlag(item.id, 'cobra_fpp', !item.cobra_fpp);
+      this.itens.update(list =>
+        list.map(i => i.id === item.id ? { ...i, cobra_fpp: !item.cobra_fpp } : i)
+      );
+    } catch {
+      this.snack.open('Erro ao atualizar FPP.', 'OK', { duration: 4000 });
+    }
+  }
+
+  async toggleRoyalties(item: Item) {
+    try {
+      await this.svc.toggleFlag(item.id, 'cobra_royalties', !item.cobra_royalties);
+      this.itens.update(list =>
+        list.map(i => i.id === item.id ? { ...i, cobra_royalties: !item.cobra_royalties } : i)
+      );
+    } catch {
+      this.snack.open('Erro ao atualizar Royalties.', 'OK', { duration: 4000 });
     }
   }
 
