@@ -1,0 +1,35 @@
+<div class="outros-page">
+
+  <div class="outros-header">
+    <div>
+      <h1 class="outros-title">Outros</h1>
+      <p class="outros-subtitle">Todos os módulos do sistema</p>
+    </div>
+    <button class="outros-search-btn" type="button" title="Buscar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </button>
+  </div>
+
+  @for (section of sections; track section.title) {
+    <div class="outros-section-label">{{ section.title }}</div>
+    <div class="outros-card">
+      @for (item of section.items; track item.route; let last = $last) {
+        <a class="outros-item" [routerLink]="item.route" [class.last]="last">
+          <div class="outros-item-icon" [class]="item.colorClass">
+            <span [innerHTML]="icon(item.iconPaths)"></span>
+          </div>
+          <div class="outros-item-body">
+            <span class="outros-item-label">{{ item.label }}</span>
+            <span class="outros-item-desc">{{ item.description }}</span>
+          </div>
+          <svg class="outros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </a>
+      }
+    </div>
+  }
+
+</div>

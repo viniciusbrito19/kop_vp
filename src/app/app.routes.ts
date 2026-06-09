@@ -74,6 +74,11 @@ export const routes: Routes = [
             m => m.APURACAO_CRM_ROUTES
           ),
       },
+      {
+        path: 'outros',
+        loadChildren: () =>
+          import('./features/outros/outros.routes').then(m => m.outrosRoutes),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

@@ -372,8 +372,8 @@
     /* Não usa position:fixed — fica no fluxo do flex column do shell.
        Isso evita toda a complexidade de safe-area com fixed no iOS PWA. */
     flex-shrink: 0;
-    background: var(--sb-bg);
-    border-top: 1px solid var(--sb-rule);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom, 34px);
     overflow-x: auto;
     scrollbar-width: none;
@@ -391,17 +391,21 @@
   padding: 10px 4px;
   flex: 0 0 calc(100% / 5);
   min-width: 52px;
-  color: var(--sb-fg-dim);
+  color: var(--text-3);
   text-decoration: none;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
   transition: color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 
   &.active {
-    color: var(--gold);
+    color: var(--bordo);
   }
 
   &:active {
-    background: var(--sb-hover);
+    background: var(--surface-2);
   }
 }
 

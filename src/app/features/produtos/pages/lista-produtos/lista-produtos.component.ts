@@ -4,8 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProdutosService } from '../../services/produtos.service';
 import { Item } from '../../models/produto.model';
+import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './importar-produtos-dialog.component';
 
 @Component({
   selector: 'app-lista-produtos',
@@ -16,6 +18,7 @@ import { Item } from '../../models/produto.model';
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatMenuModule,
+    MatDialogModule,
   ],
   template: `
     @if (carregando()) {
@@ -31,6 +34,10 @@ import { Item } from '../../models/produto.model';
             <h1 class="page">Lista de <span class="accent serif">produtos</span></h1>
             <div class="page-sub">{{ itens().length }} itens cadastrados no catálogo</div>
           </div>
+          <button class="btn primary" type="button" (click)="abrirImportar()">
+            <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">upload</mat-icon>
+            Importar arquivo
+          </button>
         </div>
 
         <!-- ── KPIs ───────────────────────────────────── -->
@@ -286,8 +293,9 @@ import { Item } from '../../models/produto.model';
   `],
 })
 export class ListaProdutosComponent implements OnInit {
-  private svc   = inject(ProdutosService);
-  private snack = inject(MatSnackBar);
+  private svc    = inject(ProdutosService);
+  private snack  = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   itens      = signal<Item[]>([]);
   carregando = signal(false);
@@ -406,6 +414,30 @@ export class ListaProdutosComponent implements OnInit {
     } catch {
       this.snack.open('Erro ao excluir item.', 'OK', { duration: 4000 });
     }
+  }
+
+  abrirImportar() {
+    const ref = this.dialog.open(ImportarProdutosDialogComponent, {
+      width: '520px',
+      panelClass: 'kop-dialog',
+      data: { existentes: this.itens() },
+    });
+    ref.afterClosed().subscribe((result: ImportarProdutosResult & { erro?: string } | null) => {
+      if (!result) return;
+      if (result.erro) {
+        this.snack.open(result.erro, 'OK', { duration: 5000 });
+        return;
+      }
+      if (result.novosItens.length > 0) {
+        this.itens.update(list =>
+          [...list, ...result.novosItens].sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'))
+        );
+      }
+      const msg = result.inseridos > 0
+        ? `${result.inseridos} produto(s) inserido(s)${result.ignorados > 0 ? `, ${result.ignorados} já existiam` : ''}.`
+        : `Nenhum produto novo — ${result.ignorados} já existiam na base.`;
+      this.snack.open(msg, 'OK', { duration: 6000 });
+    });
   }
 
   moeda(v: number | null): string {

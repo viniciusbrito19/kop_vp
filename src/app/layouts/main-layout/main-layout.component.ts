@@ -28,6 +28,7 @@ const ICONS: Record<string, string> = {
   layers:    icon('<path d="m2 7 10-5 10 5-10 5-10-5Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>'),
   box:       icon('<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
   calculate: icon('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>'),
+  outros:    icon('<rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/>'),
 };
 
 @Component({
@@ -60,6 +61,14 @@ export class MainLayoutComponent implements OnInit {
     this.initials.set(this.toInitials(name));
     this.firstName.set(this.toFirstName(name));
     this.dateLabel.set(this.buildDateLabel());
+
+    this.mobileNavItems = [
+      { label: 'Pedidos',    route: '/pedidos',    iconSvg: this.safe(ICONS['orders'])  },
+      { label: 'Receitas',   route: '/receitas',   iconSvg: this.safe(ICONS['receive']) },
+      { label: 'Despesas',   route: '/despesas',   iconSvg: this.safe(ICONS['wallet'])  },
+      { label: 'Financeiro', route: '/financeiro', iconSvg: this.safe(ICONS['finance']) },
+      { label: 'Outros',     route: '/outros',     iconSvg: this.safe(ICONS['outros'])  },
+    ];
   }
 
   private toInitials(name: string): string {
@@ -100,6 +109,8 @@ export class MainLayoutComponent implements OnInit {
   get allNavItems(): NavItem[] {
     return [...this.navOperacao, ...this.navConfiguracoes];
   }
+
+  mobileNavItems: NavItem[] = [];
 
   private safe(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);

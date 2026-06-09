@@ -148,7 +148,7 @@
 
   <!-- ===== Bottom navigation (mobile only) ===== -->
   <nav class="kop-bottom-nav">
-    @for (item of allNavItems; track item.route) {
+    @for (item of mobileNavItems; track item.route) {
       <a class="kop-bnav-item"
          [routerLink]="item.route"
          routerLinkActive="active">
