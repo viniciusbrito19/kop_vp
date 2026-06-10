@@ -119,6 +119,7 @@ export class PdfExtractorService {
       if (/^Lote:/i.test(descricao)) continue;
 
       itens.push({
+        c_prod:         null,
         ean:            match[1] || null,
         descricao,
         unidade:        match[3],
