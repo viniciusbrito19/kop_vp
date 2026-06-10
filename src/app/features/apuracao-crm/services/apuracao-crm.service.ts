@@ -379,11 +379,11 @@ export class ApuracaoCrmService {
 
   async aplicarMatchManual(descricao: string, ean: string, c_prod?: string | null): Promise<number> {
     const pedidosCrmIds = await this.buscarPedidosCrmIds();
-    // Itens com c_prod são agrupados pelo código do produto, não pela descrição.
-    // Filtrar por c_prod garante que todas as variações de descrição do mesmo produto sejam atualizadas.
+    // Itens em semMatch podem ter ean != null (EAN existe mas não está no catálogo com preço),
+    // portanto não filtramos por is('ean', null) — o c_prod/descrição + pedidos CRM já é específico o suficiente.
     const filtro = c_prod
-      ? this.db.from('itens_pedido').update({ ean }).eq('c_prod', c_prod).is('ean', null).in('pedido_id', pedidosCrmIds)
-      : this.db.from('itens_pedido').update({ ean }).ilike('descricao', descricao).is('ean', null).in('pedido_id', pedidosCrmIds);
+      ? this.db.from('itens_pedido').update({ ean }).eq('c_prod', c_prod).in('pedido_id', pedidosCrmIds)
+      : this.db.from('itens_pedido').update({ ean }).ilike('descricao', descricao).in('pedido_id', pedidosCrmIds);
     const { data, error } = await filtro.select('id');
     if (error) throw error;
     return (data ?? []).length;
