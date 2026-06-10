@@ -346,8 +346,6 @@
 
 /* ===== Mobile shell ===== */
 @media (max-width: 640px) {
-  /* Empilha main + nav em coluna dentro do shell (100dvh).
-     O nav fica naturalmente no fundo sem depender de position:fixed. */
   .kop-shell {
     flex-direction: column;
   }
@@ -358,8 +356,9 @@
 
   .kop-main {
     flex: 1;
-    min-height: 0; /* permite que o flex item encolha e o overflow-y funcione */
     overflow-x: hidden;
+    /* espaço para o nav fixo não cobrir o conteúdo no fundo */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -369,16 +368,14 @@
 
   @media (max-width: 640px) {
     display: flex;
-    /* Não usa position:fixed — fica no fluxo do flex column do shell.
-       Isso evita toda a complexidade de safe-area com fixed no iOS PWA. */
-    flex-shrink: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
     background: var(--surface);
     border-top: 1px solid var(--line);
-    padding-bottom: env(safe-area-inset-bottom, 34px);
-    overflow-x: auto;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar { display: none; }
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
