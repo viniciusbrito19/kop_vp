@@ -127,7 +127,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
             <span>Mês</span>
             <select [(ngModel)]="selecionado.mes">
               @for (m of meses; track $index) {
-                <option [value]="$index + 1">{{ m }}</option>
+                <option [ngValue]="$index + 1">{{ m }}</option>
               }
             </select>
           </label>
@@ -185,6 +185,19 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
             }
           </div>
 
+          <!-- Cabeçalho da lista -->
+          <div class="notas-list-head">
+            <span></span>
+            <span>Código</span>
+            <span>NF</span>
+            <span>Tipo</span>
+            <span>Data pedido</span>
+            <span>Roy</span>
+            <span>FPP</span>
+            <span>Royalties</span>
+            <span>Venda Total</span>
+          </div>
+
           <!-- Lista de notas expansível -->
           <div class="notas-list">
             @for (p of preview()!.pedidos; track p.pedido_id) {
@@ -195,16 +208,20 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   <svg class="chevron" [class.open]="expandidos().has(p.pedido_id)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 18l6-6-6-6"/>
                   </svg>
-                  <span class="nf">NF {{ p.numero_nf ?? 'S/NF' }}</span>
+                  <span class="nota-codigo">{{ p.codigo ?? '—' }}</span>
+                  <div class="nota-nf-cell">
+                    <span class="nf">{{ p.numero_nf ?? 'S/NF' }}</span>
+                    @if (p.itens_sem_ean > 0) {
+                      <span class="warn-ean" title="{{ p.itens_sem_ean }} item(ns) sem EAN mapeado">
+                        ⚠ {{ p.itens_sem_ean }} s/EAN
+                      </span>
+                    }
+                  </div>
                   <span class="tipo-badge" [ngClass]="p.tipo">{{ p.tipo === 'linha' ? 'Linha' : 'Sazonal' }}</span>
                   <span class="nota-date">{{ p.data_emissao | date:'dd/MM/yyyy' }}</span>
-                  <span class="spacer"></span>
-                  @if (p.itens_sem_ean > 0) {
-                    <span class="warn-ean" title="{{ p.itens_sem_ean }} item(ns) sem EAN mapeado">
-                      ⚠ {{ p.itens_sem_ean }} s/EAN
-                    </span>
-                  }
-                  <span class="nota-items-count">{{ p.itens.length }} item{{ p.itens.length !== 1 ? 's' : '' }}</span>
+                  <span class="pct-roy-badge">{{ p.aliquota_royalties * 100 | number:'1.0-2':'pt-BR' }}%</span>
+                  <span class="nota-fpp">R$ {{ fppPedido(p) | number:'1.2-2':'pt-BR' }}</span>
+                  <span class="nota-roy">R$ {{ royPedido(p) | number:'1.2-2':'pt-BR' }}</span>
                   <span class="nota-valor">R$ {{ p.valor_venda | number:'1.2-2':'pt-BR' }}</span>
                 </div>
 
@@ -291,16 +308,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               <span>FPP (4%)</span>
               <span>R$ {{ preview()!.fpp | number:'1.2-2':'pt-BR' }}</span>
             </div>
-            @if (preview()!.roy_linha > 0) {
+            @for (r of royaltiesPorAliquota(); track r.label) {
               <div class="calc-row royalties">
-                <span>Royalties Linha (37%)</span>
-                <span>R$ {{ preview()!.roy_linha | number:'1.2-2':'pt-BR' }}</span>
-              </div>
-            }
-            @if (preview()!.roy_sazonal > 0) {
-              <div class="calc-row royalties">
-                <span>Royalties Sazonais (27,5%)</span>
-                <span>R$ {{ preview()!.roy_sazonal | number:'1.2-2':'pt-BR' }}</span>
+                <span>{{ r.label }}</span>
+                <span>R$ {{ r.valor | number:'1.2-2':'pt-BR' }}</span>
               </div>
             }
             <div class="calc-row total-geral">
@@ -533,6 +544,16 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     }
 
     /* ─── Lista de notas expansível ─── */
+    .notas-list-head {
+      display: grid;
+      grid-template-columns: 22px 110px 1fr 90px 105px 60px 110px 110px 120px;
+      align-items: center;
+      padding: 4px 14px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-4);
+      span:nth-child(n+7) { text-align: right; }
+      span { white-space: nowrap; }
+    }
     .notas-list { display: flex; flex-direction: column; gap: 6px; }
 
     .nota-card {
@@ -541,28 +562,46 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       overflow: hidden;
     }
     .nota-header {
-      display: flex; align-items: center; gap: 10px;
+      display: grid;
+      grid-template-columns: 22px 110px 1fr 90px 105px 60px 110px 110px 120px;
+      align-items: center;
       padding: 10px 14px; cursor: pointer;
       background: var(--surface-2); user-select: none;
       transition: background 0.12s;
       &:hover { background: color-mix(in srgb, var(--bordo, #7A1F2B) 5%, var(--surface-2)); }
+    }
+    .nota-nf-cell {
+      display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden;
     }
     .chevron {
       flex-shrink: 0; color: var(--text-4);
       transition: transform 0.18s ease;
       &.open { transform: rotate(90deg); }
     }
-    .nf { font-size: 13px; font-weight: 600; color: var(--text); }
+    .nota-codigo { font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
+    .nf { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tipo-badge {
       font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+      justify-self: start; align-self: center;
       &.linha   { background: color-mix(in srgb, #82622F 15%, transparent); color: #82622F; }
       &.sazonal { background: color-mix(in srgb, #5A1620 15%, transparent); color: #5A1620; }
     }
-    .nota-date { font-size: 11px; color: var(--text-4); }
+    .nota-date { font-size: 11px; color: var(--text-4); white-space: nowrap; }
+    .pct-roy-badge {
+      font-size: 11px; font-weight: 600; color: #82622F;
+      white-space: nowrap;
+    }
+    .fpp-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4);
+      white-space: nowrap;
+      &.ativo { background: color-mix(in srgb, #2E7D32 13%, transparent); color: #2E7D32; }
+    }
     .spacer { flex: 1; }
-    .warn-ean { font-size: 11px; color: #C28A1E; white-space: nowrap; }
-    .nota-items-count { font-size: 11px; color: var(--text-4); white-space: nowrap; }
-    .nota-valor { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .warn-ean { font-size: 11px; color: #C28A1E; white-space: nowrap; flex-shrink: 0; }
+    .nota-fpp  { font-size: 12px; font-weight: 600; color: #5A1620; white-space: nowrap; text-align: right; }
+    .nota-roy  { font-size: 12px; font-weight: 600; color: #82622F; white-space: nowrap; text-align: right; }
+    .nota-valor { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; text-align: right; }
 
     /* ─── Tabela de itens ─── */
     .nota-itens {
@@ -904,6 +943,32 @@ export class ListaApuracoesComponent implements OnInit {
 
   royPedido(p: PedidoApuracao): number {
     return p.itens.reduce((acc, i) => acc + i.royalties, 0);
+  }
+
+  temFppNota(p: PedidoApuracao): boolean {
+    return p.itens.some(i => i.cobra_fpp && i.fpp > 0);
+  }
+
+  royaltiesPorAliquota(): { label: string; valor: number }[] {
+    const p = this.preview();
+    if (!p) return [];
+    const grupos = new Map<string, number>();
+    for (const pedido of p.pedidos) {
+      const pct = pedido.aliquota_royalties * 100;
+      const tipo = pedido.tipo === 'linha' ? 'Linha' : 'Sazonal';
+      const key = `${tipo}|${pct}`;
+      const total = pedido.itens.reduce((s, i) => s + i.royalties, 0);
+      grupos.set(key, (grupos.get(key) ?? 0) + total);
+    }
+    return Array.from(grupos.entries())
+      .filter(([, valor]) => valor > 0)
+      .map(([key, valor]) => {
+        const [tipo, pct] = key.split('|');
+        const pctNum = parseFloat(pct);
+        const pctStr = Number.isInteger(pctNum) ? `${pctNum}%` : `${pctNum.toLocaleString('pt-BR')}%`;
+        return { label: `Royalties ${tipo} (${pctStr})`, valor };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
 
   async reconciliarEans() {

@@ -32,9 +32,11 @@ export interface ItemApuracao {
 
 export interface PedidoApuracao {
   pedido_id: string;
+  codigo: string | null;
   numero_nf: string | null;
   data_emissao: string;
   tipo: 'linha' | 'sazonal';
+  aliquota_royalties: number;
   valor_venda: number;
   itens_sem_ean: number;
   itens: ItemApuracao[];

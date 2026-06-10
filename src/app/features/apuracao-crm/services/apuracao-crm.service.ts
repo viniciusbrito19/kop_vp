@@ -27,7 +27,7 @@ export class ApuracaoCrmService {
     // 1. Pedidos no período com join em tipo_pedido; filtro de elegibilidade é feito client-side
     const { data: pedidos, error: errPedidos } = await this.db
       .from('pedidos')
-      .select('id, numero_nf, data_emissao, tipo_pedido:tipos_pedido(incide_royalties, tipo_royalties)')
+      .select('id, codigo, numero_nf, data_emissao, percentual_royalties, tipo_pedido:tipos_pedido(incide_royalties, tipo_royalties, percentual_royalties)')
       .gte('data_emissao', inicio)
       .lte('data_emissao', fim)
       .not('tipo_pedido_id', 'is', null);
@@ -90,7 +90,9 @@ export class ApuracaoCrmService {
       const itens = itensPorPedido.get(p.id) ?? [];
       const tp = Array.isArray(p.tipo_pedido) ? p.tipo_pedido[0] : p.tipo_pedido;
       const tipoRoy = tp?.tipo_royalties as 'linha' | 'sazonal';
-      const aliquota = tipoRoy === 'linha' ? ALIQUOTA_LINHA : ALIQUOTA_SAZONAL;
+      const aliquotaPadrao = tipoRoy === 'linha' ? ALIQUOTA_LINHA : ALIQUOTA_SAZONAL;
+      const pct = (p as any).percentual_royalties ?? tp?.percentual_royalties;
+      const aliquota = pct != null ? pct / 100 : aliquotaPadrao;
 
       let valorVenda = 0;
       let itensSemEan = 0;
@@ -130,13 +132,15 @@ export class ApuracaoCrmService {
       }
 
       pedidosApuracao.push({
-        pedido_id:    p.id,
-        numero_nf:    p.numero_nf,
-        data_emissao: p.data_emissao,
-        tipo:         tipoRoy,
-        valor_venda:  valorVenda,
-        itens_sem_ean: itensSemEan,
-        itens: itensApuracao,
+        pedido_id:          p.id,
+        codigo:             p.codigo,
+        numero_nf:          p.numero_nf,
+        data_emissao:       p.data_emissao,
+        tipo:               tipoRoy,
+        aliquota_royalties: aliquota,
+        valor_venda:        valorVenda,
+        itens_sem_ean:      itensSemEan,
+        itens:              itensApuracao,
       });
     }
 
