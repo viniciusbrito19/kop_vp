@@ -377,15 +377,14 @@ export class ApuracaoCrmService {
     return (data ?? []) as ProdutoCatalogo[];
   }
 
-  async aplicarMatchManual(descricao: string, ean: string): Promise<number> {
+  async aplicarMatchManual(descricao: string, ean: string, c_prod?: string | null): Promise<number> {
     const pedidosCrmIds = await this.buscarPedidosCrmIds();
-    const { data, error } = await this.db
-      .from('itens_pedido')
-      .update({ ean })
-      .ilike('descricao', descricao)
-      .is('ean', null)
-      .in('pedido_id', pedidosCrmIds)
-      .select('id');
+    // Itens com c_prod são agrupados pelo código do produto, não pela descrição.
+    // Filtrar por c_prod garante que todas as variações de descrição do mesmo produto sejam atualizadas.
+    const filtro = c_prod
+      ? this.db.from('itens_pedido').update({ ean }).eq('c_prod', c_prod).is('ean', null).in('pedido_id', pedidosCrmIds)
+      : this.db.from('itens_pedido').update({ ean }).ilike('descricao', descricao).is('ean', null).in('pedido_id', pedidosCrmIds);
+    const { data, error } = await filtro.select('id');
     if (error) throw error;
     return (data ?? []).length;
   }

@@ -1019,13 +1019,15 @@ export class ListaApuracoesComponent implements OnInit {
     if (!item || !produto) return;
     this.aplicandoMap.set(true);
     try {
-      const count = await this.service.aplicarMatchManual(item.descricao, produto.ean);
+      const count = await this.service.aplicarMatchManual(item.descricao, produto.ean, item.c_prod);
       this.snack.open(`${count} item(ns) atualizado(s) com EAN.`, 'OK', { duration: 4000 });
       const resultado = this.resultadoRecon();
       if (resultado) {
         this.resultadoRecon.set({
           ...resultado,
-          semMatch: resultado.semMatch.filter(s => s.descricao !== item.descricao),
+          semMatch: resultado.semMatch.filter(s =>
+            item.c_prod ? s.c_prod !== item.c_prod : s.descricao !== item.descricao
+          ),
         });
       }
       this.fecharDialogMapeamento();
