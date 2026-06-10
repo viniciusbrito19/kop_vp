@@ -43,6 +43,7 @@ export class XmlExtractorService {
       const det = dets[i];
       const f = (t: string) => det.getElementsByTagNameNS('*', t)[0]?.textContent?.trim() ?? '';
       const cEAN = f('cEAN');
+      const cProd = f('cProd');
       itens.push({
         descricao:      f('xProd'),
         quantidade:     parseFloat(f('qCom')) || 0,
@@ -50,6 +51,7 @@ export class XmlExtractorService {
         valor_unitario: parseFloat(f('vUnCom')) || null,
         valor_total:    parseFloat(f('vProd')) || null,
         ean:            (cEAN && cEAN !== 'SEM GTIN') ? cEAN : null,
+        c_prod:         cProd || null,
         venda_unitario: null,
         venda_total:    null,
       });

@@ -29,7 +29,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       <div class="content">
 
         <!-- ── Header ──────────────────────────────────── -->
-        <div class="row page-heading-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+        <div class="row heading-row">
           <div>
             <h1 class="page">Lista de <span class="accent serif">produtos</span></h1>
             <div class="page-sub">{{ itens().length }} itens cadastrados no catálogo</div>
@@ -89,6 +89,17 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
             }
           </div>
           <div class="sep"></div>
+          <div class="flag-toggles">
+            <button class="flag-btn" [class.on]="isentoFpp()" (click)="isentoFpp.set(!isentoFpp())" type="button">
+              <span class="mini-pill" [class]="isentoFpp() ? 'off' : 'ok'">FPP</span>
+              Isento
+            </button>
+            <button class="flag-btn" [class.on]="isentoRoyalties()" (click)="isentoRoyalties.set(!isentoRoyalties())" type="button">
+              <span class="mini-pill" [class]="isentoRoyalties() ? 'off' : 'ok'">ROY</span>
+              Isento
+            </button>
+          </div>
+          <div class="sep"></div>
           <div class="field filter-search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input [value]="busca()" (input)="busca.set($any($event.target).value)" placeholder="Buscar por descrição, código SAP ou EAN…"/>
@@ -131,21 +142,21 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
             <div class="row-card">
               <div class="row-main pg" style="cursor:default">
 
-                <span class="mono" style="font-size:12px;color:var(--text-2)">
+                <span class="cell-sap mono" style="font-size:12px;color:var(--text-2)">
                   {{ item.codigo_sap ?? '—' }}
                 </span>
 
-                <span style="font-size:14px;font-weight:500">{{ item.descricao }}</span>
+                <span class="cell-desc" style="font-size:14px;font-weight:500">{{ item.descricao }}</span>
 
-                <span style="text-align:center;font-size:12px;font-weight:600;color:var(--text-3);font-variant:all-small-caps">
+                <span class="cell-und" style="text-align:center;font-size:12px;font-weight:600;color:var(--text-3);font-variant:all-small-caps">
                   {{ item.unidade ?? '—' }}
                 </span>
 
-                <span class="mono" style="font-size:12px;color:var(--text-3)">
+                <span class="cell-ean mono" style="font-size:12px;color:var(--text-3)">
                   {{ item.ean ?? '—' }}
                 </span>
 
-                <span style="text-align:right;font-weight:600;font-size:14px">
+                <span class="cell-preco" style="text-align:right;font-weight:600;font-size:14px">
                   {{ moeda(item.preco_venda) }}
                 </span>
 
@@ -154,7 +165,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
                   <span class="mini-pill" [class]="item.cobra_royalties ? 'ok' : 'off'" title="{{ item.cobra_royalties ? 'Cobra Royalties' : 'Isento de Royalties' }}">ROY</span>
                 </span>
 
-                <span style="text-align:center">
+                <span class="cell-status" style="text-align:center">
                   <span class="pill" [class]="item.ativo ? 'ok' : 'neutral'">
                     {{ item.ativo ? 'Ativo' : 'Inativo' }}
                   </span>
@@ -243,6 +254,35 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       min-width: 220px;
     }
 
+    .flag-toggles {
+      display: inline-flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .flag-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line-2);
+      background: transparent;
+      color: var(--text-3);
+      font: 600 12px/1 inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .flag-btn:hover { background: var(--surface-2); color: var(--text); }
+    .flag-btn.on {
+      background: var(--bordo-tint);
+      border-color: var(--bordo);
+      color: var(--bordo);
+    }
+
     .clear-btn {
       display: flex;
       align-items: center;
@@ -290,6 +330,64 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       text-align: center;
     }
     .paginator-info strong { color: var(--text); }
+
+    /* ── Desktop heading row ── */
+    .heading-row {
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .heading-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      /* Filter bar: tabs+toggles na linha 1, busca na linha 2 */
+      .filter-bar {
+        flex-wrap: wrap;
+        border-radius: var(--r-md);
+        overflow-x: visible;
+      }
+      .sep { display: none; }
+      .flag-toggles { order: 2; }
+      .filter-search {
+        order: 10;
+        flex: 1 1 100%;
+        min-width: 0 !important;
+      }
+
+      /* KPI grid já vai para 2×2 via styles.scss */
+
+      /* Cabeçalho da lista: oculto via styles.scss global */
+
+      /* Card responsivo de produto */
+      .row-main.pg {
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto auto;
+        grid-template-areas:
+          "desc   kebab"
+          "sap    preco"
+          "chips  status";
+        row-gap: 6px;
+        column-gap: 8px;
+        padding: 12px 14px;
+        align-items: center;
+      }
+
+      .cell-desc   { grid-area: desc; align-self: center; }
+      .row-kebab   { grid-area: kebab; align-self: flex-start; }
+      .cell-sap    { grid-area: sap; font-size: 11px !important; color: var(--text-3) !important; }
+      .cell-und    { display: none; }
+      .cell-ean    { display: none; }
+      .cell-preco  { grid-area: preco; text-align: right !important; font-size: 13px !important; }
+      .cobrancas-cell { grid-area: chips; justify-content: flex-start; }
+      .cell-status { grid-area: status; text-align: right !important; }
+    }
   `],
 })
 export class ListaProdutosComponent implements OnInit {
@@ -297,11 +395,13 @@ export class ListaProdutosComponent implements OnInit {
   private snack  = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
-  itens      = signal<Item[]>([]);
-  carregando = signal(false);
-  filtro     = signal<'todos' | 'ativos' | 'inativos'>('todos');
-  busca      = signal('');
-  paginaAtual = signal(1);
+  itens           = signal<Item[]>([]);
+  carregando      = signal(false);
+  filtro          = signal<'todos' | 'ativos' | 'inativos'>('todos');
+  busca           = signal('');
+  isentoFpp       = signal(false);
+  isentoRoyalties = signal(false);
+  paginaAtual     = signal(1);
 
   readonly tamanhoPagina = 10;
 
@@ -316,6 +416,8 @@ export class ListaProdutosComponent implements OnInit {
     const f = this.filtro();
     if (f === 'ativos')   lista = lista.filter(i => i.ativo);
     if (f === 'inativos') lista = lista.filter(i => !i.ativo);
+    if (this.isentoFpp())       lista = lista.filter(i => !i.cobra_fpp);
+    if (this.isentoRoyalties()) lista = lista.filter(i => !i.cobra_royalties);
     const b = this.busca().toLowerCase().trim();
     if (b) lista = lista.filter(i =>
       i.descricao.toLowerCase().includes(b) ||
@@ -334,7 +436,10 @@ export class ListaProdutosComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      this.itensFiltrados();
+      this.filtro();
+      this.busca();
+      this.isentoFpp();
+      this.isentoRoyalties();
       this.paginaAtual.set(1);
     });
   }
@@ -348,7 +453,9 @@ export class ListaProdutosComponent implements OnInit {
     return comPreco.reduce((s, i) => s + (i.preco_venda ?? 0), 0) / comPreco.length;
   });
 
-  filtrosAtivos = computed(() => this.filtro() !== 'todos' || !!this.busca());
+  filtrosAtivos = computed(() =>
+    this.filtro() !== 'todos' || !!this.busca() || this.isentoFpp() || this.isentoRoyalties()
+  );
 
   async ngOnInit() { await this.carregar(); }
 
@@ -370,6 +477,8 @@ export class ListaProdutosComponent implements OnInit {
   limparFiltros() {
     this.filtro.set('todos');
     this.busca.set('');
+    this.isentoFpp.set(false);
+    this.isentoRoyalties.set(false);
   }
 
   async toggleAtivo(item: Item) {

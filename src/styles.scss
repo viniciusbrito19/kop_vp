@@ -170,12 +170,13 @@ body {
   font-size: 12px; font-weight: 600; line-height: 1.4;
   white-space: nowrap;
 }
-.pill.ok    { background: var(--ok-soft);    color: var(--ok); }
-.pill.warn  { background: var(--warn-soft);  color: var(--warn); }
-.pill.bad   { background: var(--bad-soft);   color: var(--bad); }
-.pill.info  { background: var(--info-soft);  color: var(--info); }
-.pill.bordo { background: var(--bordo-soft); color: var(--bordo); }
-.pill.gold  { background: var(--gold-soft);  color: var(--gold-2); }
+.pill.ok      { background: var(--ok-soft);    color: var(--ok); }
+.pill.warn    { background: var(--warn-soft);  color: var(--warn); }
+.pill.bad     { background: var(--bad-soft);   color: var(--bad); }
+.pill.info    { background: var(--info-soft);  color: var(--info); }
+.pill.bordo   { background: var(--bordo-soft); color: var(--bordo); }
+.pill.gold    { background: var(--gold-soft);  color: var(--gold-2); }
+.pill.neutral { background: var(--surface-2);  color: var(--text-3); }
 
 .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; display: inline-block; }
 

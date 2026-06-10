@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApuracaoCrmService } from '../../services/apuracao-crm.service';
-import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ProdutoCatalogo, PedidoApuracao } from '../../models/apuracao.model';
+import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao } from '../../models/apuracao.model';
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -48,29 +48,58 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
           <div class="recon-stats">
             <div class="recon-stat ok">
               <span class="recon-num">{{ resultadoRecon()!.reconciliados.length }}</span>
-              <span>itens atualizados</span>
+              <span>vinculados via cProd</span>
+            </div>
+            <div class="recon-stat warn" [class.hidden]="!resultadoRecon()!.multiMatch.length">
+              <span class="recon-num">{{ resultadoRecon()!.multiMatch.length }}</span>
+              <span>aguardam escolha</span>
             </div>
             <div class="recon-stat warn" [class.hidden]="!resultadoRecon()!.semMatch.length">
               <span class="recon-num">{{ resultadoRecon()!.semMatch.length }}</span>
-              <span>descrições sem match</span>
-            </div>
-            <div class="recon-stat warn" [class.hidden]="!resultadoRecon()!.eanSemCatalogo.length">
-              <span class="recon-num">{{ resultadoRecon()!.eanSemCatalogo.length }}</span>
-              <span>EANs sem catálogo</span>
+              <span>sem correspondência</span>
             </div>
             <div class="recon-stat neutral">
               <span class="recon-num">{{ resultadoRecon()!.jaComEan }}</span>
-              <span>já tinham EAN</span>
+              <span>já tinham EAN válido</span>
             </div>
           </div>
+          @if (resultadoRecon()!.multiMatch.length > 0) {
+            <details class="sem-match-details" open>
+              <summary>Múltiplos candidatos — escolha o produto correto ({{ resultadoRecon()!.multiMatch.length }})</summary>
+              <div class="sem-match-list">
+                @for (m of resultadoRecon()!.multiMatch; track m.item_pedido_id) {
+                  <div class="sem-match-row multi-row">
+                    <div class="sm-main" style="width:100%">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <span class="sm-desc">{{ m.descricao_pedido ?? '—' }}</span>
+                        <span class="sm-cprod mono">cProd: {{ m.c_prod }}</span>
+                        @if (m.numero_nf) { <span class="sm-nf">{{ m.numero_nf }}</span> }
+                      </div>
+                      <div class="multi-candidates">
+                        @for (c of m.candidatos; track c.ean) {
+                          <button class="candidate-btn" (click)="resolverMultiMatch(m, c)">
+                            <span class="candidate-sap mono">{{ c.codigo_sap }}</span>
+                            <span class="candidate-desc">{{ c.descricao }}</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </details>
+          }
           @if (resultadoRecon()!.semMatch.length > 0) {
             <details class="sem-match-details">
-              <summary>Ver descrições sem correspondência ({{ resultadoRecon()!.semMatch.length }})</summary>
+              <summary>Sem correspondência — atualize o catálogo ({{ resultadoRecon()!.semMatch.length }})</summary>
               <div class="sem-match-list">
                 @for (s of resultadoRecon()!.semMatch; track s.descricao) {
                   <div class="sem-match-row">
                     <div class="sm-main">
-                      <span class="sm-desc">{{ s.descricao }}</span>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span class="sm-desc">{{ s.descricao }}</span>
+                        @if (s.c_prod) { <span class="sm-cprod mono">cProd: {{ s.c_prod }}</span> }
+                      </div>
                       @if (s.pedidos.length) {
                         <div class="sm-pedidos">
                           @for (p of s.pedidos; track p.pedido_id) {
@@ -82,36 +111,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                     <div class="sm-row-actions">
                       <span class="sm-count">{{ s.ocorrencias }}×</span>
                       <button class="btn ghost xs" (click)="abrirDialogMapeamento(s)">Mapear</button>
-                    </div>
-                  </div>
-                }
-              </div>
-            </details>
-          }
-          @if (resultadoRecon()!.eanSemCatalogo.length > 0) {
-            <details class="sem-match-details">
-              <summary>EANs sem correspondência no catálogo ({{ resultadoRecon()!.eanSemCatalogo.length }})</summary>
-              <div class="sem-match-list">
-                @for (s of resultadoRecon()!.eanSemCatalogo; track s.ean) {
-                  <div class="sem-match-row">
-                    <div class="sm-main">
-                      <span class="sm-desc mono" style="font-size:12px">{{ s.ean }}</span>
-                      @if (s.descricoes.length) {
-                        <div class="sm-pedidos" style="font-style:italic">
-                          {{ s.descricoes.slice(0, 3).join(' · ') }}{{ s.descricoes.length > 3 ? ' …' : '' }}
-                        </div>
-                      }
-                      @if (s.pedidos.length) {
-                        <div class="sm-pedidos">
-                          @for (p of s.pedidos; track p.pedido_id) {
-                            <span class="sm-nf">{{ p.numero_nf ?? 'S/NF' }}</span>
-                          }
-                        </div>
-                      }
-                    </div>
-                    <div class="sm-row-actions">
-                      <span class="sm-count">{{ s.ocorrencias }}×</span>
-                      <button class="btn ghost xs" (click)="abrirDialogCorrigirEan(s)">Corrigir</button>
                     </div>
                   </div>
                 }
@@ -429,6 +428,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                        (click)="produtoSelecionado.set(p)">
                     <div class="map-item-desc">{{ p.descricao }}</div>
                     <div class="map-item-meta">
+                      @if (p.codigo_sap) { <span class="map-ean">SAP {{ p.codigo_sap }}</span> }
                       <span class="map-ean">{{ p.ean }}</span>
                       @if (p.preco_venda != null) {
                         <span class="map-preco">R$ {{ p.preco_venda | number:'1.2-2':'pt-BR' }}</span>
@@ -709,8 +709,25 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       color: var(--bordo, #7A1F2B);
     }
     .sm-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .sm-count { font-size: 11px; font-weight: 600; color: var(--text-4); }
+    .sm-count  { font-size: 11px; font-weight: 600; color: var(--text-4); }
+    .sm-cprod  { font-size: 10px; color: var(--text-4); background: var(--surface-3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
     .dialog-nf { font-weight: 600; color: var(--bordo, #7A1F2B); }
+
+    /* ─── Multi-match ─── */
+    .multi-row { flex-direction: column; align-items: stretch; }
+    .multi-candidates {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+    }
+    .candidate-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 6px;
+      border: 1.5px solid var(--line-2); background: var(--surface);
+      cursor: pointer; font: inherit; font-size: 12px;
+      color: var(--text-2); transition: all 0.12s;
+      &:hover { border-color: var(--bordo, #7A1F2B); background: color-mix(in srgb, var(--bordo, #7A1F2B) 6%, transparent); color: var(--bordo, #7A1F2B); }
+    }
+    .candidate-sap { font-size: 10px; font-weight: 700; font-family: monospace; color: var(--text-4); }
+    .candidate-desc { font-size: 12px; }
 
     /* ─── Dialog mapeamento ─── */
     .dialog-overlay {
@@ -788,6 +805,7 @@ export class ListaApuracoesComponent implements OnInit {
 
   mapeandoItem  = signal<ItemSemMatch | null>(null);
   corrigindoEan = signal<ItemEanSemCatalogo | null>(null);
+  resolvendoMulti = signal(false);
   termoBusca = signal('');
   todosProdutos = signal<ProdutoCatalogo[]>([]);
   produtoSelecionado = signal<ProdutoCatalogo | null>(null);
@@ -799,7 +817,9 @@ export class ListaApuracoesComponent implements OnInit {
     const todos = this.todosProdutos();
     if (!termo) return todos.slice(0, 25);
     return todos.filter(p =>
-      p.descricao.toLowerCase().includes(termo) || p.ean.includes(termo)
+      p.descricao.toLowerCase().includes(termo) ||
+      p.ean.includes(termo) ||
+      (p.codigo_sap ?? '').toLowerCase().includes(termo)
     ).slice(0, 40);
   });
 
@@ -900,6 +920,33 @@ export class ListaApuracoesComponent implements OnInit {
       this.snack.open('Erro ao reconciliar EANs.', 'OK', { duration: 4000 });
     } finally {
       this.reconciliando.set(false);
+    }
+  }
+
+  async resolverMultiMatch(item: ItemMultiMatch, candidato: { ean: string; descricao: string; codigo_sap: string }) {
+    if (this.resolvendoMulti()) return;
+    this.resolvendoMulti.set(true);
+    try {
+      await this.service.aplicarMatchById(item.item_pedido_id, candidato.ean);
+      const resultado = this.resultadoRecon();
+      if (resultado) {
+        this.resultadoRecon.set({
+          ...resultado,
+          multiMatch: resultado.multiMatch.filter(m => m.item_pedido_id !== item.item_pedido_id),
+          reconciliados: [...resultado.reconciliados, {
+            item_pedido_id:    item.item_pedido_id,
+            descricao_pedido:  item.descricao_pedido ?? '',
+            descricao_produto: candidato.descricao,
+            ean:               candidato.ean,
+            estrategia:        'c_prod',
+          }],
+        });
+      }
+      this.snack.open('EAN aplicado com sucesso.', 'OK', { duration: 3000 });
+    } catch {
+      this.snack.open('Erro ao aplicar EAN.', 'OK', { duration: 4000 });
+    } finally {
+      this.resolvendoMulti.set(false);
     }
   }
 

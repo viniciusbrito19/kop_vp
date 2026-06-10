@@ -9,6 +9,7 @@ export interface ItemPedido {
   valor_unitario: number | null;
   valor_total: number | null;
   ean: string | null;
+  c_prod: string | null;
   venda_unitario: number | null;
   venda_total: number | null;
 }

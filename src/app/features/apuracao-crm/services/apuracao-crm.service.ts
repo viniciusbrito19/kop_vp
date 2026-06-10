@@ -223,120 +223,125 @@ export class ApuracaoCrmService {
   }
 
   async reconciliarEans(): Promise<ResultadoReconciliacao> {
-    // 0. Restringir apenas a pedidos CRM (tipo_pedido com incide_royalties = true)
+    // 0. IDs dos pedidos CRM
     const pedidosCrmIds = await this.buscarPedidosCrmIds();
+    if (pedidosCrmIds.length === 0) {
+      return { reconciliados: [], multiMatch: [], semMatch: [], eanSemCatalogo: [], totalItens: 0, jaComEan: 0 };
+    }
 
-    // 1. Itens sem EAN apenas de pedidos CRM
-    const { data: semEan, error: e1 } = await this.db
-      .from('itens_pedido')
-      .select('id, descricao, ean, pedido_id, pedido:pedidos(numero_nf)')
-      .is('ean', null)
-      .in('pedido_id', pedidosCrmIds);
-    if (e1) throw e1;
-
-    // 2. Catálogo de produtos com EAN
-    const { data: produtos, error: e2 } = await this.db
+    // 1. Catálogo: EAN, descricao, codigo_sap, preco_venda
+    const { data: produtos, error: e1 } = await this.db
       .from('itens')
-      .select('ean, descricao, preco_venda')
+      .select('ean, descricao, codigo_sap, preco_venda')
       .not('ean', 'is', null)
       .not('descricao', 'is', null);
-    if (e2) throw e2;
+    if (e1) throw e1;
 
-    // EANs com preço válido no catálogo (únicos elegíveis para apuração)
+    // EANs válidos = em catálogo com preço (elegíveis para apuração)
     const eanComPreco = new Set<string>(
       (produtos ?? []).filter((p: any) => p.preco_venda != null).map((p: any) => p.ean as string)
     );
 
-    const jaComEan = ((await this.db.from('itens_pedido').select('id', { count: 'exact', head: true }).not('ean', 'is', null)).count) ?? 0;
-
-    // 3. Índice de busca: normalizado → { ean, descricao }
-    const indiceExato    = new Map<string, { ean: string; descricao: string }>();
-    const indiceNormal   = new Map<string, { ean: string; descricao: string }>();
-    for (const p of (produtos ?? [])) {
-      if (!p.ean || !p.descricao) continue;
-      indiceExato.set(p.descricao.trim().toUpperCase(), { ean: p.ean, descricao: p.descricao });
-      indiceNormal.set(this.normalizar(p.descricao), { ean: p.ean, descricao: p.descricao });
-    }
-
-    // 4. Tentar casar cada item
-    const reconciliados: import('../models/apuracao.model').ItemReconciliado[] = [];
-    const semMatchMap = new Map<string, { ocorrencias: number; pedidosSet: Map<string, string | null> }>();
-
-    for (const item of (semEan ?? [])) {
-      const desc = (item.descricao ?? '').trim().toUpperCase();
-      const norm = this.normalizar(item.descricao ?? '');
-
-      let match = indiceExato.get(desc) ?? null;
-      let estrategia: 'exato' | 'normalizado' = 'exato';
-
-      if (!match) {
-        match = indiceNormal.get(norm) ?? null;
-        estrategia = 'normalizado';
-      }
-
-      if (match) {
-        reconciliados.push({
-          item_pedido_id:   item.id,
-          descricao_pedido: item.descricao,
-          descricao_produto: match.descricao,
-          ean:              match.ean,
-          estrategia,
-        });
-      } else {
-        const entry = semMatchMap.get(desc) ?? { ocorrencias: 0, pedidosSet: new Map() };
-        entry.ocorrencias++;
-        if (item.pedido_id) {
-          const nf = Array.isArray(item.pedido) ? item.pedido[0]?.numero_nf : (item.pedido as any)?.numero_nf;
-          entry.pedidosSet.set(item.pedido_id, nf ?? null);
-        }
-        semMatchMap.set(desc, entry);
-      }
-    }
-
-    // 5. Atualizar em lotes de 50
-    for (let i = 0; i < reconciliados.length; i += 50) {
-      const lote = reconciliados.slice(i, i + 50);
-      for (const r of lote) {
-        const { error } = await this.db
-          .from('itens_pedido')
-          .update({ ean: r.ean })
-          .eq('id', r.item_pedido_id);
-        if (error) throw error;
-      }
-    }
-
-    const semMatch = Array.from(semMatchMap.entries())
-      .map(([descricao, { ocorrencias, pedidosSet }]) => ({
-        descricao,
-        ocorrencias,
-        pedidos: Array.from(pedidosSet.entries()).map(([pedido_id, numero_nf]) => ({ pedido_id, numero_nf })),
-      }))
-      .sort((a, b) => b.ocorrencias - a.ocorrencias);
-
-    // 6. Itens com EAN preenchido mas ausente/sem preço no catálogo (invisíveis ao fluxo acima)
-    const { data: comEanOrfao, error: e3 } = await this.db
+    // 2. Todos os itens de pedidos CRM (incluindo c_prod)
+    const { data: todosItens, error: e2 } = await this.db
       .from('itens_pedido')
-      .select('descricao, ean, pedido_id, pedido:pedidos(numero_nf)')
-      .not('ean', 'is', null)
+      .select('id, descricao, ean, c_prod, pedido_id, pedido:pedidos(numero_nf)')
       .in('pedido_id', pedidosCrmIds);
-    if (e3) throw e3;
+    if (e2) throw e2;
 
-    const eanSemCatMap = new Map<string, { descricoes: Set<string>; ocorrencias: number; pedidosSet: Map<string, string | null> }>();
-    for (const item of (comEanOrfao ?? []) as any[]) {
-      if (eanComPreco.has(item.ean)) continue;
-      const entry = eanSemCatMap.get(item.ean) ?? { descricoes: new Set(), ocorrencias: 0, pedidosSet: new Map() };
-      entry.ocorrencias++;
-      if (item.descricao) entry.descricoes.add(item.descricao);
-      if (item.pedido_id) {
-        const nf = Array.isArray(item.pedido) ? item.pedido[0]?.numero_nf : (item.pedido as any)?.numero_nf;
-        entry.pedidosSet.set(item.pedido_id, nf ?? null);
-      }
-      eanSemCatMap.set(item.ean, entry);
+    const itens = (todosItens ?? []) as any[];
+
+    // Separar: já tem EAN válido vs. precisa reconciliar
+    const jaValidos      = itens.filter(i => i.ean && eanComPreco.has(i.ean));
+    const precisamRecon  = itens.filter(i => !i.ean || !eanComPreco.has(i.ean));
+
+    if (precisamRecon.length === 0) {
+      return { reconciliados: [], multiMatch: [], semMatch: [], eanSemCatalogo: [], totalItens: 0, jaComEan: jaValidos.length };
     }
-    const eanSemCatalogo: ItemEanSemCatalogo[] = Array.from(eanSemCatMap.entries())
-      .map(([ean, { descricoes, ocorrencias, pedidosSet }]) => ({
-        ean,
-        descricoes: Array.from(descricoes),
+
+    // 3. Índice do catálogo por codigo_sap (sem zeros à esquerda), apenas com preco_venda
+    //    Um mesmo codigo_sap normalizado pode mapear para múltiplos produtos → array.
+    const indiceSap = new Map<string, Array<{ ean: string; descricao: string; codigo_sap: string }>>();
+    for (const p of (produtos ?? []) as any[]) {
+      if (!p.ean || p.preco_venda == null || !p.codigo_sap) continue;
+      const sapNorm = this.stripLeadingZeros(String(p.codigo_sap));
+      const lista = indiceSap.get(sapNorm) ?? [];
+      lista.push({ ean: p.ean, descricao: p.descricao, codigo_sap: p.codigo_sap });
+      indiceSap.set(sapNorm, lista);
+    }
+
+    // 4. Tentar casar por cProd → codigo_sap
+    const reconciliados: import('../models/apuracao.model').ItemReconciliado[] = [];
+    const multiMatch:    import('../models/apuracao.model').ItemMultiMatch[]   = [];
+    // semMatchMap: agrupado por chave (cProd normalizado ou descrição quando sem cProd)
+    const semMatchMap = new Map<string, {
+      descricao: string;
+      c_prod: string | null;
+      ocorrencias: number;
+      pedidosSet: Map<string, string | null>;
+    }>();
+
+    for (const item of precisamRecon) {
+      const nf = Array.isArray(item.pedido)
+        ? item.pedido[0]?.numero_nf
+        : (item.pedido as any)?.numero_nf;
+
+      const cProdRaw: string | null  = item.c_prod ?? null;
+      const cProdNorm = cProdRaw ? this.stripLeadingZeros(cProdRaw) : null;
+
+      if (cProdNorm) {
+        const candidatos = indiceSap.get(cProdNorm) ?? [];
+
+        if (candidatos.length === 1) {
+          // Correspondência única → reconciliar automaticamente
+          reconciliados.push({
+            item_pedido_id:    item.id,
+            descricao_pedido:  item.descricao ?? '',
+            descricao_produto: candidatos[0].descricao,
+            ean:               candidatos[0].ean,
+            estrategia:        'c_prod',
+          });
+        } else if (candidatos.length > 1) {
+          // Múltiplos candidatos → usuário escolhe
+          multiMatch.push({
+            item_pedido_id:  item.id,
+            descricao_pedido: item.descricao ?? null,
+            c_prod:           cProdRaw!,
+            candidatos,
+            pedido_id:        item.pedido_id,
+            numero_nf:        nf ?? null,
+          });
+        } else {
+          // cProd sem correspondência no catálogo
+          const key = cProdNorm;
+          const entry = semMatchMap.get(key) ?? { descricao: item.descricao ?? '', c_prod: cProdRaw, ocorrencias: 0, pedidosSet: new Map() };
+          entry.ocorrencias++;
+          if (item.pedido_id) entry.pedidosSet.set(item.pedido_id, nf ?? null);
+          semMatchMap.set(key, entry);
+        }
+      } else {
+        // Sem c_prod e sem EAN válido: agrupa por descrição
+        const key = (item.descricao ?? '').trim().toUpperCase() || item.id;
+        const entry = semMatchMap.get(key) ?? { descricao: item.descricao ?? '', c_prod: null, ocorrencias: 0, pedidosSet: new Map() };
+        entry.ocorrencias++;
+        if (item.pedido_id) entry.pedidosSet.set(item.pedido_id, nf ?? null);
+        semMatchMap.set(key, entry);
+      }
+    }
+
+    // 5. Aplicar reconciliações automáticas (um UPDATE por item)
+    for (const r of reconciliados) {
+      const { error } = await this.db
+        .from('itens_pedido')
+        .update({ ean: r.ean })
+        .eq('id', r.item_pedido_id);
+      if (error) throw error;
+    }
+
+    const semMatch = Array.from(semMatchMap.values())
+      .map(({ descricao, c_prod, ocorrencias, pedidosSet }) => ({
+        descricao,
+        c_prod,
         ocorrencias,
         pedidos: Array.from(pedidosSet.entries()).map(([pedido_id, numero_nf]) => ({ pedido_id, numero_nf })),
       }))
@@ -344,17 +349,27 @@ export class ApuracaoCrmService {
 
     return {
       reconciliados,
+      multiMatch,
       semMatch,
-      eanSemCatalogo,
-      totalItens: (semEan ?? []).length,
-      jaComEan: Number(jaComEan),
+      eanSemCatalogo: [],  // subsumed no fluxo de cProd acima
+      totalItens: precisamRecon.length,
+      jaComEan: jaValidos.length,
     };
+  }
+
+  /** Aplica manualmente o EAN escolhido pelo usuário para um item específico (multi-match). */
+  async aplicarMatchById(itemPedidoId: string, ean: string): Promise<void> {
+    const { error } = await this.db
+      .from('itens_pedido')
+      .update({ ean })
+      .eq('id', itemPedidoId);
+    if (error) throw error;
   }
 
   async buscarProdutos(): Promise<ProdutoCatalogo[]> {
     const { data, error } = await this.db
       .from('itens')
-      .select('ean, descricao, preco_venda')
+      .select('ean, descricao, codigo_sap, preco_venda')
       .not('ean', 'is', null)
       .not('descricao', 'is', null)
       .order('descricao');
@@ -401,14 +416,10 @@ export class ApuracaoCrmService {
       .map((p: any) => p.id as string);
   }
 
-  private normalizar(s: string): string {
-    return s
-      .toUpperCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')   // remove acentos
-      .replace(/[^A-Z0-9 ]/g, ' ')       // remove pontuação
-      .replace(/\s+/g, ' ')
-      .trim();
+  /** Remove zeros à esquerda de um código para comparação normalizada. */
+  private stripLeadingZeros(s: string): string {
+    const trimmed = s.trim().replace(/^0+/, '');
+    return trimmed || '0';
   }
 
   private intervalo(ano: number, mes: number, quinzena: 1 | 2) {

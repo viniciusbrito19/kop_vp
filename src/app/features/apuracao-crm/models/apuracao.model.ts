@@ -55,11 +55,23 @@ export interface ItemReconciliado {
   descricao_pedido: string;
   descricao_produto: string;
   ean: string;
-  estrategia: 'exato' | 'normalizado';
+  estrategia: 'c_prod';
 }
 
+/** Item cujo cProd bate com mais de um codigo_sap no catálogo. */
+export interface ItemMultiMatch {
+  item_pedido_id: string;
+  descricao_pedido: string | null;
+  c_prod: string;
+  candidatos: Array<{ ean: string; descricao: string; codigo_sap: string }>;
+  pedido_id: string;
+  numero_nf: string | null;
+}
+
+/** Item sem correspondência por EAN nem por cProd. */
 export interface ItemSemMatch {
   descricao: string;
+  c_prod: string | null;
   ocorrencias: number;
   pedidos: { pedido_id: string; numero_nf: string | null }[];
 }
@@ -73,6 +85,7 @@ export interface ItemEanSemCatalogo {
 
 export interface ResultadoReconciliacao {
   reconciliados: ItemReconciliado[];
+  multiMatch: ItemMultiMatch[];
   semMatch: ItemSemMatch[];
   eanSemCatalogo: ItemEanSemCatalogo[];
   totalItens: number;
@@ -82,5 +95,6 @@ export interface ResultadoReconciliacao {
 export interface ProdutoCatalogo {
   ean: string;
   descricao: string;
+  codigo_sap: string | null;
   preco_venda: number | null;
 }

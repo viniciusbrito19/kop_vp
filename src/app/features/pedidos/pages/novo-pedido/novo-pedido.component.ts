@@ -200,6 +200,7 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
   private criarItemGroup(valores?: any) {
     return this.fb.group({
       ean:             [valores?.ean ?? null],
+      c_prod:          [valores?.c_prod ?? null],
       descricao:       [valores?.descricao ?? '', Validators.required],
       quantidade:      [valores?.quantidade ?? null],
       unidade:         [valores?.unidade ?? ''],
