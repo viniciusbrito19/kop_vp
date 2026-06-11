@@ -21,7 +21,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
           <h1 class="page">Apuração <span class="accent serif">CRM</span></h1>
           <div class="page-sub">Royalties e FPP — cálculo quinzenal sobre valor de venda dos pedidos</div>
         </div>
-        <button class="btn outline" [disabled]="reconciliando()" (click)="reconciliarEans()" title="Cruzar itens de pedidos com a lista de produtos para preencher EAN automaticamente">
+<button class="btn outline" [disabled]="reconciliando()" (click)="reconciliarEans()" title="Cruzar itens de pedidos com a lista de produtos para preencher EAN automaticamente">
           @if (reconciliando()) {
             <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
               <circle cx="18" cy="18" r="15" stroke="rgba(0,0,0,0.15)" stroke-width="3"/>
@@ -177,12 +177,18 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               Notas incluídas
               <span class="preview-count">{{ preview()!.pedidos.length }}</span>
             </div>
-            @if (totalSemEan() > 0) {
-              <div class="alerta-ean">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                {{ totalSemEan() }} item(ns) sem EAN — valor de venda pode estar subestimado
-              </div>
-            }
+            <div class="preview-header-actions">
+              @if (totalSemEan() > 0) {
+                <div class="alerta-ean">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  {{ totalSemEan() }} item(ns) sem EAN — valor de venda pode estar subestimado
+                </div>
+              }
+              <button class="btn outline btn-export-csv" (click)="exportarCsv()" title="Exportar todos os itens das NFs em CSV">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar CSV
+              </button>
+            </div>
           </div>
 
           <!-- Cabeçalho da lista -->
@@ -304,10 +310,24 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               <span>R$ {{ preview()!.total_venda | number:'1.2-2':'pt-BR' }}</span>
             </div>
             <div class="calc-divider"></div>
-            <div class="calc-row fpp">
-              <span>FPP (4%)</span>
-              <span>R$ {{ preview()!.fpp | number:'1.2-2':'pt-BR' }}</span>
-            </div>
+            @if (preview()!.fpp_linha > 0) {
+              <div class="calc-row fpp">
+                <span>FPP — Linha (3,85%)</span>
+                <span>R$ {{ preview()!.fpp_linha | number:'1.2-2':'pt-BR' }}</span>
+              </div>
+            }
+            @if (preview()!.fpp_sazonal > 0) {
+              <div class="calc-row fpp">
+                <span>FPP — Sazonal (3,85%)</span>
+                <span>R$ {{ preview()!.fpp_sazonal | number:'1.2-2':'pt-BR' }}</span>
+              </div>
+            }
+            @if (preview()!.fpp_linha > 0 && preview()!.fpp_sazonal > 0) {
+              <div class="calc-row fpp total-fpp">
+                <span>FPP Total</span>
+                <span>R$ {{ preview()!.fpp | number:'1.2-2':'pt-BR' }}</span>
+              </div>
+            }
             @for (r of royaltiesPorAliquota(); track r.label) {
               <div class="calc-row royalties">
                 <span>{{ r.label }}</span>
@@ -535,12 +555,19 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       background: var(--surface-2); border: 1px solid var(--line);
       font-size: 11px; font-weight: 700; color: var(--text-3);
     }
+    .preview-header-actions {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
     .alerta-ean {
       display: flex; align-items: center; gap: 7px; padding: 8px 12px;
       background: color-mix(in srgb, #C28A1E 12%, transparent);
       border: 1px solid color-mix(in srgb, #C28A1E 30%, transparent);
       border-radius: 8px; font-size: 12px; color: #7A5510;
       svg { flex-shrink: 0; }
+    }
+    .btn-export-csv {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 6px 12px; white-space: nowrap;
     }
 
     /* ─── Lista de notas expansível ─── */
@@ -679,6 +706,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       display: flex; justify-content: space-between; font-size: 13px; color: var(--text-3);
       &.total { font-weight: 600; color: var(--text); }
       &.fpp { color: #5A1620; font-weight: 600; }
+      &.fpp.total-fpp { border-top: 1px dashed color-mix(in srgb, #5A1620 30%, transparent); padding-top: 4px; margin-top: 2px; }
       &.royalties { color: #82622F; font-weight: 600; }
       &.total-geral { font-size: 14px; font-weight: 700; color: var(--text); border-top: 1px solid var(--line); padding-top: 8px; }
     }
@@ -947,6 +975,59 @@ export class ListaApuracoesComponent implements OnInit {
 
   temFppNota(p: PedidoApuracao): boolean {
     return p.itens.some(i => i.cobra_fpp && i.fpp > 0);
+  }
+
+  exportarCsv(): void {
+    const p = this.preview();
+    if (!p) return;
+
+    const { ano, mes, quinzena } = this.selecionado;
+    const mesPad = String(mes).padStart(2, '0');
+
+    const fmt = (n: number) => n.toFixed(2).replace('.', ',');
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+    const cabecalho = [
+      'Código', 'NF', 'Tipo', 'Data Emissão', 'Alíquota Roy. (%)',
+      'Descrição', 'Qtd',
+      'Custo Unit.', 'Custo Total',
+      'Venda Total', 'FPP', 'Base Roy.', 'Royalties',
+    ];
+
+    const linhas: string[][] = [];
+    for (const pedido of p.pedidos) {
+      const tipo = pedido.tipo === 'linha' ? 'Linha' : 'Sazonal';
+      const aliquota = fmt(pedido.aliquota_royalties * 100);
+      for (const item of pedido.itens) {
+        linhas.push([
+          pedido.codigo ?? '',
+          pedido.numero_nf ?? 'S/NF',
+          tipo,
+          pedido.data_emissao,
+          aliquota,
+          item.descricao,
+          String(item.quantidade),
+          item.custo_unitario != null ? fmt(item.custo_unitario) : '',
+          item.custo_total    != null ? fmt(item.custo_total)    : '',
+          item.sem_ean ? '' : fmt(item.preco_total_venda),
+          item.sem_ean ? '' : (!item.cobra_fpp       ? 'Isento' : fmt(item.fpp)),
+          item.sem_ean ? '' : (!item.cobra_royalties  ? 'Isento' : fmt(item.base_royalties)),
+          item.sem_ean ? '' : (!item.cobra_royalties  ? 'Isento' : fmt(item.royalties)),
+        ]);
+      }
+    }
+
+    const csvRows = [cabecalho, ...linhas]
+      .map(row => row.map(esc).join(';'))
+      .join('\r\n');
+
+    const blob = new Blob(['﻿' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `apuracao-crm-${ano}${mesPad}-q${quinzena}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   royaltiesPorAliquota(): { label: string; valor: number }[] {

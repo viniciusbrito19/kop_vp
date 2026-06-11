@@ -48,6 +48,8 @@ export interface PreviewApuracao {
   total_sazonal: number;
   total_venda: number;
   fpp: number;
+  fpp_linha: number;
+  fpp_sazonal: number;
   roy_linha: number;
   roy_sazonal: number;
 }

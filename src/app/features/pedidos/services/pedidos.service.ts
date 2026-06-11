@@ -34,9 +34,18 @@ export class PedidosService {
     if (error) throw error;
 
     if (itens.length > 0) {
+      const precos = await this.buscarPrecosPorEan(itens.map(i => i.ean));
       const { error: itemError } = await this.db
         .from('itens_pedido')
-        .insert(itens.map(item => ({ ...item, pedido_id: pedido.id })));
+        .insert(itens.map(item => {
+          const vu = item.venda_unitario ?? (item.ean ? (precos[item.ean] ?? null) : null);
+          return {
+            ...item,
+            pedido_id: pedido.id,
+            venda_unitario: vu,
+            venda_total: vu != null ? vu * item.quantidade : item.venda_total,
+          };
+        }));
       if (itemError) throw itemError;
     }
 
@@ -56,12 +65,20 @@ export class PedidosService {
   async atualizar(id: string, form: PedidoForm, itens: ItemPedidoForm[]): Promise<void> {
     const { error } = await this.db.from('pedidos').update(form).eq('id', id);
     if (error) throw error;
-    // Replace items wholesale: delete existing, re-insert new ones
     await this.db.from('itens_pedido').delete().eq('pedido_id', id);
     if (itens.length > 0) {
+      const precos = await this.buscarPrecosPorEan(itens.map(i => i.ean));
       const { error: itemError } = await this.db
         .from('itens_pedido')
-        .insert(itens.map(item => ({ ...item, pedido_id: id })));
+        .insert(itens.map(item => {
+          const vu = item.venda_unitario ?? (item.ean ? (precos[item.ean] ?? null) : null);
+          return {
+            ...item,
+            pedido_id: id,
+            venda_unitario: vu,
+            venda_total: vu != null ? vu * item.quantidade : item.venda_total,
+          };
+        }));
       if (itemError) throw itemError;
     }
   }
@@ -69,6 +86,17 @@ export class PedidosService {
   async excluir(id: string): Promise<void> {
     const { error } = await this.db.from('pedidos').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  private async buscarPrecosPorEan(eans: (string | null)[]): Promise<Record<string, number>> {
+    const unicos = [...new Set(eans.filter((e): e is string => !!e))];
+    if (unicos.length === 0) return {};
+    const { data } = await this.db.from('itens').select('ean, preco_venda').in('ean', unicos);
+    const map: Record<string, number> = {};
+    for (const row of (data ?? [])) {
+      if (row.ean && row.preco_venda != null) map[row.ean] = row.preco_venda;
+    }
+    return map;
   }
 
   async verificarDuplicata(

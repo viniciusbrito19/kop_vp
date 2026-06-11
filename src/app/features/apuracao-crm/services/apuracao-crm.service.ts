@@ -39,14 +39,14 @@ export class ApuracaoCrmService {
     });
 
     if (elegíveis.length === 0) {
-      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, roy_linha: 0, roy_sazonal: 0 };
+      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, fpp_linha: 0, fpp_sazonal: 0, roy_linha: 0, roy_sazonal: 0 };
     }
 
     // 2. Itens de todos os pedidos elegíveis
     const pedidoIds = elegíveis.map((p: any) => p.id);
     const { data: itensPedido, error: errItens } = await this.db
       .from('itens_pedido')
-      .select('pedido_id, ean, quantidade, descricao, valor_unitario, valor_total')
+      .select('pedido_id, ean, quantidade, descricao, valor_unitario, valor_total, venda_unitario')
       .in('pedido_id', pedidoIds);
     if (errItens) throw errItens;
 
@@ -77,7 +77,7 @@ export class ApuracaoCrmService {
     }
 
     // 4. Calcular valor_venda e itens por pedido
-    type RawItem = { pedido_id: string; ean: string | null; quantidade: number; descricao: string | null; valor_unitario: number | null; valor_total: number | null };
+    type RawItem = { pedido_id: string; ean: string | null; quantidade: number; descricao: string | null; valor_unitario: number | null; valor_total: number | null; venda_unitario: number | null };
     const itensPorPedido = new Map<string, RawItem[]>();
     for (const item of (itensPedido ?? []) as RawItem[]) {
       const lista = itensPorPedido.get(item.pedido_id) ?? [];
@@ -99,8 +99,10 @@ export class ApuracaoCrmService {
       const itensApuracao: ItemApuracao[] = [];
 
       for (const item of itens) {
-        const temEan = !!(item.ean && precoPorEan[item.ean] != null);
-        const precoVenda = temEan ? precoPorEan[item.ean!] : 0;
+        const temEan = !!(item.ean && (item.venda_unitario != null || precoPorEan[item.ean] != null));
+        const precoVenda = temEan
+          ? (item.venda_unitario ?? precoPorEan[item.ean!])
+          : 0;
         const precoTotalVenda = precoVenda * item.quantidade;
 
         const flags = temEan
@@ -145,14 +147,18 @@ export class ApuracaoCrmService {
     }
 
     // 5. Totais — fpp e royalties agregados dos itens para respeitar flags cobra_fpp/cobra_royalties
-    const total_linha   = pedidosApuracao.filter(p => p.tipo === 'linha').reduce((s, p) => s + p.valor_venda, 0);
-    const total_sazonal = pedidosApuracao.filter(p => p.tipo === 'sazonal').reduce((s, p) => s + p.valor_venda, 0);
+    const pedidosLinha   = pedidosApuracao.filter(p => p.tipo === 'linha');
+    const pedidosSazonal = pedidosApuracao.filter(p => p.tipo === 'sazonal');
+    const total_linha   = pedidosLinha.reduce((s, p) => s + p.valor_venda, 0);
+    const total_sazonal = pedidosSazonal.reduce((s, p) => s + p.valor_venda, 0);
     const total_venda   = total_linha + total_sazonal;
-    const fpp       = pedidosApuracao.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.fpp,       0), 0);
-    const roy_linha   = pedidosApuracao.filter(p => p.tipo === 'linha')  .reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
-    const roy_sazonal = pedidosApuracao.filter(p => p.tipo === 'sazonal').reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
+    const fpp_linha   = pedidosLinha.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.fpp, 0), 0);
+    const fpp_sazonal = pedidosSazonal.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.fpp, 0), 0);
+    const fpp         = fpp_linha + fpp_sazonal;
+    const roy_linha   = pedidosLinha.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
+    const roy_sazonal = pedidosSazonal.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
 
-    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, roy_linha, roy_sazonal };
+    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal };
   }
 
   async confirmar(preview: PreviewApuracao, ano: number, mes: number, quinzena: 1 | 2): Promise<void> {
@@ -246,10 +252,10 @@ export class ApuracaoCrmService {
       (produtos ?? []).filter((p: any) => p.preco_venda != null).map((p: any) => p.ean as string)
     );
 
-    // 2. Todos os itens de pedidos CRM (incluindo c_prod)
+    // 2. Todos os itens de pedidos CRM (incluindo c_prod e quantidade)
     const { data: todosItens, error: e2 } = await this.db
       .from('itens_pedido')
-      .select('id, descricao, ean, c_prod, pedido_id, pedido:pedidos(numero_nf)')
+      .select('id, descricao, ean, c_prod, pedido_id, quantidade, pedido:pedidos(numero_nf)')
       .in('pedido_id', pedidosCrmIds);
     if (e2) throw e2;
 
@@ -263,11 +269,12 @@ export class ApuracaoCrmService {
       return { reconciliados: [], multiMatch: [], semMatch: [], eanSemCatalogo: [], totalItens: 0, jaComEan: jaValidos.length };
     }
 
-    // 3. Índice do catálogo por codigo_sap (sem zeros à esquerda), apenas com preco_venda
-    //    Um mesmo codigo_sap normalizado pode mapear para múltiplos produtos → array.
+    // 3. Índice do catálogo por codigo_sap e por EAN (para lookup de preço de tabela)
+    const precoPorEanCatalogo = new Map<string, number>();
     const indiceSap = new Map<string, Array<{ ean: string; descricao: string; codigo_sap: string }>>();
     for (const p of (produtos ?? []) as any[]) {
       if (!p.ean || p.preco_venda == null || !p.codigo_sap) continue;
+      precoPorEanCatalogo.set(p.ean, p.preco_venda);
       const sapNorm = this.stripLeadingZeros(String(p.codigo_sap));
       const lista = indiceSap.get(sapNorm) ?? [];
       lista.push({ ean: p.ean, descricao: p.descricao, codigo_sap: p.codigo_sap });
@@ -275,6 +282,7 @@ export class ApuracaoCrmService {
     }
 
     // 4. Tentar casar por cProd → codigo_sap
+    const qtdPorItemId = new Map<string, number>(precisamRecon.map((i: any) => [i.id, i.quantidade ?? 0]));
     const reconciliados: import('../models/apuracao.model').ItemReconciliado[] = [];
     const multiMatch:    import('../models/apuracao.model').ItemMultiMatch[]   = [];
     // semMatchMap: agrupado por chave (cProd normalizado ou descrição quando sem cProd)
@@ -335,9 +343,11 @@ export class ApuracaoCrmService {
 
     // 5. Aplicar reconciliações automáticas (um UPDATE por item)
     for (const r of reconciliados) {
+      const vu  = precoPorEanCatalogo.get(r.ean) ?? null;
+      const qtd = qtdPorItemId.get(r.item_pedido_id) ?? 0;
       const { error } = await this.db
         .from('itens_pedido')
-        .update({ ean: r.ean })
+        .update({ ean: r.ean, venda_unitario: vu, venda_total: vu != null ? vu * qtd : null })
         .eq('id', r.item_pedido_id);
       if (error) throw error;
     }
@@ -363,9 +373,14 @@ export class ApuracaoCrmService {
 
   /** Aplica manualmente o EAN escolhido pelo usuário para um item específico (multi-match). */
   async aplicarMatchById(itemPedidoId: string, ean: string): Promise<void> {
+    const [vu, { data: itemData }] = await Promise.all([
+      this.buscarPrecoVenda(ean),
+      this.db.from('itens_pedido').select('quantidade').eq('id', itemPedidoId).single(),
+    ]);
+    const qtd = (itemData as any)?.quantidade ?? 0;
     const { error } = await this.db
       .from('itens_pedido')
-      .update({ ean })
+      .update({ ean, venda_unitario: vu, venda_total: vu != null ? vu * qtd : null })
       .eq('id', itemPedidoId);
     if (error) throw error;
   }
@@ -382,27 +397,40 @@ export class ApuracaoCrmService {
   }
 
   async aplicarMatchManual(descricao: string, ean: string, c_prod?: string | null): Promise<number> {
-    const pedidosCrmIds = await this.buscarPedidosCrmIds();
+    const [pedidosCrmIds, preco] = await Promise.all([
+      this.buscarPedidosCrmIds(),
+      this.buscarPrecoVenda(ean),
+    ]);
+    const payload = { ean, venda_unitario: preco };
     // Itens em semMatch podem ter ean != null (EAN existe mas não está no catálogo com preço),
     // portanto não filtramos por is('ean', null) — o c_prod/descrição + pedidos CRM já é específico o suficiente.
+    // venda_total não é atualizado aqui pois quantidades variam por item; o usuário pode corrigir no pedido.
     const filtro = c_prod
-      ? this.db.from('itens_pedido').update({ ean }).eq('c_prod', c_prod).in('pedido_id', pedidosCrmIds)
-      : this.db.from('itens_pedido').update({ ean }).ilike('descricao', descricao).in('pedido_id', pedidosCrmIds);
+      ? this.db.from('itens_pedido').update(payload).eq('c_prod', c_prod).in('pedido_id', pedidosCrmIds)
+      : this.db.from('itens_pedido').update(payload).ilike('descricao', descricao).in('pedido_id', pedidosCrmIds);
     const { data, error } = await filtro.select('id');
     if (error) throw error;
     return (data ?? []).length;
   }
 
   async corrigirEan(eanAtual: string, eanNovo: string): Promise<number> {
-    const pedidosCrmIds = await this.buscarPedidosCrmIds();
+    const [pedidosCrmIds, preco] = await Promise.all([
+      this.buscarPedidosCrmIds(),
+      this.buscarPrecoVenda(eanNovo),
+    ]);
     const { data, error } = await this.db
       .from('itens_pedido')
-      .update({ ean: eanNovo })
+      .update({ ean: eanNovo, venda_unitario: preco })
       .eq('ean', eanAtual)
       .in('pedido_id', pedidosCrmIds)
       .select('id');
     if (error) throw error;
     return (data ?? []).length;
+  }
+
+  private async buscarPrecoVenda(ean: string): Promise<number | null> {
+    const { data } = await this.db.from('itens').select('preco_venda').eq('ean', ean).maybeSingle();
+    return (data as any)?.preco_venda ?? null;
   }
 
   private async buscarPedidosCrmIds(): Promise<string[]> {

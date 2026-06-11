@@ -206,8 +206,8 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
       unidade:         [valores?.unidade ?? ''],
       valor_unitario:  [valores?.valor_unitario ?? null],
       valor_total:     [valores?.valor_total ?? null],
-      venda_unitario:  [valores?.venda_unitario ?? null],
-      venda_total:     [valores?.venda_total ?? null],
+      venda_unitario: [valores?.venda_unitario ?? null],
+      venda_total:    [valores?.venda_total ?? null],
     });
   }
 
