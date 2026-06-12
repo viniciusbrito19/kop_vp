@@ -96,7 +96,7 @@ export class MainLayoutComponent implements OnInit {
     { label: 'Despesas',       route: '/despesas',       iconSvg: this.safe(ICONS['wallet'])     },
     { label: 'Financeiro',     route: '/financeiro',     iconSvg: this.safe(ICONS['finance'])    },
     { label: 'Fluxo de Caixa', route: '/fluxo-caixa',   iconSvg: this.safe(ICONS['trend'])      },
-    { label: 'Apuração CRM',   route: '/apuracao-crm',  iconSvg: this.safe(ICONS['calculate'])  },
+    { label: 'Royalties e FPP', route: '/apuracao-crm',  iconSvg: this.safe(ICONS['calculate'])  },
   ];
 
   navConfiguracoes: NavItem[] = [

@@ -32,7 +32,7 @@ export class OutrosComponent {
       title: 'Operação',
       items: [
         {
-          label: 'Apuração CRM',
+          label: 'Royalties e FPP',
           description: 'Conciliação de recebíveis de cartão',
           route: '/apuracao-crm',
           iconPaths: SVG('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>'),

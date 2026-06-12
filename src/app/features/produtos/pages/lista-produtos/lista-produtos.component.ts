@@ -156,8 +156,24 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
                   {{ item.ean ?? '—' }}
                 </span>
 
-                <span class="cell-preco" style="text-align:right;font-weight:600;font-size:14px">
-                  {{ moeda(item.preco_venda) }}
+                <span class="cell-preco">
+                  @if (editandoPrecoId() === item.id) {
+                    <input
+                      class="preco-input"
+                      type="text"
+                      inputmode="decimal"
+                      [value]="precoEditando()"
+                      (input)="precoEditando.set($any($event.target).value)"
+                      (keydown.enter)="$any($event.target).blur()"
+                      (keydown.escape)="cancelarEdicaoPreco(); $any($event.target).blur()"
+                      (blur)="confirmarEdicaoPreco(item)"
+                    />
+                  } @else {
+                    <button class="preco-display" (click)="iniciarEdicaoPreco(item)" title="Clique para editar o preço">
+                      <span>{{ moeda(item.preco_venda) }}</span>
+                      <svg class="preco-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  }
                 </span>
 
                 <span class="cobrancas-cell">
@@ -316,6 +332,53 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
     }
     .row-kebab:hover { background: var(--surface-2); color: var(--text-2); }
 
+    .cell-preco {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .preco-display {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font: 600 14px/1 inherit;
+      color: inherit;
+      cursor: pointer;
+      text-align: right;
+      transition: border-color 0.12s, background 0.12s;
+      width: 100%;
+      justify-content: flex-end;
+    }
+    .preco-display:hover {
+      border-color: var(--line-2);
+      background: var(--surface-2);
+    }
+    .preco-display .preco-edit-icon {
+      opacity: 0;
+      flex-shrink: 0;
+      color: var(--text-3);
+      transition: opacity 0.12s;
+    }
+    .preco-display:hover .preco-edit-icon { opacity: 1; }
+
+    .preco-input {
+      width: 100%;
+      text-align: right;
+      border: 1px solid var(--bordo);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font: 600 14px/1.4 inherit;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--bordo) 18%, transparent);
+    }
+
     .paginator {
       display: flex;
       align-items: center;
@@ -384,7 +447,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       .cell-sap    { grid-area: sap; font-size: 11px !important; color: var(--text-3) !important; }
       .cell-und    { display: none; }
       .cell-ean    { display: none; }
-      .cell-preco  { grid-area: preco; text-align: right !important; font-size: 13px !important; }
+      .cell-preco  { grid-area: preco; justify-content: flex-end; font-size: 13px !important; }
       .cobrancas-cell { grid-area: chips; justify-content: flex-start; }
       .cell-status { grid-area: status; text-align: right !important; }
     }
@@ -402,6 +465,9 @@ export class ListaProdutosComponent implements OnInit {
   isentoFpp       = signal(false);
   isentoRoyalties = signal(false);
   paginaAtual     = signal(1);
+
+  editandoPrecoId = signal<string | null>(null);
+  precoEditando   = signal('');
 
   readonly tamanhoPagina = 10;
 
@@ -547,6 +613,43 @@ export class ListaProdutosComponent implements OnInit {
         : `Nenhum produto novo — ${result.ignorados} já existiam na base.`;
       this.snack.open(msg, 'OK', { duration: 6000 });
     });
+  }
+
+  iniciarEdicaoPreco(item: Item) {
+    this.precoEditando.set(item.preco_venda != null ? String(item.preco_venda) : '');
+    this.editandoPrecoId.set(item.id);
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('.preco-input');
+      input?.focus();
+      input?.select();
+    }, 0);
+  }
+
+  cancelarEdicaoPreco() {
+    this.editandoPrecoId.set(null);
+  }
+
+  async confirmarEdicaoPreco(item: Item) {
+    if (this.editandoPrecoId() !== item.id) return;
+    this.editandoPrecoId.set(null);
+
+    const valorStr = this.precoEditando().trim().replace(',', '.');
+    const novoPreco = valorStr === '' ? null : parseFloat(valorStr);
+
+    if (novoPreco === item.preco_venda) return;
+    if (valorStr !== '' && (isNaN(novoPreco!) || novoPreco! < 0)) {
+      this.snack.open('Preço inválido.', 'OK', { duration: 3000 });
+      return;
+    }
+
+    try {
+      await this.svc.atualizarPreco(item.id, novoPreco);
+      this.itens.update(list =>
+        list.map(i => i.id === item.id ? { ...i, preco_venda: novoPreco } : i)
+      );
+    } catch {
+      this.snack.open('Erro ao atualizar preço.', 'OK', { duration: 4000 });
+    }
   }
 
   moeda(v: number | null): string {

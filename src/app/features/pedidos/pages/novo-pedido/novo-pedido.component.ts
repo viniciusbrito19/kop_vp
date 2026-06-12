@@ -54,6 +54,7 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
   private duplicatasExtraidas: DuplicataExtraida[] = [];
   private uploadSeq = 0;
   private tipoPedidoSub?: Subscription;
+  private itemSubs: Subscription[] = [];
 
   form = this.fb.group({
     codigo: ['', [Validators.pattern(/^(\d{7}KPN|\d+)$/)]],
@@ -108,6 +109,8 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
           observacoes:          pedido.observacoes ?? '',
         });
         this.itens.clear();
+        this.itemSubs.forEach(s => s.unsubscribe());
+        this.itemSubs = [];
         for (const item of itens) this.adicionarItem(item);
       } catch {
         this.snack.open('Erro ao carregar pedido.', 'OK', { duration: 4000 });
@@ -118,6 +121,7 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.tipoPedidoSub?.unsubscribe();
+    this.itemSubs.forEach(s => s.unsubscribe());
   }
 
   aplicarMascaraNf(event: Event) {
@@ -179,7 +183,9 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
       valor_total:  dados.valor_total,
     });
     this.itens.clear();
-    for (const item of dados.itens) this.itens.push(this.criarItemGroup(item));
+    this.itemSubs.forEach(s => s.unsubscribe());
+    this.itemSubs = [];
+    for (const item of dados.itens) this.adicionarItem(item);
     if (dados.cnpj_emitente) {
       const cnpjLimpo = dados.cnpj_emitente.replace(/\D/g, '');
       const f = this.fornecedores().find(
@@ -212,10 +218,22 @@ export class NovoPedidoComponent implements OnInit, OnDestroy {
   }
 
   adicionarItem(valores?: any) {
-    this.itens.push(this.criarItemGroup(valores));
+    const group = this.criarItemGroup(valores);
+    this.itens.push(group);
+
+    const sub = group.get('venda_unitario')!.valueChanges.subscribe((vu: number | null) => {
+      const qtd = group.get('quantidade')!.value as number | null;
+      const vt = (vu != null && qtd != null) ? parseFloat((vu * qtd).toFixed(2)) : null;
+      group.get('venda_total')!.setValue(vt, { emitEvent: false });
+    });
+    this.itemSubs.push(sub);
   }
 
-  removerItem(index: number) { this.itens.removeAt(index); }
+  removerItem(index: number) {
+    this.itemSubs[index]?.unsubscribe();
+    this.itemSubs.splice(index, 1);
+    this.itens.removeAt(index);
+  }
 
   async salvar() {
     this.salvando.set(true);

@@ -2,7 +2,16 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApuracaoCrmService } from '../../services/apuracao-crm.service';
-import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao } from '../../models/apuracao.model';
+import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao, TituloApuracao, SugestaoConciliacao } from '../../models/apuracao.model';
+
+interface ModalFppCtx {
+  periodoLabel: string;
+  modo: 'preview' | 'historico';
+  ano: number;
+  mes: number;
+  quinzena: 1 | 2;
+  apuracaoId?: string;
+}
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -18,7 +27,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       <!-- Cabeçalho -->
       <div class="page-header">
         <div>
-          <h1 class="page">Apuração <span class="accent serif">CRM</span></h1>
+          <h1 class="page">Royalties <span class="accent serif">e FPP</span></h1>
           <div class="page-sub">Royalties e FPP — cálculo quinzenal sobre valor de venda dos pedidos</div>
         </div>
 <button class="btn outline" [disabled]="reconciliando()" (click)="reconciliarEans()" title="Cruzar itens de pedidos com a lista de produtos para preencher EAN automaticamente">
@@ -338,20 +347,20 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               <span>Total a pagar</span>
               <span>R$ {{ totalApagar() | number:'1.2-2':'pt-BR' }}</span>
             </div>
-            <div class="venc-info">Vencimento: dia 15/{{ mesVencLabel() }}</div>
+            <div class="venc-info">Vencimento estimado (FPP): {{ vencimentoPreview() | date:'dd/MM/yyyy' }}</div>
           </div>
 
-          <button class="btn primary confirm-btn" [disabled]="confirmando()" (click)="confirmar()">
-            @if (confirmando()) {
-              <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
-                <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-                <path d="M18 3 A15 15 0 0 1 33 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-              </svg>
-              Confirmando…
-            } @else {
-              Confirmar e Gerar Títulos
-            }
-          </button>
+          <div class="emissao-btns">
+            <button class="btn primary emissao-btn" [disabled]="emitindoFpp()" (click)="abrirModalFppPreview()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              Emitir FPP
+            </button>
+            <button class="btn ghost emissao-btn" disabled title="Em breve — aguarde a implementação dos royalties">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              Emitir Royalties
+              <span class="em-breve-badge">em breve</span>
+            </button>
+          </div>
 
         </div>
       }
@@ -379,6 +388,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
         } @else {
           <div class="list">
             <div class="list-head apuracao-grid">
+              <span></span>
               <span>Período</span>
               <span>Total Venda</span>
               <span>FPP</span>
@@ -386,11 +396,16 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
               <span>Roy. Sazonal</span>
               <span>Vencimento</span>
               <span>Status</span>
+              <span>Títulos</span>
             </div>
 
             @for (a of apuracoes(); track a.id) {
               <div class="row-card">
-                <div class="row-main apuracao-grid">
+                <div class="row-main apuracao-grid" style="cursor:pointer" (click)="toggleExpandHistorico(a.id)">
+
+                  <svg class="chevron" [class.open]="expandidosHistorico().has(a.id)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
 
                   <div class="periodo">
                     <span class="mes-label">{{ mesNome(a.mes) }}/{{ a.ano }}</span>
@@ -407,12 +422,140 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                     {{ a.status === 'confirmado' ? 'Confirmado' : 'Calculado' }}
                   </span>
 
+                  <div class="titulos-badges" (click)="$event.stopPropagation()">
+                    @if (a.fpp_emitido) {
+                      <span class="titulo-emitido-badge">FPP ✓</span>
+                    } @else {
+                      <button class="btn outline xs" (click)="abrirModalFppHistorico(a)">Emitir FPP</button>
+                    }
+                  </div>
+
                 </div>
+
+                @if (expandidosHistorico().has(a.id)) {
+                  <div class="apuracao-expand">
+
+                    @if (carregandoTitulos() === a.id) {
+                      <div class="expand-loading">
+                        <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
+                          <circle cx="18" cy="18" r="15" stroke="var(--line-2)" stroke-width="3"/>
+                          <path d="M18 3 A15 15 0 0 1 33 18" stroke="var(--bordo)" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        Carregando títulos…
+                      </div>
+
+                    } @else if (titulosPorApuracao()[a.id]) {
+                      @if (titulosPorApuracao()[a.id].length === 0) {
+                        <div class="expand-empty">Nenhum título emitido para esta apuração.</div>
+                      } @else {
+                        <table class="titulos-table">
+                          <thead>
+                            <tr>
+                              <th>Código</th>
+                              <th>Descrição</th>
+                              <th>Categoria</th>
+                              <th>Vencimento</th>
+                              <th>Pagamento</th>
+                              <th style="text-align:right">Valor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (t of titulosPorApuracao()[a.id]; track t.id) {
+                              <tr>
+                                <td class="mono">{{ t.codigo }}</td>
+                                <td>{{ t.descricao ?? '—' }}</td>
+                                <td><span class="cat-badge cat-{{ t.categoria ?? 'default' }}">{{ t.categoria ?? '—' }}</span></td>
+                                <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
+                                <td class="pagamento-cell">
+                                  @if (t.data_pagamento) {
+                                    <span class="pago-badge">Pago</span>
+                                  } @else if (t.data_vencimento && t.data_vencimento < today) {
+                                    <span class="atraso-badge">Em atraso</span>
+                                  } @else {
+                                    <span class="pendente-badge">Em aberto</span>
+                                  }
+                                  @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
+                                    <button
+                                      class="btn-conciliar"
+                                      [disabled]="conciliando() === t.id"
+                                      (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
+                                      [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
+                                      @if (conciliando() === t.id) {
+                                        <svg class="spin-sm" width="11" height="11" viewBox="0 0 36 36" fill="none">
+                                          <circle cx="18" cy="18" r="15" stroke="rgba(0,0,0,0.15)" stroke-width="3"/>
+                                          <path d="M18 3 A15 15 0 0 1 33 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                                        </svg>
+                                      } @else {
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                      }
+                                      {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
+                                    </button>
+                                  }
+                                </td>
+                                <td style="text-align:right;font-weight:600">R$ {{ t.valor | number:'1.2-2':'pt-BR' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      }
+                    }
+
+                  </div>
+                }
+
               </div>
             }
           </div>
         }
       </div>
+
+      <!-- ── Modal Emissão FPP ──────────────────────────── -->
+      @if (modalFpp()) {
+        <div class="dialog-overlay" (click)="fecharModalFpp()"></div>
+        <div class="dialog-map dialog-fpp">
+          <div class="dialog-header">
+            <div class="dialog-header-info">
+              <div class="dialog-title">Emitir Título — FPP</div>
+              <div class="dialog-subtitle">{{ modalFpp()!.periodoLabel }}</div>
+            </div>
+            <button class="btn ghost icon sm" (click)="fecharModalFpp()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="dialog-body">
+            <label class="input">
+              <span>Valor (R$)</span>
+              <input type="text" inputmode="decimal"
+                     [value]="fppValorStr()"
+                     (input)="fppValorStr.set($any($event.target).value)"
+                     placeholder="0,00" autofocus />
+            </label>
+            <label class="input">
+              <span>Vencimento</span>
+              <input type="date"
+                     [value]="fppVencimento()"
+                     (input)="fppVencimento.set($any($event.target).value)" />
+            </label>
+            <div class="fpp-modal-info">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Valor pré-preenchido com o calculado. Ajuste se houver divergência de centavos na alíquota. Vencimento = fechamento da quinzena + 30 dias.
+            </div>
+            <button class="btn primary w-full"
+                    [disabled]="emitindoFpp() || !fppValorStr().trim() || !fppVencimento()"
+                    (click)="confirmarEmissaoFpp()">
+              @if (emitindoFpp()) {
+                <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
+                  <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+                  <path d="M18 3 A15 15 0 0 1 33 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                Emitindo…
+              } @else {
+                Confirmar e Emitir Título FPP
+              }
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- Dialog mapeamento manual / correção de EAN -->
       @if (mapeandoItem() || corrigindoEan()) {
@@ -721,7 +864,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.07em; color: var(--text-4); margin-bottom: 12px;
     }
-    .apuracao-grid { grid-template-columns: 1.4fr 1fr 0.9fr 1fr 1fr 1fr 90px; }
+    .apuracao-grid { grid-template-columns: 22px 1.4fr 1fr 0.9fr 1fr 1fr 1fr 90px 110px; }
     .periodo { display: flex; flex-direction: column; gap: 2px; }
     .mes-label { font-size: 13px; font-weight: 600; color: var(--text); }
     .quinzena-label { font-size: 11px; color: var(--text-3); }
@@ -847,6 +990,97 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       strong { font-weight: 600; }
     }
 
+    /* ─── Emissão FPP / Royalties ─── */
+    .emissao-btns {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .emissao-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      flex: 1; justify-content: center; min-width: 160px;
+    }
+    .em-breve-badge {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      padding: 2px 6px; border-radius: 4px;
+      background: color-mix(in srgb, var(--text-4) 15%, transparent);
+      color: var(--text-4);
+    }
+
+    /* ─── Títulos badges no histórico ─── */
+    .titulos-badges {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .titulo-emitido-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
+    }
+
+    /* ─── Accordion do histórico ─── */
+    .apuracao-expand {
+      border-top: 1px solid var(--line);
+      padding: 14px 16px;
+      background: color-mix(in srgb, var(--surface-2) 60%, var(--surface));
+    }
+    .expand-loading {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--text-3); padding: 8px 0;
+    }
+    .expand-empty {
+      font-size: 13px; color: var(--text-4); padding: 8px 0;
+    }
+
+    /* ─── Tabela de títulos ─── */
+    .titulos-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .titulos-table th {
+      padding: 6px 10px; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .06em; color: var(--text-4);
+      border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap;
+    }
+    .titulos-table td {
+      padding: 7px 10px; color: var(--text-2);
+      border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+      white-space: nowrap;
+    }
+    .cat-badge {
+      display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+    }
+    .cat-fpp       { background: color-mix(in srgb, #5A1620 14%, transparent); color: #5A1620; }
+    .cat-royalties { background: color-mix(in srgb, #82622F 14%, transparent); color: #82622F; }
+    .cat-default   { background: var(--surface-2); color: var(--text-3); }
+    .pago-badge {
+      display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+      background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
+    }
+    .pendente-badge {
+      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
+      background: color-mix(in srgb, #C28A1E 12%, transparent); color: #7A5510; font-weight: 600;
+    }
+    .atraso-badge {
+      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
+      background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; font-weight: 600;
+    }
+    .pagamento-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .btn-conciliar {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: none; cursor: pointer;
+      background: color-mix(in srgb, #2E7D32 14%, transparent); color: #2E7D32;
+      transition: opacity .15s;
+      &:hover:not(:disabled) { opacity: .75; }
+      &:disabled { opacity: .5; cursor: default; }
+    }
+
+    /* ─── Modal FPP ─── */
+    .dialog-fpp { width: 420px; }
+    .fpp-modal-info {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 12px; border-radius: 8px; font-size: 12px; color: var(--text-3);
+      background: var(--surface-2); border: 1px solid var(--line);
+      svg { flex-shrink: 0; margin-top: 1px; }
+    }
+
     /* ─── Utilitários ─── */
     .w-full { width: 100%; }
     .load-wrap { display: flex; justify-content: center; padding: 48px; }
@@ -864,7 +1098,6 @@ export class ListaApuracoesComponent implements OnInit {
   apuracoes  = signal<ApuracaoCrm[]>([]);
   carregando = signal(false);
   calculando = signal(false);
-  confirmando = signal(false);
   preview = signal<PreviewApuracao | null>(null);
   reconciliando = signal(false);
   resultadoRecon = signal<ResultadoReconciliacao | null>(null);
@@ -877,7 +1110,20 @@ export class ListaApuracoesComponent implements OnInit {
   todosProdutos = signal<ProdutoCatalogo[]>([]);
   produtoSelecionado = signal<ProdutoCatalogo | null>(null);
   carregandoProdutos = signal(false);
+  today = new Date().toISOString().slice(0, 10);
+
   aplicandoMap = signal(false);
+
+  emitindoFpp         = signal(false);
+  modalFpp            = signal<ModalFppCtx | null>(null);
+  fppValorStr         = signal('');
+  fppVencimento       = signal('');
+  expandidosHistorico   = signal<Set<string>>(new Set());
+  titulosPorApuracao    = signal<Record<string, TituloApuracao[]>>({});
+  carregandoTitulos     = signal<string | null>(null);
+  // tituloId → melhor lançamento NIBS candidato
+  sugestoesConciliacao  = signal<Record<string, SugestaoConciliacao>>({});
+  conciliando           = signal<string | null>(null);
 
   produtosFiltrados = computed(() => {
     const termo = this.termoBusca().toLowerCase().trim();
@@ -937,21 +1183,166 @@ export class ListaApuracoesComponent implements OnInit {
     }
   }
 
-  async confirmar() {
+  abrirModalFppPreview() {
+    const { ano, mes, quinzena } = this.selecionado;
+    const { fim } = this.service.intervalo(ano, mes, quinzena);
     const p = this.preview();
-    if (!p) return;
-    this.confirmando.set(true);
+    const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
+    this.fppValorStr.set(p ? p.fpp.toFixed(2) : '');
+    this.fppVencimento.set(this.service.vencimentoFpp(fim));
+    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena });
+  }
+
+  abrirModalFppHistorico(a: ApuracaoCrm) {
+    const quinzLabel = a.quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
+    this.fppValorStr.set(a.valor_fpp.toFixed(2));
+    this.fppVencimento.set(a.data_vencimento);
+    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id });
+  }
+
+  fecharModalFpp() {
+    this.modalFpp.set(null);
+  }
+
+  async confirmarEmissaoFpp() {
+    const ctx = this.modalFpp();
+    if (!ctx) return;
+
+    const valorStr = this.fppValorStr().trim().replace(',', '.');
+    const valor = parseFloat(valorStr);
+    if (isNaN(valor) || valor <= 0) {
+      this.snack.open('Informe um valor válido.', 'OK', { duration: 3000 });
+      return;
+    }
+    const dataVencimento = this.fppVencimento();
+    if (!dataVencimento) {
+      this.snack.open('Informe a data de vencimento.', 'OK', { duration: 3000 });
+      return;
+    }
+
+    this.emitindoFpp.set(true);
     try {
-      await this.service.confirmar(p, this.selecionado.ano, this.selecionado.mes, this.selecionado.quinzena);
-      this.snack.open('Apuração confirmada e títulos gerados!', 'OK', { duration: 4000 });
-      this.preview.set(null);
-      this.expandidos.set(new Set());
+      let apuracaoId: string;
+
+      if (ctx.modo === 'preview') {
+        const p = this.preview();
+        if (!p) return;
+        const apuracao = await this.service.confirmar(p, ctx.ano, ctx.mes, ctx.quinzena);
+        apuracaoId = apuracao.id;
+      } else {
+        apuracaoId = ctx.apuracaoId!;
+      }
+
+      await this.service.emitirFpp(apuracaoId, valor, dataVencimento, ctx.ano, ctx.mes, ctx.quinzena);
+
+      this.snack.open('Título FPP emitido com sucesso!', 'OK', { duration: 4000 });
+      this.modalFpp.set(null);
+
+      if (ctx.modo === 'preview') {
+        this.preview.set(null);
+        this.expandidos.set(new Set());
+      }
+
+      // Invalida cache de títulos da apuração para recarregar se expandir
+      this.titulosPorApuracao.update(m => {
+        const copia = { ...m };
+        delete copia[apuracaoId];
+        return copia;
+      });
+
       await this.carregar();
     } catch (err: any) {
-      const msg = err?.message?.includes('unique') ? 'Já existe apuração para este período.' : 'Erro ao confirmar apuração.';
+      const msg = err?.message?.includes('unique')
+        ? 'Já existe apuração confirmada para este período.'
+        : 'Erro ao emitir título FPP.';
       this.snack.open(msg, 'OK', { duration: 4000 });
     } finally {
-      this.confirmando.set(false);
+      this.emitindoFpp.set(false);
+    }
+  }
+
+  async toggleExpandHistorico(apuracaoId: string) {
+    const s = new Set(this.expandidosHistorico());
+    if (s.has(apuracaoId)) {
+      s.delete(apuracaoId);
+      this.expandidosHistorico.set(s);
+    } else {
+      s.add(apuracaoId);
+      this.expandidosHistorico.set(s);
+      if (!this.titulosPorApuracao()[apuracaoId]) {
+        await this.carregarTitulosApuracao(apuracaoId);
+      }
+    }
+  }
+
+  async carregarTitulosApuracao(apuracaoId: string) {
+    this.carregandoTitulos.set(apuracaoId);
+    try {
+      const [titulos, lancamentosNibs] = await Promise.all([
+        this.service.buscarTitulos(apuracaoId),
+        this.service.buscarLancamentosNibs(),
+      ]);
+      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: titulos }));
+      this.gerarSugestoes(titulos, lancamentosNibs);
+    } catch {
+      this.snack.open('Erro ao carregar títulos.', 'OK', { duration: 3000 });
+    } finally {
+      this.carregandoTitulos.set(null);
+    }
+  }
+
+  private gerarSugestoes(
+    titulos: TituloApuracao[],
+    lancamentos: { id: string; valor: number; data_lancamento: string }[],
+  ) {
+    const novas: Record<string, SugestaoConciliacao> = { ...this.sugestoesConciliacao() };
+    const TOLERANCIA = 0.01;
+    const usados = new Set(Object.values(novas).map(s => s.lancamentoId));
+
+    for (const t of titulos) {
+      if (t.data_pagamento || t.lancamento_extrato_id || novas[t.id]) continue;
+
+      const candidatos = lancamentos.filter(
+        l => !usados.has(l.id) && Math.abs(l.valor - t.valor) <= TOLERANCIA,
+      );
+      if (candidatos.length === 0) continue;
+
+      // Prefere o mais próximo ao vencimento
+      const ref = t.data_vencimento ?? candidatos[0].data_lancamento;
+      const melhor = candidatos.reduce((a, b) =>
+        Math.abs(dateDiff(a.data_lancamento, ref)) <= Math.abs(dateDiff(b.data_lancamento, ref)) ? a : b,
+      );
+      novas[t.id] = { lancamentoId: melhor.id, dataLancamento: melhor.data_lancamento };
+      usados.add(melhor.id);
+    }
+    this.sugestoesConciliacao.set(novas);
+  }
+
+  async confirmarConciliacao(apuracaoId: string, titulo: TituloApuracao, sugestao: SugestaoConciliacao) {
+    this.conciliando.set(titulo.id);
+    try {
+      await this.service.conciliarTitulo(titulo.id, sugestao.lancamentoId, sugestao.dataLancamento);
+
+      // Atualiza título localmente
+      this.titulosPorApuracao.update(m => ({
+        ...m,
+        [apuracaoId]: m[apuracaoId].map(t =>
+          t.id === titulo.id
+            ? { ...t, data_pagamento: sugestao.dataLancamento, lancamento_extrato_id: sugestao.lancamentoId }
+            : t,
+        ),
+      }));
+
+      // Remove sugestão usada
+      this.sugestoesConciliacao.update(m => {
+        const copia = { ...m };
+        delete copia[titulo.id];
+        return copia;
+      });
+    } catch {
+      this.snack.open('Erro ao conciliar pagamento.', 'OK', { duration: 3000 });
+    } finally {
+      this.conciliando.set(null);
     }
   }
 
@@ -1188,9 +1579,13 @@ export class ListaApuracoesComponent implements OnInit {
     return MESES[mes - 1] ?? '';
   }
 
-  mesVencLabel(): string {
-    const { ano, mes } = this.selecionado;
-    const proximo = mes === 12 ? { ano: ano + 1, mes: 1 } : { ano, mes: mes + 1 };
-    return `${String(proximo.mes).padStart(2, '0')}/${proximo.ano}`;
+  vencimentoPreview(): string {
+    const { ano, mes, quinzena } = this.selecionado;
+    const { fim } = this.service.intervalo(ano, mes, quinzena);
+    return this.service.vencimentoFpp(fim);
   }
+}
+
+function dateDiff(a: string, b: string): number {
+  return (new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
 }

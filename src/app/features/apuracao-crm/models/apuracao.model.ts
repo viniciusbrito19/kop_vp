@@ -13,7 +13,25 @@ export interface ApuracaoCrm {
   valor_roy_linha: number;
   valor_roy_sazonal: number;
   status: 'calculado' | 'confirmado';
+  fpp_emitido: boolean;
+  royalties_emitidos: boolean;
   created_at: string;
+}
+
+export interface TituloApuracao {
+  id: string;
+  codigo: string;
+  descricao: string | null;
+  categoria: string | null;
+  valor: number;
+  data_vencimento: string | null;
+  data_pagamento: string | null;
+  lancamento_extrato_id: string | null;
+}
+
+export interface SugestaoConciliacao {
+  lancamentoId: string;
+  dataLancamento: string;
 }
 
 export interface ItemApuracao {

@@ -27,6 +27,11 @@ export class ProdutosService {
     if (error) throw error;
   }
 
+  async atualizarPreco(id: string, preco: number | null): Promise<void> {
+    const { error } = await this.db.from('itens').update({ preco_venda: preco }).eq('id', id);
+    if (error) throw error;
+  }
+
   async excluir(id: string): Promise<void> {
     const { error } = await this.db.from('itens').delete().eq('id', id);
     if (error) throw error;

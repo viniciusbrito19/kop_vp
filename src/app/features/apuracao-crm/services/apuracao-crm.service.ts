@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao, ItemEanSemCatalogo } from '../models/apuracao.model';
+import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao, ItemEanSemCatalogo, TituloApuracao } from '../models/apuracao.model';
 
 const ALIQUOTA_FPP      = 0.0385;
 const ALIQUOTA_LINHA    = 0.37;
@@ -161,75 +161,89 @@ export class ApuracaoCrmService {
     return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal };
   }
 
-  async confirmar(preview: PreviewApuracao, ano: number, mes: number, quinzena: 1 | 2): Promise<void> {
+  /** Salva a apuração sem gerar títulos. Retorna o registro criado. */
+  async confirmar(preview: PreviewApuracao, ano: number, mes: number, quinzena: 1 | 2): Promise<ApuracaoCrm> {
     const { inicio, fim } = this.intervalo(ano, mes, quinzena);
-    const dataVencimento  = this.vencimento(ano, mes);
+    const dataVencimento  = this.vencimentoFpp(fim);
 
-    // Grava apuração
-    const { data: apuracao, error: errApur } = await this.db
+    const { data: apuracao, error } = await this.db
       .from('apuracoes_crm')
       .insert({
         ano, mes, quinzena,
-        data_inicio:      inicio,
-        data_fim:         fim,
-        data_vencimento:  dataVencimento,
-        total_venda:      preview.total_venda,
-        total_linha:      preview.total_linha,
-        total_sazonal:    preview.total_sazonal,
-        valor_fpp:        preview.fpp,
-        valor_roy_linha:  preview.roy_linha,
+        data_inicio:       inicio,
+        data_fim:          fim,
+        data_vencimento:   dataVencimento,
+        total_venda:       preview.total_venda,
+        total_linha:       preview.total_linha,
+        total_sazonal:     preview.total_sazonal,
+        valor_fpp:         preview.fpp,
+        valor_roy_linha:   preview.roy_linha,
         valor_roy_sazonal: preview.roy_sazonal,
-        status: 'confirmado',
+        status:            'confirmado',
+        fpp_emitido:       false,
+        royalties_emitidos: false,
       })
       .select()
       .single();
-    if (errApur) throw errApur;
+    if (error) throw error;
+    return apuracao as ApuracaoCrm;
+  }
 
-    const mesLabel = `${String(mes).padStart(2, '0')}/${ano}`;
+  /** Cria o título FPP para uma apuração já confirmada e marca fpp_emitido = true. */
+  async emitirFpp(apuracaoId: string, valor: number, dataVencimento: string, ano: number, mes: number, quinzena: 1 | 2): Promise<void> {
+    const mesLabel   = `${String(mes).padStart(2, '0')}/${ano}`;
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    const titulos = [];
 
-    if (preview.fpp > 0) {
-      titulos.push({
-        pedido_id: null,
-        apuracao_crm_id: apuracao.id,
-        codigo: `FPP-${ano}${String(mes).padStart(2, '0')}-Q${quinzena}`,
-        descricao: `FPP ${quinzLabel} ${mesLabel}`,
-        categoria: 'fpp',
-        valor: this.arredondar(preview.fpp),
-        data_vencimento: dataVencimento,
-        data_pagamento: null,
-      });
-    }
-    if (preview.roy_linha > 0) {
-      titulos.push({
-        pedido_id: null,
-        apuracao_crm_id: apuracao.id,
-        codigo: `ROY-LINHA-${ano}${String(mes).padStart(2, '0')}-Q${quinzena}`,
-        descricao: `Royalties Linha ${quinzLabel} ${mesLabel}`,
-        categoria: 'royalties',
-        valor: this.arredondar(preview.roy_linha),
-        data_vencimento: dataVencimento,
-        data_pagamento: null,
-      });
-    }
-    if (preview.roy_sazonal > 0) {
-      titulos.push({
-        pedido_id: null,
-        apuracao_crm_id: apuracao.id,
-        codigo: `ROY-SAZONAL-${ano}${String(mes).padStart(2, '0')}-Q${quinzena}`,
-        descricao: `Royalties Sazonais ${quinzLabel} ${mesLabel}`,
-        categoria: 'royalties',
-        valor: this.arredondar(preview.roy_sazonal),
-        data_vencimento: dataVencimento,
-        data_pagamento: null,
-      });
-    }
+    const { error: errTit } = await this.db.from('titulos').insert({
+      pedido_id:       null,
+      apuracao_crm_id: apuracaoId,
+      codigo:          `FPP-${ano}${String(mes).padStart(2, '0')}-Q${quinzena}`,
+      descricao:       `FPP ${quinzLabel} ${mesLabel}`,
+      categoria:       'fpp',
+      valor:           this.arredondar(valor),
+      data_vencimento: dataVencimento,
+      data_pagamento:  null,
+    });
+    if (errTit) throw errTit;
 
-    if (titulos.length > 0) {
-      const { error: errTit } = await this.db.from('titulos').insert(titulos);
-      if (errTit) throw errTit;
-    }
+    const { error: errUpd } = await this.db
+      .from('apuracoes_crm')
+      .update({ fpp_emitido: true })
+      .eq('id', apuracaoId);
+    if (errUpd) throw errUpd;
+  }
+
+  /** Busca os títulos vinculados a uma apuração CRM. */
+  async buscarTitulos(apuracaoId: string): Promise<TituloApuracao[]> {
+    const { data, error } = await this.db
+      .from('titulos')
+      .select('id, codigo, descricao, categoria, valor, data_vencimento, data_pagamento, lancamento_extrato_id')
+      .eq('apuracao_crm_id', apuracaoId)
+      .order('created_at');
+    if (error) throw error;
+    return (data ?? []) as TituloApuracao[];
+  }
+
+  /** Busca lançamentos NIBS ainda não vinculados a nenhum título. */
+  async buscarLancamentosNibs(): Promise<{ id: string; valor: number; data_lancamento: string }[]> {
+    const { data, error } = await this.db
+      .from('lancamentos_extrato')
+      .select('id, valor, data_lancamento, titulos(id)')
+      .ilike('destinatario_remetente', '%NIBS%')
+      .eq('natureza', 'saida');
+    if (error) throw error;
+    return (data ?? [])
+      .filter((l: any) => !l.titulos || (l.titulos as any[]).length === 0)
+      .map((l: any) => ({ id: l.id, valor: Math.abs(l.valor), data_lancamento: l.data_lancamento }));
+  }
+
+  /** Confirma a conciliação: grava data_pagamento e lancamento_extrato_id no título. */
+  async conciliarTitulo(tituloId: string, lancamentoId: string, dataPagamento: string): Promise<void> {
+    const { error } = await this.db
+      .from('titulos')
+      .update({ data_pagamento: dataPagamento, lancamento_extrato_id: lancamentoId })
+      .eq('id', tituloId);
+    if (error) throw error;
   }
 
   async reconciliarEans(): Promise<ResultadoReconciliacao> {
@@ -453,7 +467,7 @@ export class ApuracaoCrmService {
     return trimmed || '0';
   }
 
-  private intervalo(ano: number, mes: number, quinzena: 1 | 2) {
+  intervalo(ano: number, mes: number, quinzena: 1 | 2) {
     const mesPad = String(mes).padStart(2, '0');
     if (quinzena === 1) {
       return { inicio: `${ano}-${mesPad}-01`, fim: `${ano}-${mesPad}-15` };
@@ -462,10 +476,11 @@ export class ApuracaoCrmService {
     return { inicio: `${ano}-${mesPad}-16`, fim: `${ano}-${mesPad}-${ultimoDia}` };
   }
 
-  private vencimento(ano: number, mes: number): string {
-    // Dia 15 do mês seguinte
-    const proximo = mes === 12 ? { ano: ano + 1, mes: 1 } : { ano, mes: mes + 1 };
-    return `${proximo.ano}-${String(proximo.mes).padStart(2, '0')}-15`;
+  /** Vencimento padrão do FPP: data_fim + 30 dias. */
+  vencimentoFpp(dataFim: string): string {
+    const [ano, mes, dia] = dataFim.split('-').map(Number);
+    const d = new Date(ano, mes - 1, dia + 30);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   private arredondar(v: number): number {
