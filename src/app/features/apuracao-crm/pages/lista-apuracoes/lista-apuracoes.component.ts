@@ -11,6 +11,8 @@ interface ModalFppCtx {
   mes: number;
   quinzena: 1 | 2;
   apuracaoId?: string;
+  fppLinha: number;
+  fppSazonal: number;
 }
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
@@ -468,7 +470,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                 <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
                                 <td class="pagamento-cell">
                                   @if (t.data_pagamento) {
-                                    <span class="pago-badge">Pago</span>
+                                    <span class="pago-badge" [attr.data-tooltip]="t.data_pagamento | date:'dd/MM/yyyy'">Pago</span>
+                                  } @else if (sugestoesConciliacao()[t.id]) {
+                                    <span class="identificado-badge">Identificado</span>
                                   } @else if (t.data_vencimento && t.data_vencimento < today) {
                                     <span class="atraso-badge">Em atraso</span>
                                   } @else {
@@ -523,25 +527,42 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
             </button>
           </div>
           <div class="dialog-body">
-            <label class="input">
-              <span>Valor (R$)</span>
-              <input type="text" inputmode="decimal"
-                     [value]="fppValorStr()"
-                     (input)="fppValorStr.set($any($event.target).value)"
-                     placeholder="0,00" autofocus />
-            </label>
-            <label class="input">
-              <span>Vencimento</span>
-              <input type="date"
-                     [value]="fppVencimento()"
-                     (input)="fppVencimento.set($any($event.target).value)" />
-            </label>
+            @if (modalFpp()!.fppLinha > 0) {
+              <label class="input">
+                <span>FPP Linha (R$)</span>
+                <input type="text" inputmode="decimal"
+                       [value]="fppValorLinhaStr()"
+                       (input)="fppValorLinhaStr.set($any($event.target).value)"
+                       placeholder="0,00" [autofocus]="true" />
+              </label>
+              <label class="input">
+                <span>Vencimento{{ modalFpp()!.fppSazonal > 0 ? ' — FPP Linha' : '' }}</span>
+                <input type="date"
+                       [value]="fppVencimentoLinha()"
+                       (input)="fppVencimentoLinha.set($any($event.target).value)" />
+              </label>
+            }
+            @if (modalFpp()!.fppSazonal > 0) {
+              <label class="input">
+                <span>FPP Sazonal (R$)</span>
+                <input type="text" inputmode="decimal"
+                       [value]="fppValorSazonalStr()"
+                       (input)="fppValorSazonalStr.set($any($event.target).value)"
+                       placeholder="0,00" />
+              </label>
+              <label class="input">
+                <span>Vencimento{{ modalFpp()!.fppLinha > 0 ? ' — FPP Sazonal' : '' }}</span>
+                <input type="date"
+                       [value]="fppVencimentoSazonal()"
+                       (input)="fppVencimentoSazonal.set($any($event.target).value)" />
+              </label>
+            }
             <div class="fpp-modal-info">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Valor pré-preenchido com o calculado. Ajuste se houver divergência de centavos na alíquota. Vencimento = fechamento da quinzena + 30 dias.
+              Valores pré-preenchidos com o calculado. FPP Linha vence em 30 dias; FPP Sazonal em 3 meses. Ajuste se necessário.
             </div>
             <button class="btn primary w-full"
-                    [disabled]="emitindoFpp() || !fppValorStr().trim() || !fppVencimento()"
+                    [disabled]="emitindoFpp()"
                     (click)="confirmarEmissaoFpp()">
               @if (emitindoFpp()) {
                 <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
@@ -864,7 +885,15 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.07em; color: var(--text-4); margin-bottom: 12px;
     }
-    .apuracao-grid { grid-template-columns: 22px 1.4fr 1fr 0.9fr 1fr 1fr 1fr 90px 110px; }
+    .list-head.apuracao-grid,
+    .row-main.apuracao-grid {
+      display: grid;
+      grid-template-columns: 22px 1.4fr 1fr 0.9fr 1fr 1fr 1fr 90px 110px;
+      gap: 14px;
+    }
+    /* Alinha à direita as colunas numéricas (3ª a 6ª: Total Venda, FPP, Roy. Linha, Roy. Sazonal) */
+    .list-head.apuracao-grid span:nth-child(n+3):nth-child(-n+6),
+    .row-main.apuracao-grid .valor { text-align: right; }
     .periodo { display: flex; flex-direction: column; gap: 2px; }
     .mes-label { font-size: 13px; font-weight: 600; color: var(--text); }
     .quinzena-label { font-size: 11px; color: var(--text-3); }
@@ -1053,6 +1082,15 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .pago-badge {
       display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
       background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
+      position: relative; cursor: default;
+      &[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+        background: #1a1a1a; color: #fff; font-size: 11px; font-weight: 400;
+        padding: 3px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none;
+        opacity: 0; transition: opacity .15s;
+      }
+      &[data-tooltip]:hover::after { opacity: 1; }
     }
     .pendente-badge {
       display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
@@ -1061,6 +1099,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .atraso-badge {
       display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
       background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; font-weight: 600;
+    }
+    .identificado-badge {
+      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
+      background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; font-weight: 600;
     }
     .pagamento-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .btn-conciliar {
@@ -1114,10 +1156,12 @@ export class ListaApuracoesComponent implements OnInit {
 
   aplicandoMap = signal(false);
 
-  emitindoFpp         = signal(false);
-  modalFpp            = signal<ModalFppCtx | null>(null);
-  fppValorStr         = signal('');
-  fppVencimento       = signal('');
+  emitindoFpp            = signal(false);
+  modalFpp               = signal<ModalFppCtx | null>(null);
+  fppValorLinhaStr       = signal('');
+  fppValorSazonalStr     = signal('');
+  fppVencimentoLinha     = signal('');
+  fppVencimentoSazonal   = signal('');
   expandidosHistorico   = signal<Set<string>>(new Set());
   titulosPorApuracao    = signal<Record<string, TituloApuracao[]>>({});
   carregandoTitulos     = signal<string | null>(null);
@@ -1188,16 +1232,25 @@ export class ListaApuracoesComponent implements OnInit {
     const { fim } = this.service.intervalo(ano, mes, quinzena);
     const p = this.preview();
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    this.fppValorStr.set(p ? p.fpp.toFixed(2) : '');
-    this.fppVencimento.set(this.service.vencimentoFpp(fim));
-    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena });
+    const fppLinha   = p?.fpp_linha   ?? 0;
+    const fppSazonal = p?.fpp_sazonal ?? 0;
+    this.fppValorLinhaStr.set(fppLinha   > 0 ? fppLinha.toFixed(2)   : '');
+    this.fppValorSazonalStr.set(fppSazonal > 0 ? fppSazonal.toFixed(2) : '');
+    this.fppVencimentoLinha.set(this.service.vencimentoFpp(fim));
+    this.fppVencimentoSazonal.set(this.service.vencimentoFppSazonal(fim));
+    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena, fppLinha, fppSazonal });
   }
 
   abrirModalFppHistorico(a: ApuracaoCrm) {
     const quinzLabel = a.quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    this.fppValorStr.set(a.valor_fpp.toFixed(2));
-    this.fppVencimento.set(a.data_vencimento);
-    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id });
+    const totalGeral = a.total_linha + a.total_sazonal;
+    const fppLinha   = totalGeral > 0 && a.total_linha   > 0 ? a.valor_fpp * (a.total_linha   / totalGeral) : (a.total_sazonal === 0 ? a.valor_fpp : 0);
+    const fppSazonal = totalGeral > 0 && a.total_sazonal > 0 ? a.valor_fpp * (a.total_sazonal / totalGeral) : (a.total_linha   === 0 ? a.valor_fpp : 0);
+    this.fppValorLinhaStr.set(fppLinha   > 0 ? fppLinha.toFixed(2)   : '');
+    this.fppValorSazonalStr.set(fppSazonal > 0 ? fppSazonal.toFixed(2) : '');
+    this.fppVencimentoLinha.set(a.data_vencimento);
+    this.fppVencimentoSazonal.set(this.service.vencimentoFppSazonal(a.data_fim));
+    this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id, fppLinha, fppSazonal });
   }
 
   fecharModalFpp() {
@@ -1208,17 +1261,24 @@ export class ListaApuracoesComponent implements OnInit {
     const ctx = this.modalFpp();
     if (!ctx) return;
 
-    const valorStr = this.fppValorStr().trim().replace(',', '.');
-    const valor = parseFloat(valorStr);
-    if (isNaN(valor) || valor <= 0) {
-      this.snack.open('Informe um valor válido.', 'OK', { duration: 3000 });
-      return;
+    const parseFpp = (s: string) => parseFloat(s.trim().replace(',', '.'));
+    const itensFpp: Array<{ subtipo: 'linha' | 'sazonal'; valor: number; dataVencimento: string }> = [];
+
+    if (ctx.fppLinha > 0) {
+      const v = parseFpp(this.fppValorLinhaStr());
+      if (isNaN(v) || v <= 0) { this.snack.open('Informe o valor do FPP Linha.', 'OK', { duration: 3000 }); return; }
+      const d = this.fppVencimentoLinha();
+      if (!d) { this.snack.open('Informe o vencimento do FPP Linha.', 'OK', { duration: 3000 }); return; }
+      itensFpp.push({ subtipo: 'linha', valor: v, dataVencimento: d });
     }
-    const dataVencimento = this.fppVencimento();
-    if (!dataVencimento) {
-      this.snack.open('Informe a data de vencimento.', 'OK', { duration: 3000 });
-      return;
+    if (ctx.fppSazonal > 0) {
+      const v = parseFpp(this.fppValorSazonalStr());
+      if (isNaN(v) || v <= 0) { this.snack.open('Informe o valor do FPP Sazonal.', 'OK', { duration: 3000 }); return; }
+      const d = this.fppVencimentoSazonal();
+      if (!d) { this.snack.open('Informe o vencimento do FPP Sazonal.', 'OK', { duration: 3000 }); return; }
+      itensFpp.push({ subtipo: 'sazonal', valor: v, dataVencimento: d });
     }
+    if (itensFpp.length === 0) { this.snack.open('Nenhum FPP a emitir.', 'OK', { duration: 3000 }); return; }
 
     this.emitindoFpp.set(true);
     try {
@@ -1233,7 +1293,7 @@ export class ListaApuracoesComponent implements OnInit {
         apuracaoId = ctx.apuracaoId!;
       }
 
-      await this.service.emitirFpp(apuracaoId, valor, dataVencimento, ctx.ano, ctx.mes, ctx.quinzena);
+      await this.service.emitirFpp(apuracaoId, itensFpp, ctx.ano, ctx.mes, ctx.quinzena);
 
       this.snack.open('Título FPP emitido com sucesso!', 'OK', { duration: 4000 });
       this.modalFpp.set(null);

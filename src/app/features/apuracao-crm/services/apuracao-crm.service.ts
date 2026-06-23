@@ -189,21 +189,28 @@ export class ApuracaoCrmService {
     return apuracao as ApuracaoCrm;
   }
 
-  /** Cria o título FPP para uma apuração já confirmada e marca fpp_emitido = true. */
-  async emitirFpp(apuracaoId: string, valor: number, dataVencimento: string, ano: number, mes: number, quinzena: 1 | 2): Promise<void> {
-    const mesLabel   = `${String(mes).padStart(2, '0')}/${ano}`;
+  /** Cria os títulos FPP (linha e/ou sazonal) para uma apuração confirmada. */
+  async emitirFpp(
+    apuracaoId: string,
+    itens: Array<{ subtipo: 'linha' | 'sazonal'; valor: number; dataVencimento: string }>,
+    ano: number, mes: number, quinzena: 1 | 2,
+  ): Promise<void> {
+    const mesPad     = String(mes).padStart(2, '0');
+    const mesLabel   = `${mesPad}/${ano}`;
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
 
-    const { error: errTit } = await this.db.from('titulos').insert({
+    const registros = itens.map(({ subtipo, valor, dataVencimento }) => ({
       pedido_id:       null,
       apuracao_crm_id: apuracaoId,
-      codigo:          `FPP-${ano}${String(mes).padStart(2, '0')}-Q${quinzena}`,
-      descricao:       `FPP ${quinzLabel} ${mesLabel}`,
+      codigo:          `FPP-${subtipo === 'linha' ? 'LIN' : 'SAZ'}-${ano}${mesPad}-Q${quinzena}`,
+      descricao:       `FPP ${subtipo === 'linha' ? 'Linha' : 'Sazonal'} ${quinzLabel} ${mesLabel}`,
       categoria:       'fpp',
       valor:           this.arredondar(valor),
       data_vencimento: dataVencimento,
       data_pagamento:  null,
-    });
+    }));
+
+    const { error: errTit } = await this.db.from('titulos').insert(registros);
     if (errTit) throw errTit;
 
     const { error: errUpd } = await this.db
@@ -476,10 +483,21 @@ export class ApuracaoCrmService {
     return { inicio: `${ano}-${mesPad}-16`, fim: `${ano}-${mesPad}-${ultimoDia}` };
   }
 
-  /** Vencimento padrão do FPP: data_fim + 30 dias. */
+  /** Vencimento padrão do FPP Linha: data_fim + 30 dias. */
   vencimentoFpp(dataFim: string): string {
+    return this.somarDias(dataFim, 30);
+  }
+
+  /** Vencimento do FPP Sazonal: data_fim + 3 meses. */
+  vencimentoFppSazonal(dataFim: string): string {
     const [ano, mes, dia] = dataFim.split('-').map(Number);
-    const d = new Date(ano, mes - 1, dia + 30);
+    const d = new Date(ano, mes - 1 + 3, dia);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private somarDias(data: string, dias: number): string {
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const d = new Date(ano, mes - 1, dia + dias);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
