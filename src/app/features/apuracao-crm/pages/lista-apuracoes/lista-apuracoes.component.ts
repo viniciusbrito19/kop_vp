@@ -782,12 +782,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-size: 11px; font-weight: 600; color: #82622F;
       white-space: nowrap;
     }
-    .fpp-badge {
-      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
-      background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4);
-      white-space: nowrap;
-      &.ativo { background: color-mix(in srgb, #2E7D32 13%, transparent); color: #2E7D32; }
-    }
     .spacer { flex: 1; }
     .warn-ean { font-size: 11px; color: #C28A1E; white-space: nowrap; flex-shrink: 0; }
     .nota-fpp  { font-size: 12px; font-weight: 600; color: #5A1620; white-space: nowrap; text-align: right; }
@@ -835,19 +829,12 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 
     .row-sem-ean td { opacity: 0.5; }
 
-    .badge-sem-ean {
-      display: inline-block; margin-left: 6px;
-      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
-      background: color-mix(in srgb, #C28A1E 15%, transparent); color: #7A5510;
-      vertical-align: middle;
+    .badge-sem-ean, .badge-isento {
+      display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px;
+      border-radius: 4px; vertical-align: middle;
     }
-
-    .badge-isento {
-      display: inline-block;
-      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
-      background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4);
-      vertical-align: middle; letter-spacing: .04em;
-    }
+    .badge-sem-ean { margin-left: 6px; background: color-mix(in srgb, #C28A1E 15%, transparent); color: #7A5510; }
+    .badge-isento  { background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4); letter-spacing: .04em; }
 
     .itens-table tfoot td {
       padding: 8px 12px; font-weight: 600;
@@ -877,7 +864,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .calc-divider { border-top: 1px solid var(--line); margin: 2px 0; }
     .venc-info { font-size: 11px; color: var(--text-4); text-align: right; }
 
-    .confirm-btn { width: 100%; }
 
     /* ─── Histórico ─── */
     .historico-section { margin-top: 8px; }
@@ -1079,8 +1065,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .cat-fpp       { background: color-mix(in srgb, #5A1620 14%, transparent); color: #5A1620; }
     .cat-royalties { background: color-mix(in srgb, #82622F 14%, transparent); color: #82622F; }
     .cat-default   { background: var(--surface-2); color: var(--text-3); }
-    .pago-badge {
+    .pago-badge, .pendente-badge, .atraso-badge, .identificado-badge {
       display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+    }
+    .pago-badge {
       background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
       position: relative; cursor: default;
       &[data-tooltip]::after {
@@ -1092,18 +1080,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       }
       &[data-tooltip]:hover::after { opacity: 1; }
     }
-    .pendente-badge {
-      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
-      background: color-mix(in srgb, #C28A1E 12%, transparent); color: #7A5510; font-weight: 600;
-    }
-    .atraso-badge {
-      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
-      background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; font-weight: 600;
-    }
-    .identificado-badge {
-      display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
-      background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; font-weight: 600;
-    }
+    .pendente-badge    { background: color-mix(in srgb, #C28A1E 12%, transparent); color: #7A5510; }
+    .atraso-badge      { background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; }
+    .identificado-badge{ background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; }
     .pagamento-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .btn-conciliar {
       display: inline-flex; align-items: center; gap: 3px;
@@ -1126,8 +1105,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     /* ─── Utilitários ─── */
     .w-full { width: 100%; }
     .load-wrap { display: flex; justify-content: center; padding: 48px; }
-    .spin-ring { animation: spin 0.9s linear infinite; }
-    .spin-sm   { animation: spin 0.9s linear infinite; }
+    .spin-ring, .spin-sm { animation: spin 0.9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
