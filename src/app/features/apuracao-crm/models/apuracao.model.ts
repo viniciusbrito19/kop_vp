@@ -67,6 +67,17 @@ export interface PedidoApuracao {
   itens: ItemApuracao[];
 }
 
+/** Royalties de um mesmo período podem ter alíquotas diferentes (ex.: Linha 27,5% e Linha 37%) — cada combinação (tipo, alíquota) é apurada e emitida separadamente. */
+export interface GrupoRoyalties {
+  tipo: 'linha' | 'sazonal';
+  aliquota: number;
+  roy_bruto: number;
+  /** Σ valor dos produtos sem imposto (vProd/NF) dos pedidos do grupo — base da Devolução Garantida (só relevante para tipo 'linha'). */
+  valor_produtos_sem_imposto: number;
+  /** 0 para grupos 'sazonal' — a Devolução Garantida só se aplica a Linha. */
+  credito_devolucao_garantida: number;
+}
+
 export interface PreviewApuracao {
   pedidos: PedidoApuracao[];
   total_linha: number;
@@ -79,6 +90,7 @@ export interface PreviewApuracao {
   roy_sazonal: number;
   credito_devolucao_garantida: number;
   valor_produtos_sem_imposto_linha: number;
+  grupos_royalties: GrupoRoyalties[];
 }
 
 export interface ItemReconciliado {

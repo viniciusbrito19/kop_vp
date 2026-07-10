@@ -1,7 +1,10 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { ApuracaoCrmService } from '../../services/apuracao-crm.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
+import { ApuracaoCrmService, PERCENTUAIS_ROYALTIES_SAZONAL } from '../../services/apuracao-crm.service';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao, TituloApuracao, SugestaoConciliacao } from '../../models/apuracao.model';
 
 interface ModalFppCtx {
@@ -22,10 +25,26 @@ interface ModalRoyaltiesCtx {
   mes: number;
   quinzena: 1 | 2;
   apuracaoId?: string;
-  royLinha: number;
-  roySazonal: number;
-  /** Σ valor dos produtos sem imposto (vProd) das notas de Linha — base fixa da fórmula da Devolução Garantida. */
-  valorProdutosSemImpostoLinha: number;
+}
+
+/** Estado editável de um grupo (tipo, alíquota) dentro do modal de emissão de Royalties. */
+interface GrupoRoyaltiesEdicao {
+  key: string;
+  tipo: 'linha' | 'sazonal';
+  aliquota: number;
+  brutoStr: string;
+  /** Só usado quando tipo === 'linha' — Devolução Garantida não se aplica a Sazonal. */
+  devGarantidaStr: string;
+  devProdutoStr: string;
+  outrosStr: string;
+  /** Só usado quando tipo === 'linha' — 1ª parcela, 30 dias. */
+  vencimentoP1: string;
+  /** Só usado quando tipo === 'linha' — 2ª parcela, 45 dias. */
+  vencimentoP2: string;
+  /** Só usado quando tipo === 'sazonal' — 5 parcelas (20/20/30/15/15%), valor e vencimento editáveis. */
+  parcelasSazonal: Array<{ valorStr: string; vencimento: string }>;
+  /** Σ vProd do grupo — base fixa para recalcular a Devolução Garantida quando o bruto é ajustado. */
+  valorProdutosSemImposto: number;
 }
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
@@ -35,12 +54,12 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 @Component({
   selector: 'app-lista-apuracoes',
   standalone: true,
-  imports: [FormsModule, MatSnackBarModule, DecimalPipe, DatePipe, NgClass],
+  imports: [FormsModule, MatSnackBarModule, MatMenuModule, MatIconModule, DecimalPipe, DatePipe, NgClass],
   template: `
     <div class="content">
 
       <!-- Cabeçalho -->
-      <div class="page-header">
+      <div class="page-header list-page-heading">
         <div>
           <h1 class="page">Royalties <span class="accent serif">e FPP</span></h1>
           <div class="page-sub">Royalties e FPP — cálculo quinzenal sobre valor de venda dos pedidos</div>
@@ -451,7 +470,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                       <button class="btn outline xs" (click)="abrirModalFppHistorico(a)">Emitir FPP</button>
                     }
                     @if (a.royalties_emitidos) {
-                      <span class="titulo-emitido-badge">Royalties ✓</span>
+                      <span class="titulo-emitido-badge">ROY ✓</span>
                     } @else {
                       <button class="badge-roy-pendente" [disabled]="abrindoModalRoyalties()" (click)="abrirModalRoyaltiesHistorico(a)" title="Emitir Royalties">ROY</button>
                     }
@@ -472,7 +491,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                       </div>
 
                     } @else if (titulosPorApuracao()[a.id]) {
-                      @if (titulosPorApuracao()[a.id].length === 0) {
+                      @if (titulosPorApuracao()[a.id].length === 0 && adicionandoTituloPara() !== a.id) {
                         <div class="expand-empty">Nenhum título emitido para esta apuração.</div>
                       } @else {
                         <table class="titulos-table">
@@ -484,48 +503,122 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                               <th>Vencimento</th>
                               <th>Pagamento</th>
                               <th style="text-align:right">Valor</th>
+                              <th></th>
                             </tr>
                           </thead>
                           <tbody>
                             @for (t of titulosPorApuracao()[a.id]; track t.id) {
-                              <tr>
-                                <td class="mono">{{ t.codigo }}</td>
-                                <td>{{ t.descricao ?? '—' }}</td>
-                                <td><span class="cat-badge cat-{{ t.categoria ?? 'default' }}">{{ t.categoria ?? '—' }}</span></td>
-                                <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
-                                <td class="pagamento-cell">
-                                  @if (t.data_pagamento) {
-                                    <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
-                                  } @else if (sugestoesConciliacao()[t.id]) {
-                                    <span class="identificado-badge">Identificado</span>
-                                  } @else if (t.data_vencimento && t.data_vencimento < today) {
-                                    <span class="atraso-badge">Em atraso</span>
-                                  } @else {
-                                    <span class="pendente-badge">Em aberto</span>
-                                  }
-                                  @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
-                                    <button
-                                      class="btn-conciliar"
-                                      [disabled]="conciliando() === t.id"
-                                      (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
-                                      [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
-                                      @if (conciliando() === t.id) {
-                                        <svg class="spin-sm" width="11" height="11" viewBox="0 0 36 36" fill="none">
-                                          <circle cx="18" cy="18" r="15" stroke="rgba(0,0,0,0.15)" stroke-width="3"/>
-                                          <path d="M18 3 A15 15 0 0 1 33 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                                        </svg>
-                                      } @else {
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                                      }
-                                      {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
+                              @if (editandoTituloId() === t.id) {
+                                <tr class="titulo-add-row">
+                                  <td><input class="map-search mono" [value]="edicaoTitulo().codigo" (input)="edicaoTitulo.update(v => ({ ...v, codigo: $any($event.target).value }))" placeholder="Código" /></td>
+                                  <td><input class="map-search" [value]="edicaoTitulo().descricao" (input)="edicaoTitulo.update(v => ({ ...v, descricao: $any($event.target).value }))" placeholder="Descrição" /></td>
+                                  <td>
+                                    <select class="map-search" [value]="edicaoTitulo().categoria" (change)="edicaoTitulo.update(v => ({ ...v, categoria: $any($event.target).value }))">
+                                      <option value="fpp">fpp</option>
+                                      <option value="royalties">royalties</option>
+                                      <option value="outros">outros</option>
+                                    </select>
+                                  </td>
+                                  <td><input type="date" class="map-search" [value]="edicaoTitulo().vencimento" (input)="edicaoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
+                                  <td>—</td>
+                                  <td>
+                                    <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="edicaoTitulo().valorStr" (input)="edicaoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
+                                  </td>
+                                  <td></td>
+                                </tr>
+                                <tr class="titulo-add-actions-row">
+                                  <td colspan="7">
+                                    <div class="titulo-add-actions">
+                                      <button class="btn ghost xs" [disabled]="salvandoEdicaoTitulo()" (click)="cancelarEdicaoTitulo()">Cancelar</button>
+                                      <button class="btn primary xs" [disabled]="salvandoEdicaoTitulo()" (click)="salvarEdicaoTitulo(a.id, t.id)">
+                                        {{ salvandoEdicaoTitulo() ? 'Salvando…' : 'Salvar' }}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              } @else {
+                                <tr>
+                                  <td class="mono">{{ t.codigo }}</td>
+                                  <td>{{ t.descricao ?? '—' }}</td>
+                                  <td><span class="cat-badge cat-{{ t.categoria ?? 'default' }}">{{ t.categoria ?? '—' }}</span></td>
+                                  <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
+                                  <td class="pagamento-cell">
+                                    @if (t.data_pagamento) {
+                                      <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
+                                    } @else if (sugestoesConciliacao()[t.id]) {
+                                      <span class="identificado-badge">Identificado</span>
+                                    } @else if (t.data_vencimento && t.data_vencimento < today) {
+                                      <span class="atraso-badge">Em atraso</span>
+                                    } @else {
+                                      <span class="pendente-badge">Em aberto</span>
+                                    }
+                                    @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
+                                      <button
+                                        class="btn-conciliar"
+                                        [disabled]="conciliando() === t.id"
+                                        (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
+                                        [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
+                                        @if (conciliando() === t.id) {
+                                          <svg class="spin-sm" width="11" height="11" viewBox="0 0 36 36" fill="none">
+                                            <circle cx="18" cy="18" r="15" stroke="rgba(0,0,0,0.15)" stroke-width="3"/>
+                                            <path d="M18 3 A15 15 0 0 1 33 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                                          </svg>
+                                        } @else {
+                                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                        }
+                                        {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
+                                      </button>
+                                    }
+                                  </td>
+                                  <td style="text-align:right;font-weight:600">R$ {{ t.valor | number:'1.2-2':'pt-BR' }}</td>
+                                  <td style="text-align:right">
+                                    <button class="btn ghost icon sm" type="button"
+                                            [matMenuTriggerFor]="tituloMenu"
+                                            [matMenuTriggerData]="{ apuracaoId: a.id, titulo: t }"
+                                            title="Mais opções">
+                                      <mat-icon style="font-size:18px;width:18px;height:18px">more_vert</mat-icon>
                                     </button>
-                                  }
+                                  </td>
+                                </tr>
+                              }
+                            }
+                            @if (adicionandoTituloPara() === a.id) {
+                              <tr class="titulo-add-row">
+                                <td><input class="map-search mono" [value]="novoTitulo().codigo" (input)="novoTitulo.update(v => ({ ...v, codigo: $any($event.target).value }))" placeholder="Código" /></td>
+                                <td><input class="map-search" [value]="novoTitulo().descricao" (input)="novoTitulo.update(v => ({ ...v, descricao: $any($event.target).value }))" placeholder="Descrição" /></td>
+                                <td>
+                                  <select class="map-search" [value]="novoTitulo().categoria" (change)="novoTitulo.update(v => ({ ...v, categoria: $any($event.target).value }))">
+                                    <option value="fpp">fpp</option>
+                                    <option value="royalties">royalties</option>
+                                    <option value="outros">outros</option>
+                                  </select>
                                 </td>
-                                <td style="text-align:right;font-weight:600">R$ {{ t.valor | number:'1.2-2':'pt-BR' }}</td>
+                                <td><input type="date" class="map-search" [value]="novoTitulo().vencimento" (input)="novoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
+                                <td>—</td>
+                                <td>
+                                  <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="novoTitulo().valorStr" (input)="novoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
+                                </td>
+                                <td></td>
+                              </tr>
+                              <tr class="titulo-add-actions-row">
+                                <td colspan="7">
+                                  <div class="titulo-add-actions">
+                                    <button class="btn ghost xs" [disabled]="salvandoTitulo()" (click)="cancelarAdicionarTitulo()">Cancelar</button>
+                                    <button class="btn primary xs" [disabled]="salvandoTitulo()" (click)="salvarNovoTitulo(a.id)">
+                                      {{ salvandoTitulo() ? 'Salvando…' : 'Salvar título' }}
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             }
                           </tbody>
                         </table>
+                      }
+                      @if (adicionandoTituloPara() !== a.id) {
+                        <button class="btn ghost xs add-titulo-trigger" (click)="abrirAdicionarTitulo(a.id)">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                          Adicionar título
+                        </button>
                       }
                     }
 
@@ -617,104 +710,99 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
             </button>
           </div>
           <div class="dialog-body">
-            @if (royAmbosTipos()) {
-              <div class="quinzena-selector roy-tab-selector">
-                <button class="q-btn" [class.active]="royTabAtiva() === 'linha'" (click)="royTabAtiva.set('linha')">Linha</button>
-                <button class="q-btn" [class.active]="royTabAtiva() === 'sazonal'" (click)="royTabAtiva.set('sazonal')">Sazonal</button>
+            @if (abrindoModalRoyalties()) {
+              <div class="map-loading">
+                <svg class="spin-sm" width="20" height="20" viewBox="0 0 36 36" fill="none">
+                  <circle cx="18" cy="18" r="15" stroke="var(--line-2)" stroke-width="3"/>
+                  <path d="M18 3 A15 15 0 0 1 33 18" stroke="var(--bordo)" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                Calculando royalties do período…
               </div>
             }
-            @if (modalRoyalties()!.royLinha > 0 && (!royAmbosTipos() || royTabAtiva() === 'linha')) {
-              <div class="roy-fields-grid">
-                <label class="input">
-                  <span>Royalties Linha (bruto) (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royBrutoLinhaStr()"
-                         (input)="onRoyBrutoLinhaInput($any($event.target).value)"
-                         placeholder="0,00" [autofocus]="true" />
-                </label>
-                <label class="input">
-                  <span>(-) Crédito Devolução Garantida (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royDevGarantidaStr()"
-                         (input)="royDevGarantidaStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>(-) Crédito Devoluções de Produto (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royDevProdutoLinhaStr()"
-                         (input)="royDevProdutoLinhaStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>(-) Outros Créditos (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royOutrosLinhaStr()"
-                         (input)="royOutrosLinhaStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>Vencimento — Parcela 1 (R$ {{ royParcela1Linha() | number:'1.2-2':'pt-BR' }})</span>
-                  <input type="date"
-                         [value]="royVencimentoLinhaP1()"
-                         (input)="royVencimentoLinhaP1.set($any($event.target).value)" />
-                </label>
-                <label class="input">
-                  <span>Vencimento — Parcela 2 (R$ {{ royParcela2Linha() | number:'1.2-2':'pt-BR' }})</span>
-                  <input type="date"
-                         [value]="royVencimentoLinhaP2()"
-                         (input)="royVencimentoLinhaP2.set($any($event.target).value)" />
-                </label>
+            @if (royGrupos().length > 1) {
+              <div class="quinzena-selector roy-tab-selector" [style.grid-template-columns]="'repeat(' + royGrupos().length + ', 1fr)'">
+                @for (g of royGrupos(); track g.key) {
+                  <button class="q-btn" [class.active]="royGrupoAtivo() === g.key" (click)="royGrupoAtivo.set(g.key)">{{ grupoLabel(g) }}</button>
+                }
               </div>
-              <div class="calc-row total">
-                <span>Royalties líquido — Linha (2 parcelas)</span>
-                <span>R$ {{ royaltiesLiquidoLinha() | number:'1.2-2':'pt-BR' }}</span>
-              </div>
-              <div class="calc-divider"></div>
             }
-            @if (modalRoyalties()!.roySazonal > 0 && (!royAmbosTipos() || royTabAtiva() === 'sazonal')) {
-              <div class="roy-fields-grid">
-                <label class="input">
-                  <span>Royalties Sazonal (bruto) (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royBrutoSazonalStr()"
-                         (input)="royBrutoSazonalStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>(-) Crédito Devoluções de Produto (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royDevProdutoSazonalStr()"
-                         (input)="royDevProdutoSazonalStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>(-) Outros Créditos (R$)</span>
-                  <input type="text" inputmode="decimal"
-                         [value]="royOutrosSazonalStr()"
-                         (input)="royOutrosSazonalStr.set($any($event.target).value)"
-                         placeholder="0,00" />
-                </label>
-                <label class="input">
-                  <span>Vencimento</span>
-                  <input type="date"
-                         [value]="royVencimentoSazonal()"
-                         (input)="royVencimentoSazonal.set($any($event.target).value)" />
-                </label>
-              </div>
-              <div class="calc-row total">
-                <span>Royalties líquido — Sazonal</span>
-                <span>R$ {{ royaltiesLiquidoSazonal() | number:'1.2-2':'pt-BR' }}</span>
-              </div>
-              <div class="calc-divider"></div>
+            @for (g of royGrupos(); track g.key) {
+              @if (royGrupos().length === 1 || royGrupoAtivo() === g.key) {
+                <div class="roy-fields-grid">
+                  <label class="input">
+                    <span>{{ grupoLabel(g) }} (bruto) (R$)</span>
+                    <input type="text" inputmode="decimal"
+                           [value]="g.brutoStr"
+                           (input)="onGrupoBrutoOuCreditoInput(g, { brutoStr: $any($event.target).value })"
+                           placeholder="0,00" [autofocus]="$first" />
+                  </label>
+                  @if (g.tipo === 'linha') {
+                    <label class="input">
+                      <span>(-) Crédito Devolução Garantida (R$)</span>
+                      <input type="text" inputmode="decimal"
+                             [value]="g.devGarantidaStr"
+                             (input)="updateGrupo(g.key, { devGarantidaStr: $any($event.target).value })"
+                             placeholder="0,00" />
+                    </label>
+                  }
+                  <label class="input">
+                    <span>(-) Crédito Devoluções de Produto (R$)</span>
+                    <input type="text" inputmode="decimal"
+                           [value]="g.devProdutoStr"
+                           (input)="onGrupoBrutoOuCreditoInput(g, { devProdutoStr: $any($event.target).value })"
+                           placeholder="0,00" />
+                  </label>
+                  <label class="input">
+                    <span>(-) Outros Créditos (R$)</span>
+                    <input type="text" inputmode="decimal"
+                           [value]="g.outrosStr"
+                           (input)="onGrupoBrutoOuCreditoInput(g, { outrosStr: $any($event.target).value })"
+                           placeholder="0,00" />
+                  </label>
+                  @if (g.tipo === 'linha') {
+                    <label class="input">
+                      <span>Vencimento — Parcela 1 (R$ {{ parcela1Grupo(g) | number:'1.2-2':'pt-BR' }})</span>
+                      <input type="date"
+                             [value]="g.vencimentoP1"
+                             (input)="updateGrupo(g.key, { vencimentoP1: $any($event.target).value })" />
+                    </label>
+                    <label class="input">
+                      <span>Vencimento — Parcela 2 (R$ {{ parcela2Grupo(g) | number:'1.2-2':'pt-BR' }})</span>
+                      <input type="date"
+                             [value]="g.vencimentoP2"
+                             (input)="updateGrupo(g.key, { vencimentoP2: $any($event.target).value })" />
+                    </label>
+                  }
+                </div>
+                @if (g.tipo === 'sazonal') {
+                  @for (p of g.parcelasSazonal; track $index) {
+                    <div class="roy-fields-grid">
+                      <label class="input">
+                        <span>Parcela {{ $index + 1 }} — {{ percentuaisSazonal[$index] * 100 | number:'1.0-0' }}% (R$)</span>
+                        <input type="text" inputmode="decimal"
+                               [value]="p.valorStr"
+                               (input)="updateParcelaSazonal(g, $index, { valorStr: $any($event.target).value })"
+                               placeholder="0,00" />
+                      </label>
+                      <label class="input">
+                        <span>Vencimento</span>
+                        <input type="date"
+                               [value]="p.vencimento"
+                               (input)="updateParcelaSazonal(g, $index, { vencimento: $any($event.target).value })" />
+                      </label>
+                    </div>
+                  }
+                }
+                <div class="calc-row total">
+                  <span>Royalties líquido — {{ grupoLabel(g) }} ({{ g.tipo === 'linha' ? '2' : '5' }} parcelas)</span>
+                  <span>R$ {{ (g.tipo === 'sazonal' ? somaParcelasSazonal(g) : liquidoGrupo(g)) | number:'1.2-2':'pt-BR' }}</span>
+                </div>
+                <div class="calc-divider"></div>
+              }
             }
             <div class="calc-row total-geral">
               <span>Royalties líquido total a cobrar</span>
               <span>R$ {{ royaltiesLiquidoTotal() | number:'1.2-2':'pt-BR' }}</span>
-            </div>
-            <div class="fpp-modal-info">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Royalties bruto vem calculado, mas pode ser ajustado caso não bata com o valor da franqueadora — ao alterar o bruto Linha, a Devolução Garantida é recalculada automaticamente ((Σ produtos sem imposto das notas de Linha + royalties bruto Linha) × 5%). Royalties Linha é cobrado em 2 parcelas iguais, vencendo em 30 e 45 dias do fechamento; Sazonal em parcela única, em 3 meses. Ajuste as datas se necessário.
             </div>
             <button class="btn primary w-full"
                     [disabled]="emitindoRoyalties()"
@@ -813,6 +901,17 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       }
 
     </div>
+
+    <mat-menu #tituloMenu="matMenu">
+      <ng-template matMenuContent let-apuracaoId="apuracaoId" let-titulo="titulo">
+        <button mat-menu-item (click)="iniciarEdicaoTitulo(titulo)">
+          <mat-icon>edit</mat-icon> Editar
+        </button>
+        <button mat-menu-item (click)="excluirTitulo(apuracaoId, titulo)">
+          <mat-icon>delete</mat-icon> Excluir
+        </button>
+      </ng-template>
+    </mat-menu>
   `,
   styles: [`
     .page-header {
@@ -849,7 +948,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       small { font-size: 11px; color: var(--text-4); }
       &.active { border-color: var(--bordo, #7A1F2B); background: color-mix(in srgb, var(--bordo, #7A1F2B) 8%, transparent); color: var(--bordo, #7A1F2B); font-weight: 600; }
     }
-    .roy-tab-selector { margin-bottom: 4px; }
     .calc-btn { white-space: nowrap; }
     .empty-preview {
       display: flex; align-items: center; gap: 8px;
@@ -891,10 +989,12 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     }
 
     /* ─── Lista de notas expansível ─── */
-    .notas-list-head {
+    .notas-list-head, .nota-header {
       display: grid;
       grid-template-columns: 22px 110px 1fr 90px 105px 60px 110px 110px 120px;
       align-items: center;
+    }
+    .notas-list-head {
       padding: 4px 14px;
       font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--text-4);
@@ -903,15 +1003,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     }
     .notas-list { display: flex; flex-direction: column; gap: 6px; }
 
-    .nota-card {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      overflow: hidden;
-    }
+    .nota-card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
     .nota-header {
-      display: grid;
-      grid-template-columns: 22px 110px 1fr 90px 105px 60px 110px 110px 120px;
-      align-items: center;
       padding: 10px 14px; cursor: pointer;
       background: var(--surface-2); user-select: none;
       transition: background 0.12s;
@@ -1173,17 +1266,14 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .titulos-badges {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     }
-    .titulo-emitido-badge {
+    .titulo-emitido-badge, .badge-roy-pendente {
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-      background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
     }
+    .titulo-emitido-badge { background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32); }
     .badge-roy-pendente {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
       background: color-mix(in srgb, #C28A1E 16%, transparent); color: #7A5510;
-      border: none; cursor: pointer; font-family: inherit;
-      transition: opacity 0.15s;
+      border: none; cursor: pointer; font-family: inherit; transition: opacity 0.15s;
       &:hover:not(:disabled) { opacity: 0.75; }
       &:disabled { opacity: 0.5; cursor: default; }
     }
@@ -1231,6 +1321,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .atraso-badge      { background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; }
     .identificado-badge{ background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; }
     .pagamento-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .add-titulo-valor { text-align: right; }
+    .titulo-add-row td, .titulo-add-actions-row td { padding: 5px 10px; }
+    .titulo-add-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .add-titulo-trigger { margin-top: 8px; }
     .btn-conciliar {
       display: inline-flex; align-items: center; gap: 3px;
       font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: none; cursor: pointer;
@@ -1264,8 +1358,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 export class ListaApuracoesComponent implements OnInit {
   private service = inject(ApuracaoCrmService);
   private snack   = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   readonly meses = MESES;
+  readonly percentuaisSazonal = PERCENTUAIS_ROYALTIES_SAZONAL;
 
   apuracoes  = signal<ApuracaoCrm[]>([]);
   carregando = signal(false);
@@ -1296,17 +1392,10 @@ export class ListaApuracoesComponent implements OnInit {
   emitindoRoyalties          = signal(false);
   abrindoModalRoyalties      = signal(false);
   modalRoyalties             = signal<ModalRoyaltiesCtx | null>(null);
-  royBrutoLinhaStr           = signal('');
-  royBrutoSazonalStr         = signal('');
-  royVencimentoLinhaP1       = signal('');
-  royVencimentoLinhaP2       = signal('');
-  royVencimentoSazonal       = signal('');
-  royDevGarantidaStr         = signal('');
-  royDevProdutoLinhaStr      = signal('');
-  royDevProdutoSazonalStr    = signal('');
-  royOutrosLinhaStr          = signal('');
-  royOutrosSazonalStr        = signal('');
-  royTabAtiva                = signal<'linha' | 'sazonal'>('linha');
+  /** Um item por combinação (tipo, alíquota) encontrada no período (ex.: Linha 27,5%, Linha 37%). */
+  royGrupos                  = signal<GrupoRoyaltiesEdicao[]>([]);
+  /** Key do grupo ativo no chaveador — só relevante quando royGrupos().length > 1. */
+  royGrupoAtivo              = signal('');
 
   expandidosHistorico   = signal<Set<string>>(new Set());
   titulosPorApuracao    = signal<Record<string, TituloApuracao[]>>({});
@@ -1314,6 +1403,16 @@ export class ListaApuracoesComponent implements OnInit {
   // tituloId → melhor lançamento NIBS candidato
   sugestoesConciliacao  = signal<Record<string, SugestaoConciliacao>>({});
   conciliando           = signal<string | null>(null);
+
+  /** Id da apuração com o formulário inline de novo título aberto (ou null). */
+  adicionandoTituloPara = signal<string | null>(null);
+  novoTitulo = signal({ codigo: '', descricao: '', categoria: 'outros', valorStr: '', vencimento: '' });
+  salvandoTitulo = signal(false);
+
+  /** Id do título com o formulário inline de edição aberto (ou null). */
+  editandoTituloId = signal<string | null>(null);
+  edicaoTitulo = signal({ codigo: '', descricao: '', categoria: 'outros', valorStr: '', vencimento: '' });
+  salvandoEdicaoTitulo = signal(false);
 
   produtosFiltrados = computed(() => {
     const termo = this.termoBusca().toLowerCase().trim();
@@ -1352,12 +1451,6 @@ export class ListaApuracoesComponent implements OnInit {
     return this.apuracaoDoPeriodo(this.selecionado.ano, this.selecionado.mes, this.selecionado.quinzena);
   });
 
-  /** true quando o período tem royalties de Linha E de Sazonal — exibe o chaveador de abas no modal. */
-  royAmbosTipos = computed(() => {
-    const ctx = this.modalRoyalties();
-    return !!ctx && ctx.royLinha > 0 && ctx.roySazonal > 0;
-  });
-
   private parseMoeda(s: string): number {
     const v = parseFloat(s.trim().replace(',', '.'));
     return isNaN(v) ? 0 : v;
@@ -1367,47 +1460,84 @@ export class ListaApuracoesComponent implements OnInit {
     return n.toFixed(2).replace('.', ',');
   }
 
-  royBrutoLinhaEditado   = computed(() => this.parseMoeda(this.royBrutoLinhaStr()));
-  royBrutoSazonalEditado = computed(() => this.parseMoeda(this.royBrutoSazonalStr()));
-
-  royaltiesLiquidoLinha = computed(() => {
-    const ctx = this.modalRoyalties();
-    if (!ctx) return 0;
-    const creditos = this.parseMoeda(this.royDevGarantidaStr())
-      + this.parseMoeda(this.royDevProdutoLinhaStr())
-      + this.parseMoeda(this.royOutrosLinhaStr());
-    return this.royBrutoLinhaEditado() - creditos;
-  });
-
-  royaltiesLiquidoSazonal = computed(() => {
-    const ctx = this.modalRoyalties();
-    if (!ctx) return 0;
-    const creditos = this.parseMoeda(this.royDevProdutoSazonalStr())
-      + this.parseMoeda(this.royOutrosSazonalStr());
-    return this.royBrutoSazonalEditado() - creditos;
-  });
-
-  royaltiesLiquidoTotal = computed(() => this.royaltiesLiquidoLinha() + this.royaltiesLiquidoSazonal());
-
-  /** Royalties Linha é cobrado em 2 parcelas iguais (30 e 45 dias); a 2ª absorve o resto do arredondamento. */
-  royParcela1Linha = computed(() => Math.round(this.royaltiesLiquidoLinha() / 2 * 100) / 100);
-  royParcela2Linha = computed(() => Math.round((this.royaltiesLiquidoLinha() - this.royParcela1Linha()) * 100) / 100);
-
-  /**
-   * O royalties bruto Linha pode ser ajustado manualmente (pode não bater com o valor calculado
-   * pela franqueadora). Quando ajustado, a Devolução Garantida — que depende do bruto Linha na
-   * fórmula (Σ produtos sem imposto + royalties bruto Linha) × 5% — precisa ser recalculada.
-   */
-  onRoyBrutoLinhaInput(valor: string) {
-    this.royBrutoLinhaStr.set(valor);
-    const ctx = this.modalRoyalties();
-    if (!ctx) return;
-    const brutoAjustado = this.parseMoeda(valor);
-    const sugestao = (ctx.valorProdutosSemImpostoLinha + brutoAjustado) * 0.05;
-    this.royDevGarantidaStr.set(sugestao > 0 ? this.formatMoeda(sugestao) : '');
+  /** Rótulo do grupo para o chaveador e os cabeçalhos, ex.: "Linha 27,5%" / "Sazonal 37%". */
+  grupoLabel(g: GrupoRoyaltiesEdicao): string {
+    const nome = g.tipo === 'linha' ? 'Linha' : 'Sazonal';
+    const pct  = (g.aliquota * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    return `${nome} ${pct}%`;
   }
 
+  updateGrupo(key: string, patch: Partial<GrupoRoyaltiesEdicao>) {
+    this.royGrupos.update(lista => lista.map(g => g.key === key ? { ...g, ...patch } : g));
+  }
+
+  liquidoGrupo(g: GrupoRoyaltiesEdicao): number {
+    const bruto     = this.parseMoeda(g.brutoStr);
+    const devGarant = g.tipo === 'linha' ? this.parseMoeda(g.devGarantidaStr) : 0;
+    const devProd   = this.parseMoeda(g.devProdutoStr);
+    const outros    = this.parseMoeda(g.outrosStr);
+    return bruto - devGarant - devProd - outros;
+  }
+
+  /** Divide o líquido nas 5 parcelas de Royalties Sazonal (20/20/30/15/15%); a última absorve o resto do arredondamento. */
+  private calcularParcelasSazonal(liquido: number, vencimentos: string[]): Array<{ valorStr: string; vencimento: string }> {
+    const valores: number[] = [];
+    let soma = 0;
+    for (let i = 0; i < PERCENTUAIS_ROYALTIES_SAZONAL.length - 1; i++) {
+      const v = Math.round(liquido * PERCENTUAIS_ROYALTIES_SAZONAL[i] * 100) / 100;
+      valores.push(v);
+      soma += v;
+    }
+    valores.push(Math.round((liquido - soma) * 100) / 100);
+    return vencimentos.map((vencimento, i) => ({ valorStr: this.formatMoeda(valores[i]), vencimento }));
+  }
+
+  /**
+   * O royalties bruto (e os créditos) de um grupo podem ser ajustados manualmente. Quando ajustados:
+   * em grupo Linha, a Devolução Garantida — que depende do bruto na fórmula (Σ produtos sem imposto +
+   * royalties bruto) × 5% — é recalculada; em grupo Sazonal, as 5 parcelas são recalculadas a partir
+   * do novo líquido (mantendo as datas já ajustadas pelo usuário).
+   */
+  onGrupoBrutoOuCreditoInput(g: GrupoRoyaltiesEdicao, patch: Partial<GrupoRoyaltiesEdicao>) {
+    let atualizado: GrupoRoyaltiesEdicao = { ...g, ...patch };
+    if (g.tipo === 'linha' && 'brutoStr' in patch) {
+      const brutoAjustado = this.parseMoeda(atualizado.brutoStr);
+      const sugestao = (g.valorProdutosSemImposto + brutoAjustado) * 0.05;
+      atualizado = { ...atualizado, devGarantidaStr: sugestao > 0 ? this.formatMoeda(sugestao) : '' };
+    }
+    if (g.tipo === 'sazonal') {
+      atualizado = {
+        ...atualizado,
+        parcelasSazonal: this.calcularParcelasSazonal(this.liquidoGrupo(atualizado), atualizado.parcelasSazonal.map(p => p.vencimento)),
+      };
+    }
+    this.royGrupos.update(lista => lista.map(x => x.key === g.key ? atualizado : x));
+  }
+
+  /** Ajuste manual de uma parcela específica de Royalties Sazonal — não recalcula as demais. */
+  updateParcelaSazonal(g: GrupoRoyaltiesEdicao, idx: number, patch: Partial<{ valorStr: string; vencimento: string }>) {
+    const parcelas = g.parcelasSazonal.map((p, i) => i === idx ? { ...p, ...patch } : p);
+    this.updateGrupo(g.key, { parcelasSazonal: parcelas });
+  }
+
+  /** Royalties Linha é cobrado em 2 parcelas iguais; a 2ª absorve o resto do arredondamento. */
+  parcela1Grupo(g: GrupoRoyaltiesEdicao): number {
+    return Math.round(this.liquidoGrupo(g) / 2 * 100) / 100;
+  }
+  parcela2Grupo(g: GrupoRoyaltiesEdicao): number {
+    return Math.round((this.liquidoGrupo(g) - this.parcela1Grupo(g)) * 100) / 100;
+  }
+
+  /** Soma das 5 parcelas de Sazonal — pode diferir levemente do líquido "de fábrica" se o usuário ajustou valores manualmente. */
+  somaParcelasSazonal(g: GrupoRoyaltiesEdicao): number {
+    return g.parcelasSazonal.reduce((s, p) => s + this.parseMoeda(p.valorStr), 0);
+  }
+
+  royaltiesLiquidoTotal = computed(() => this.royGrupos().reduce(
+    (s, g) => s + (g.tipo === 'sazonal' ? this.somaParcelasSazonal(g) : this.liquidoGrupo(g)), 0));
+
   async ngOnInit() {
+    this.pageHeader.setSubtitle('Royalties e FPP — cálculo quinzenal sobre valor de venda dos pedidos');
     await this.carregar();
   }
 
@@ -1543,57 +1673,52 @@ export class ListaApuracoesComponent implements OnInit {
     }
   }
 
+  /** Constrói o estado editável de cada grupo (tipo, alíquota) a partir de um preview recém-calculado. */
+  private construirGrupos(p: PreviewApuracao, dataFim: string): GrupoRoyaltiesEdicao[] {
+    return p.grupos_royalties.map(g => ({
+      key:                     `${g.tipo}_${g.aliquota}`,
+      tipo:                    g.tipo,
+      aliquota:                g.aliquota,
+      brutoStr:                this.formatMoeda(g.roy_bruto),
+      devGarantidaStr:         g.tipo === 'linha' && g.credito_devolucao_garantida > 0 ? this.formatMoeda(g.credito_devolucao_garantida) : '',
+      devProdutoStr:           '',
+      outrosStr:               '',
+      vencimentoP1:            g.tipo === 'linha' ? this.service.vencimentoFpp(dataFim) : '',
+      vencimentoP2:            g.tipo === 'linha' ? this.service.vencimentoRoyaltiesLinhaParcela2(dataFim) : '',
+      parcelasSazonal:         g.tipo === 'sazonal' ? this.calcularParcelasSazonal(g.roy_bruto, this.service.vencimentosRoyaltiesSazonal(dataFim)) : [],
+      valorProdutosSemImposto: g.valor_produtos_sem_imposto,
+    }));
+  }
+
   abrirModalRoyaltiesPreview() {
     const { ano, mes, quinzena } = this.selecionado;
     const { fim } = this.service.intervalo(ano, mes, quinzena);
     const p = this.preview();
+    if (!p) return;
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    const royLinha   = p?.roy_linha   ?? 0;
-    const roySazonal = p?.roy_sazonal ?? 0;
-    this.royBrutoLinhaStr.set(royLinha > 0 ? this.formatMoeda(royLinha) : '');
-    this.royBrutoSazonalStr.set(roySazonal > 0 ? this.formatMoeda(roySazonal) : '');
-    this.royVencimentoLinhaP1.set(this.service.vencimentoFpp(fim));
-    this.royVencimentoLinhaP2.set(this.service.vencimentoRoyaltiesLinhaParcela2(fim));
-    this.royVencimentoSazonal.set(this.service.vencimentoFppSazonal(fim));
-    this.royDevGarantidaStr.set(p && p.credito_devolucao_garantida > 0 ? this.formatMoeda(p.credito_devolucao_garantida) : '');
-    this.royDevProdutoLinhaStr.set('');
-    this.royDevProdutoSazonalStr.set('');
-    this.royOutrosLinhaStr.set('');
-    this.royOutrosSazonalStr.set('');
-    this.royTabAtiva.set(royLinha > 0 ? 'linha' : 'sazonal');
-    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena, royLinha, roySazonal, valorProdutosSemImpostoLinha: p?.valor_produtos_sem_imposto_linha ?? 0 });
+    const grupos = this.construirGrupos(p, fim);
+    this.royGrupos.set(grupos);
+    this.royGrupoAtivo.set(grupos[0]?.key ?? '');
+    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena });
   }
 
   async abrirModalRoyaltiesHistorico(a: ApuracaoCrm) {
     const quinzLabel = a.quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    this.royBrutoLinhaStr.set(a.valor_roy_linha > 0 ? this.formatMoeda(a.valor_roy_linha) : '');
-    this.royBrutoSazonalStr.set(a.valor_roy_sazonal > 0 ? this.formatMoeda(a.valor_roy_sazonal) : '');
-    this.royVencimentoLinhaP1.set(a.data_vencimento);
-    this.royVencimentoLinhaP2.set(this.service.vencimentoRoyaltiesLinhaParcela2(a.data_fim));
-    this.royVencimentoSazonal.set(this.service.vencimentoFppSazonal(a.data_fim));
-    this.royDevProdutoLinhaStr.set('');
-    this.royDevProdutoSazonalStr.set('');
-    this.royOutrosLinhaStr.set('');
-    this.royOutrosSazonalStr.set('');
-    this.royTabAtiva.set(a.valor_roy_linha > 0 ? 'linha' : 'sazonal');
-
-    // credito_devolucao_garantida só fica gravado na apuração DEPOIS de emitido; para uma apuração
-    // ainda não emitida, precisamos recalcular a sugestão a partir dos pedidos do período (mesma
-    // fórmula do preview), já que ela não é persistida no confirmar().
+    // A apuração confirmada só guarda totais agregados por tipo (não por alíquota) — para segregar
+    // corretamente os grupos, recalculamos a partir dos pedidos do período, igual ao preview.
     this.abrindoModalRoyalties.set(true);
-    let valorProdutosSemImpostoLinha = 0;
     try {
       const p = await this.service.calcularPreview(a.ano, a.mes, a.quinzena);
-      this.royDevGarantidaStr.set(p.credito_devolucao_garantida > 0 ? this.formatMoeda(p.credito_devolucao_garantida) : '');
-      valorProdutosSemImpostoLinha = p.valor_produtos_sem_imposto_linha;
+      const grupos = this.construirGrupos(p, a.data_fim);
+      this.royGrupos.set(grupos);
+      this.royGrupoAtivo.set(grupos[0]?.key ?? '');
     } catch {
-      this.royDevGarantidaStr.set(a.credito_devolucao_garantida > 0 ? this.formatMoeda(a.credito_devolucao_garantida) : '');
-      this.snack.open('Não foi possível recalcular a Devolução Garantida sugerida — informe manualmente.', 'OK', { duration: 4000 });
-    } finally {
+      this.snack.open('Não foi possível recalcular os royalties do período — tente novamente.', 'OK', { duration: 4000 });
       this.abrindoModalRoyalties.set(false);
+      return;
     }
-
-    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id, royLinha: a.valor_roy_linha, roySazonal: a.valor_roy_sazonal, valorProdutosSemImpostoLinha });
+    this.abrindoModalRoyalties.set(false);
+    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id });
   }
 
   fecharModalRoyalties() {
@@ -1614,7 +1739,8 @@ export class ListaApuracoesComponent implements OnInit {
     }
 
     const itensRoy: Array<{
-      subtipo: 'linha' | 'sazonal';
+      tipo: 'linha' | 'sazonal';
+      aliquota: number;
       valorBruto: number;
       valorLiquido: number;
       parcelas: Array<{ valor: number; dataVencimento: string }>;
@@ -1623,39 +1749,38 @@ export class ListaApuracoesComponent implements OnInit {
       outros: number;
     }> = [];
 
-    if (ctx.royLinha > 0) {
-      const bruto = this.royBrutoLinhaEditado();
-      if (bruto <= 0) { this.snack.open('Informe o valor do royalties bruto Linha.', 'OK', { duration: 3000 }); return; }
-      const d1 = this.royVencimentoLinhaP1();
-      const d2 = this.royVencimentoLinhaP2();
-      if (!d1 || !d2) { this.snack.open('Informe o vencimento das duas parcelas dos Royalties Linha.', 'OK', { duration: 3000 }); return; }
-      itensRoy.push({
-        subtipo: 'linha',
-        valorBruto: bruto,
-        valorLiquido: this.royaltiesLiquidoLinha(),
-        parcelas: [
-          { valor: this.royParcela1Linha(), dataVencimento: d1 },
-          { valor: this.royParcela2Linha(), dataVencimento: d2 },
-        ],
-        devolucaoGarantida: this.parseMoeda(this.royDevGarantidaStr()),
-        devolucoesProduto:  this.parseMoeda(this.royDevProdutoLinhaStr()),
-        outros:             this.parseMoeda(this.royOutrosLinhaStr()),
-      });
-    }
-    if (ctx.roySazonal > 0) {
-      const bruto = this.royBrutoSazonalEditado();
-      if (bruto <= 0) { this.snack.open('Informe o valor do royalties bruto Sazonal.', 'OK', { duration: 3000 }); return; }
-      const d = this.royVencimentoSazonal();
-      if (!d) { this.snack.open('Informe o vencimento dos Royalties Sazonal.', 'OK', { duration: 3000 }); return; }
-      itensRoy.push({
-        subtipo: 'sazonal',
-        valorBruto: bruto,
-        valorLiquido: this.royaltiesLiquidoSazonal(),
-        parcelas: [{ valor: this.royaltiesLiquidoSazonal(), dataVencimento: d }],
-        devolucaoGarantida: 0,
-        devolucoesProduto:  this.parseMoeda(this.royDevProdutoSazonalStr()),
-        outros:             this.parseMoeda(this.royOutrosSazonalStr()),
-      });
+    for (const g of this.royGrupos()) {
+      const bruto = this.parseMoeda(g.brutoStr);
+      if (bruto <= 0) { this.snack.open(`Informe o valor do royalties bruto — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 }); return; }
+
+      if (g.tipo === 'linha') {
+        if (!g.vencimentoP1 || !g.vencimentoP2) { this.snack.open(`Informe o vencimento das duas parcelas — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 }); return; }
+        itensRoy.push({
+          tipo: 'linha',
+          aliquota: g.aliquota,
+          valorBruto: bruto,
+          valorLiquido: this.liquidoGrupo(g),
+          parcelas: [
+            { valor: this.parcela1Grupo(g), dataVencimento: g.vencimentoP1 },
+            { valor: this.parcela2Grupo(g), dataVencimento: g.vencimentoP2 },
+          ],
+          devolucaoGarantida: this.parseMoeda(g.devGarantidaStr),
+          devolucoesProduto:  this.parseMoeda(g.devProdutoStr),
+          outros:             this.parseMoeda(g.outrosStr),
+        });
+      } else {
+        if (g.parcelasSazonal.some(p => !p.vencimento)) { this.snack.open(`Informe o vencimento das 5 parcelas — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 }); return; }
+        itensRoy.push({
+          tipo: 'sazonal',
+          aliquota: g.aliquota,
+          valorBruto: bruto,
+          valorLiquido: this.somaParcelasSazonal(g),
+          parcelas: g.parcelasSazonal.map(p => ({ valor: this.parseMoeda(p.valorStr), dataVencimento: p.vencimento })),
+          devolucaoGarantida: 0,
+          devolucoesProduto:  this.parseMoeda(g.devProdutoStr),
+          outros:             this.parseMoeda(g.outrosStr),
+        });
+      }
     }
     if (itensRoy.length === 0) { this.snack.open('Nenhum Royalties a emitir.', 'OK', { duration: 3000 }); return; }
 
@@ -1783,6 +1908,105 @@ export class ListaApuracoesComponent implements OnInit {
       this.snack.open('Erro ao conciliar pagamento.', 'OK', { duration: 3000 });
     } finally {
       this.conciliando.set(null);
+    }
+  }
+
+  abrirAdicionarTitulo(apuracaoId: string) {
+    this.editandoTituloId.set(null);
+    this.novoTitulo.set({ codigo: '', descricao: '', categoria: 'outros', valorStr: '', vencimento: this.today });
+    this.adicionandoTituloPara.set(apuracaoId);
+  }
+
+  cancelarAdicionarTitulo() {
+    this.adicionandoTituloPara.set(null);
+  }
+
+  async salvarNovoTitulo(apuracaoId: string) {
+    const dados = this.novoTitulo();
+    const valor = this.parseMoeda(dados.valorStr);
+
+    if (!dados.codigo.trim()) { this.snack.open('Informe o código do título.', 'OK', { duration: 3000 }); return; }
+    if (valor <= 0) { this.snack.open('Informe o valor do título.', 'OK', { duration: 3000 }); return; }
+    if (!dados.vencimento) { this.snack.open('Informe o vencimento do título.', 'OK', { duration: 3000 }); return; }
+
+    this.salvandoTitulo.set(true);
+    try {
+      const titulo = await this.service.adicionarTitulo(apuracaoId, {
+        codigo:          dados.codigo.trim(),
+        descricao:       dados.descricao.trim(),
+        categoria:       dados.categoria,
+        valor,
+        dataVencimento:  dados.vencimento,
+      });
+      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: [...(m[apuracaoId] ?? []), titulo] }));
+      this.adicionandoTituloPara.set(null);
+      this.snack.open('Título adicionado com sucesso!', 'OK', { duration: 3000 });
+    } catch {
+      this.snack.open('Erro ao adicionar título.', 'OK', { duration: 4000 });
+    } finally {
+      this.salvandoTitulo.set(false);
+    }
+  }
+
+  iniciarEdicaoTitulo(t: TituloApuracao) {
+    this.adicionandoTituloPara.set(null);
+    this.edicaoTitulo.set({
+      codigo:     t.codigo,
+      descricao:  t.descricao ?? '',
+      categoria:  t.categoria ?? 'outros',
+      valorStr:   this.formatMoeda(t.valor),
+      vencimento: t.data_vencimento ?? '',
+    });
+    this.editandoTituloId.set(t.id);
+  }
+
+  cancelarEdicaoTitulo() {
+    this.editandoTituloId.set(null);
+  }
+
+  async salvarEdicaoTitulo(apuracaoId: string, tituloId: string) {
+    const dados = this.edicaoTitulo();
+    const valor = this.parseMoeda(dados.valorStr);
+
+    if (!dados.codigo.trim()) { this.snack.open('Informe o código do título.', 'OK', { duration: 3000 }); return; }
+    if (valor <= 0) { this.snack.open('Informe o valor do título.', 'OK', { duration: 3000 }); return; }
+    if (!dados.vencimento) { this.snack.open('Informe o vencimento do título.', 'OK', { duration: 3000 }); return; }
+
+    this.salvandoEdicaoTitulo.set(true);
+    try {
+      await this.service.editarTitulo(tituloId, {
+        codigo:         dados.codigo.trim(),
+        descricao:      dados.descricao.trim(),
+        categoria:      dados.categoria,
+        valor,
+        dataVencimento: dados.vencimento,
+      });
+      this.titulosPorApuracao.update(m => ({
+        ...m,
+        [apuracaoId]: (m[apuracaoId] ?? []).map(t => t.id === tituloId
+          ? { ...t, codigo: dados.codigo.trim(), descricao: dados.descricao.trim() || null, categoria: dados.categoria, valor, data_vencimento: dados.vencimento }
+          : t),
+      }));
+      this.editandoTituloId.set(null);
+      this.snack.open('Título atualizado com sucesso!', 'OK', { duration: 3000 });
+    } catch {
+      this.snack.open('Erro ao editar título.', 'OK', { duration: 4000 });
+    } finally {
+      this.salvandoEdicaoTitulo.set(false);
+    }
+  }
+
+  async excluirTitulo(apuracaoId: string, titulo: TituloApuracao) {
+    if (!confirm(`Confirma a exclusão do título "${titulo.codigo}"?`)) return;
+    try {
+      await this.service.excluirTitulo(titulo.id);
+      this.titulosPorApuracao.update(m => ({
+        ...m,
+        [apuracaoId]: (m[apuracaoId] ?? []).filter(t => t.id !== titulo.id),
+      }));
+      this.snack.open('Título excluído.', 'OK', { duration: 3000 });
+    } catch {
+      this.snack.open('Erro ao excluir título.', 'OK', { duration: 4000 });
     }
   }
 

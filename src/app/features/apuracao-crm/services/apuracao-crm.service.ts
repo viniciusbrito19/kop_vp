@@ -6,6 +6,9 @@ const ALIQUOTA_FPP      = 0.0385;
 const ALIQUOTA_LINHA    = 0.37;
 const ALIQUOTA_SAZONAL  = 0.275;
 
+/** Percentuais das 5 parcelas de Royalties Sazonal, nessa ordem (soma = 100%). */
+export const PERCENTUAIS_ROYALTIES_SAZONAL = [0.20, 0.20, 0.30, 0.15, 0.15];
+
 @Injectable({ providedIn: 'root' })
 export class ApuracaoCrmService {
   private db = inject(SupabaseService).client;
@@ -39,7 +42,7 @@ export class ApuracaoCrmService {
     });
 
     if (elegíveis.length === 0) {
-      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, fpp_linha: 0, fpp_sazonal: 0, roy_linha: 0, roy_sazonal: 0, credito_devolucao_garantida: 0, valor_produtos_sem_imposto_linha: 0 };
+      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, fpp_linha: 0, fpp_sazonal: 0, roy_linha: 0, roy_sazonal: 0, credito_devolucao_garantida: 0, valor_produtos_sem_imposto_linha: 0, grupos_royalties: [] };
     }
 
     // 2. Itens de todos os pedidos elegíveis
@@ -164,7 +167,27 @@ export class ApuracaoCrmService {
       (s, p) => s + p.itens.reduce((si, i) => si + (i.custo_total ?? 0), 0), 0);
     const credito_devolucao_garantida = (valorProdutosSemImpostoLinha + roy_linha) * 0.05;
 
-    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal, credito_devolucao_garantida, valor_produtos_sem_imposto_linha: valorProdutosSemImpostoLinha };
+    // 6. Grupos por (tipo, alíquota) — um mesmo período pode ter pedidos de Linha (ou Sazonal) com
+    // alíquotas diferentes; cada combinação é apurada e emitida como título(s) separado(s).
+    const gruposMap = new Map<string, { tipo: 'linha' | 'sazonal'; aliquota: number; roy_bruto: number; valor_produtos_sem_imposto: number }>();
+    for (const p of pedidosApuracao) {
+      const key = `${p.tipo}_${p.aliquota_royalties}`;
+      const entry = gruposMap.get(key) ?? { tipo: p.tipo, aliquota: p.aliquota_royalties, roy_bruto: 0, valor_produtos_sem_imposto: 0 };
+      for (const item of p.itens) {
+        entry.roy_bruto += item.royalties;
+        entry.valor_produtos_sem_imposto += item.custo_total ?? 0;
+      }
+      gruposMap.set(key, entry);
+    }
+    const grupos_royalties = Array.from(gruposMap.values())
+      .filter(g => g.roy_bruto > 0)
+      .map(g => ({
+        ...g,
+        credito_devolucao_garantida: g.tipo === 'linha' ? (g.valor_produtos_sem_imposto + g.roy_bruto) * 0.05 : 0,
+      }))
+      .sort((a, b) => a.tipo === b.tipo ? a.aliquota - b.aliquota : (a.tipo === 'linha' ? -1 : 1));
+
+    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal, credito_devolucao_garantida, valor_produtos_sem_imposto_linha: valorProdutosSemImpostoLinha, grupos_royalties };
   }
 
   /** Salva a apuração sem gerar títulos. Retorna o registro criado. */
@@ -227,13 +250,17 @@ export class ApuracaoCrmService {
   }
 
   /**
-   * Cria os títulos de Royalties (Linha e/ou Sazonal, valor líquido após créditos) para uma apuração confirmada.
-   * Royalties Linha é cobrado em 2 parcelas (30 e 45 dias do fechamento); Sazonal em parcela única.
+   * Cria os títulos de Royalties para uma apuração confirmada — um grupo por combinação (tipo, alíquota)
+   * presente no período (ex.: Linha 27,5%, Linha 37%, Sazonal 27,5%), cada um com seu valor líquido
+   * (após créditos) já segregado. Grupos 'linha' são cobrados em 2 parcelas (30 e 45 dias do fechamento);
+   * 'sazonal' em parcela única. As colunas agregadas de apuracoes_crm (valor_roy_linha/sazonal e créditos)
+   * recebem a soma de todos os grupos daquele tipo.
    */
   async emitirRoyalties(
     apuracaoId: string,
     itens: Array<{
-      subtipo: 'linha' | 'sazonal';
+      tipo: 'linha' | 'sazonal';
+      aliquota: number;
       valorBruto: number;
       valorLiquido: number;
       parcelas: Array<{ valor: number; dataVencimento: string }>;
@@ -247,18 +274,20 @@ export class ApuracaoCrmService {
     const mesLabel   = `${mesPad}/${ano}`;
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
 
-    const registros = itens.flatMap(({ subtipo, parcelas }) => {
-      const prefixo = subtipo === 'linha' ? 'LIN' : 'SAZ';
-      const nome    = subtipo === 'linha' ? 'Linha' : 'Sazonal';
+    const registros = itens.flatMap(({ tipo, aliquota, parcelas }) => {
+      const prefixo    = tipo === 'linha' ? 'LIN' : 'SAZ';
+      const nome       = tipo === 'linha' ? 'Linha' : 'Sazonal';
+      const aliqCodigo = Math.round(aliquota * 1000);
+      const aliqLabel  = (aliquota * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
       return parcelas.map((parcela, idx) => ({
         pedido_id:       null,
         apuracao_crm_id: apuracaoId,
         codigo:          parcelas.length > 1
-          ? `ROY-${prefixo}-P${idx + 1}-${ano}${mesPad}-Q${quinzena}`
-          : `ROY-${prefixo}-${ano}${mesPad}-Q${quinzena}`,
+          ? `ROY-${prefixo}-A${aliqCodigo}-P${idx + 1}-${ano}${mesPad}-Q${quinzena}`
+          : `ROY-${prefixo}-A${aliqCodigo}-${ano}${mesPad}-Q${quinzena}`,
         descricao:       parcelas.length > 1
-          ? `Royalties ${nome} — Parcela ${idx + 1}/${parcelas.length} ${quinzLabel} ${mesLabel}`
-          : `Royalties ${nome} ${quinzLabel} ${mesLabel}`,
+          ? `Royalties ${nome} ${aliqLabel}% — Parcela ${idx + 1}/${parcelas.length} ${quinzLabel} ${mesLabel}`
+          : `Royalties ${nome} ${aliqLabel}% ${quinzLabel} ${mesLabel}`,
         categoria:       'royalties',
         valor:           this.arredondar(parcela.valor),
         data_vencimento: parcela.dataVencimento,
@@ -269,25 +298,73 @@ export class ApuracaoCrmService {
     const { error: errTit } = await this.db.from('titulos').insert(registros);
     if (errTit) throw errTit;
 
-    const itemLinha   = itens.find(i => i.subtipo === 'linha');
-    const itemSazonal = itens.find(i => i.subtipo === 'sazonal');
+    const gruposLinha   = itens.filter(i => i.tipo === 'linha');
+    const gruposSazonal = itens.filter(i => i.tipo === 'sazonal');
+    const soma = (arr: typeof itens, sel: (i: typeof itens[number]) => number) => arr.reduce((s, i) => s + sel(i), 0);
 
     const { error: errUpd } = await this.db
       .from('apuracoes_crm')
       .update({
         royalties_emitidos:                 true,
-        ...(itemLinha   ? { valor_roy_linha:   this.arredondar(itemLinha.valorBruto) }   : {}),
-        ...(itemSazonal ? { valor_roy_sazonal: this.arredondar(itemSazonal.valorBruto) } : {}),
-        credito_devolucao_garantida:        this.arredondar(itemLinha?.devolucaoGarantida ?? 0),
-        credito_devolucoes_produto_linha:   this.arredondar(itemLinha?.devolucoesProduto ?? 0),
-        credito_devolucoes_produto_sazonal: this.arredondar(itemSazonal?.devolucoesProduto ?? 0),
-        credito_outros_linha:               this.arredondar(itemLinha?.outros ?? 0),
-        credito_outros_sazonal:             this.arredondar(itemSazonal?.outros ?? 0),
-        valor_roy_liquido_linha:            itemLinha   ? this.arredondar(itemLinha.valorLiquido)   : null,
-        valor_roy_liquido_sazonal:          itemSazonal ? this.arredondar(itemSazonal.valorLiquido) : null,
+        ...(gruposLinha.length   ? { valor_roy_linha:   this.arredondar(soma(gruposLinha, i => i.valorBruto)) }   : {}),
+        ...(gruposSazonal.length ? { valor_roy_sazonal: this.arredondar(soma(gruposSazonal, i => i.valorBruto)) } : {}),
+        credito_devolucao_garantida:        this.arredondar(soma(gruposLinha, i => i.devolucaoGarantida)),
+        credito_devolucoes_produto_linha:   this.arredondar(soma(gruposLinha, i => i.devolucoesProduto)),
+        credito_devolucoes_produto_sazonal: this.arredondar(soma(gruposSazonal, i => i.devolucoesProduto)),
+        credito_outros_linha:               this.arredondar(soma(gruposLinha, i => i.outros)),
+        credito_outros_sazonal:             this.arredondar(soma(gruposSazonal, i => i.outros)),
+        valor_roy_liquido_linha:            gruposLinha.length   ? this.arredondar(soma(gruposLinha, i => i.valorLiquido))   : null,
+        valor_roy_liquido_sazonal:          gruposSazonal.length ? this.arredondar(soma(gruposSazonal, i => i.valorLiquido)) : null,
       })
       .eq('id', apuracaoId);
     if (errUpd) throw errUpd;
+  }
+
+  /** Adiciona manualmente um título avulso a uma apuração já confirmada (ex.: ajustes, títulos não previstos no fluxo de FPP/Royalties). */
+  async adicionarTitulo(
+    apuracaoId: string,
+    dados: { codigo: string; descricao: string; categoria: string; valor: number; dataVencimento: string },
+  ): Promise<TituloApuracao> {
+    const { data, error } = await this.db
+      .from('titulos')
+      .insert({
+        pedido_id:       null,
+        apuracao_crm_id: apuracaoId,
+        codigo:          dados.codigo,
+        descricao:       dados.descricao || null,
+        categoria:       dados.categoria || null,
+        valor:           this.arredondar(dados.valor),
+        data_vencimento: dados.dataVencimento || null,
+        data_pagamento:  null,
+      })
+      .select('id, codigo, descricao, categoria, valor, data_vencimento, data_pagamento, lancamento_extrato_id')
+      .single();
+    if (error) throw error;
+    return data as TituloApuracao;
+  }
+
+  /** Edita um título já cadastrado (mantém data_pagamento/lancamento_extrato_id, geridos pela conciliação). */
+  async editarTitulo(
+    tituloId: string,
+    dados: { codigo: string; descricao: string; categoria: string; valor: number; dataVencimento: string },
+  ): Promise<void> {
+    const { error } = await this.db
+      .from('titulos')
+      .update({
+        codigo:          dados.codigo,
+        descricao:       dados.descricao || null,
+        categoria:       dados.categoria || null,
+        valor:           this.arredondar(dados.valor),
+        data_vencimento: dados.dataVencimento || null,
+      })
+      .eq('id', tituloId);
+    if (error) throw error;
+  }
+
+  /** Exclui um título cadastrado manual ou automaticamente. */
+  async excluirTitulo(tituloId: string): Promise<void> {
+    const { error } = await this.db.from('titulos').delete().eq('id', tituloId);
+    if (error) throw error;
   }
 
   /** Busca os títulos vinculados a uma apuração CRM. */
@@ -561,6 +638,19 @@ export class ApuracaoCrmService {
   /** Vencimento da 2ª parcela dos Royalties Linha: data_fim + 45 dias (1ª parcela usa vencimentoFpp, +30 dias). */
   vencimentoRoyaltiesLinhaParcela2(dataFim: string): string {
     return this.somarDias(dataFim, 45);
+  }
+
+  /**
+   * Vencimentos das 5 parcelas de Royalties Sazonal, encadeados a partir do fim do período apurado:
+   * P1 = fim + 50d; P2 = P1 + 20d; P3 = P2 + 20d; P4 = P3 + 10d; P5 = P4 + 10d.
+   */
+  vencimentosRoyaltiesSazonal(dataFim: string): string[] {
+    const p1 = this.somarDias(dataFim, 50);
+    const p2 = this.somarDias(p1, 20);
+    const p3 = this.somarDias(p2, 20);
+    const p4 = this.somarDias(p3, 10);
+    const p5 = this.somarDias(p4, 10);
+    return [p1, p2, p3, p4, p5];
   }
 
   /** Vencimento do FPP Sazonal: data_fim + 3 meses. */
