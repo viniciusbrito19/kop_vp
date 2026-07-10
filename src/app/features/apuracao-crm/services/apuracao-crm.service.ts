@@ -39,7 +39,7 @@ export class ApuracaoCrmService {
     });
 
     if (elegíveis.length === 0) {
-      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, fpp_linha: 0, fpp_sazonal: 0, roy_linha: 0, roy_sazonal: 0 };
+      return { pedidos: [], total_linha: 0, total_sazonal: 0, total_venda: 0, fpp: 0, fpp_linha: 0, fpp_sazonal: 0, roy_linha: 0, roy_sazonal: 0, credito_devolucao_garantida: 0, valor_produtos_sem_imposto_linha: 0 };
     }
 
     // 2. Itens de todos os pedidos elegíveis
@@ -158,7 +158,13 @@ export class ApuracaoCrmService {
     const roy_linha   = pedidosLinha.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
     const roy_sazonal = pedidosSazonal.reduce((s, p) => s + p.itens.reduce((si, i) => si + i.royalties, 0), 0);
 
-    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal };
+    // Crédito de Devolução Garantida: concedido pela franqueadora apenas sobre pedidos de Linha.
+    // Fórmula: (Σ valor dos produtos sem imposto (vProd/NF) dos pedidos de Linha + royalties bruto Linha) × 5%
+    const valorProdutosSemImpostoLinha = pedidosLinha.reduce(
+      (s, p) => s + p.itens.reduce((si, i) => si + (i.custo_total ?? 0), 0), 0);
+    const credito_devolucao_garantida = (valorProdutosSemImpostoLinha + roy_linha) * 0.05;
+
+    return { pedidos: pedidosApuracao, total_linha, total_sazonal, total_venda, fpp, fpp_linha, fpp_sazonal, roy_linha, roy_sazonal, credito_devolucao_garantida, valor_produtos_sem_imposto_linha: valorProdutosSemImpostoLinha };
   }
 
   /** Salva a apuração sem gerar títulos. Retorna o registro criado. */
@@ -216,6 +222,70 @@ export class ApuracaoCrmService {
     const { error: errUpd } = await this.db
       .from('apuracoes_crm')
       .update({ fpp_emitido: true })
+      .eq('id', apuracaoId);
+    if (errUpd) throw errUpd;
+  }
+
+  /**
+   * Cria os títulos de Royalties (Linha e/ou Sazonal, valor líquido após créditos) para uma apuração confirmada.
+   * Royalties Linha é cobrado em 2 parcelas (30 e 45 dias do fechamento); Sazonal em parcela única.
+   */
+  async emitirRoyalties(
+    apuracaoId: string,
+    itens: Array<{
+      subtipo: 'linha' | 'sazonal';
+      valorBruto: number;
+      valorLiquido: number;
+      parcelas: Array<{ valor: number; dataVencimento: string }>;
+      devolucaoGarantida: number;
+      devolucoesProduto: number;
+      outros: number;
+    }>,
+    ano: number, mes: number, quinzena: 1 | 2,
+  ): Promise<void> {
+    const mesPad     = String(mes).padStart(2, '0');
+    const mesLabel   = `${mesPad}/${ano}`;
+    const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
+
+    const registros = itens.flatMap(({ subtipo, parcelas }) => {
+      const prefixo = subtipo === 'linha' ? 'LIN' : 'SAZ';
+      const nome    = subtipo === 'linha' ? 'Linha' : 'Sazonal';
+      return parcelas.map((parcela, idx) => ({
+        pedido_id:       null,
+        apuracao_crm_id: apuracaoId,
+        codigo:          parcelas.length > 1
+          ? `ROY-${prefixo}-P${idx + 1}-${ano}${mesPad}-Q${quinzena}`
+          : `ROY-${prefixo}-${ano}${mesPad}-Q${quinzena}`,
+        descricao:       parcelas.length > 1
+          ? `Royalties ${nome} — Parcela ${idx + 1}/${parcelas.length} ${quinzLabel} ${mesLabel}`
+          : `Royalties ${nome} ${quinzLabel} ${mesLabel}`,
+        categoria:       'royalties',
+        valor:           this.arredondar(parcela.valor),
+        data_vencimento: parcela.dataVencimento,
+        data_pagamento:  null,
+      }));
+    });
+
+    const { error: errTit } = await this.db.from('titulos').insert(registros);
+    if (errTit) throw errTit;
+
+    const itemLinha   = itens.find(i => i.subtipo === 'linha');
+    const itemSazonal = itens.find(i => i.subtipo === 'sazonal');
+
+    const { error: errUpd } = await this.db
+      .from('apuracoes_crm')
+      .update({
+        royalties_emitidos:                 true,
+        ...(itemLinha   ? { valor_roy_linha:   this.arredondar(itemLinha.valorBruto) }   : {}),
+        ...(itemSazonal ? { valor_roy_sazonal: this.arredondar(itemSazonal.valorBruto) } : {}),
+        credito_devolucao_garantida:        this.arredondar(itemLinha?.devolucaoGarantida ?? 0),
+        credito_devolucoes_produto_linha:   this.arredondar(itemLinha?.devolucoesProduto ?? 0),
+        credito_devolucoes_produto_sazonal: this.arredondar(itemSazonal?.devolucoesProduto ?? 0),
+        credito_outros_linha:               this.arredondar(itemLinha?.outros ?? 0),
+        credito_outros_sazonal:             this.arredondar(itemSazonal?.outros ?? 0),
+        valor_roy_liquido_linha:            itemLinha   ? this.arredondar(itemLinha.valorLiquido)   : null,
+        valor_roy_liquido_sazonal:          itemSazonal ? this.arredondar(itemSazonal.valorLiquido) : null,
+      })
       .eq('id', apuracaoId);
     if (errUpd) throw errUpd;
   }
@@ -486,6 +556,11 @@ export class ApuracaoCrmService {
   /** Vencimento padrão do FPP Linha: data_fim + 30 dias. */
   vencimentoFpp(dataFim: string): string {
     return this.somarDias(dataFim, 30);
+  }
+
+  /** Vencimento da 2ª parcela dos Royalties Linha: data_fim + 45 dias (1ª parcela usa vencimentoFpp, +30 dias). */
+  vencimentoRoyaltiesLinhaParcela2(dataFim: string): string {
+    return this.somarDias(dataFim, 45);
   }
 
   /** Vencimento do FPP Sazonal: data_fim + 3 meses. */

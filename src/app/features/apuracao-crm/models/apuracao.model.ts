@@ -15,6 +15,13 @@ export interface ApuracaoCrm {
   status: 'calculado' | 'confirmado';
   fpp_emitido: boolean;
   royalties_emitidos: boolean;
+  credito_devolucao_garantida: number;
+  credito_devolucoes_produto_linha: number;
+  credito_devolucoes_produto_sazonal: number;
+  credito_outros_linha: number;
+  credito_outros_sazonal: number;
+  valor_roy_liquido_linha: number | null;
+  valor_roy_liquido_sazonal: number | null;
   created_at: string;
 }
 
@@ -70,6 +77,8 @@ export interface PreviewApuracao {
   fpp_sazonal: number;
   roy_linha: number;
   roy_sazonal: number;
+  credito_devolucao_garantida: number;
+  valor_produtos_sem_imposto_linha: number;
 }
 
 export interface ItemReconciliado {

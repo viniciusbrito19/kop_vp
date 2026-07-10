@@ -14,6 +14,19 @@ interface ModalFppCtx {
   fppLinha: number;
   fppSazonal: number;
 }
+
+interface ModalRoyaltiesCtx {
+  periodoLabel: string;
+  modo: 'preview' | 'historico';
+  ano: number;
+  mes: number;
+  quinzena: 1 | 2;
+  apuracaoId?: string;
+  royLinha: number;
+  roySazonal: number;
+  /** Σ valor dos produtos sem imposto (vProd) das notas de Linha — base fixa da fórmula da Devolução Garantida. */
+  valorProdutosSemImpostoLinha: number;
+}
 import { DecimalPipe, DatePipe, NgClass } from '@angular/common';
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -353,15 +366,22 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
           </div>
 
           <div class="emissao-btns">
-            <button class="btn primary emissao-btn" [disabled]="emitindoFpp()" (click)="abrirModalFppPreview()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-              Emitir FPP
-            </button>
-            <button class="btn ghost emissao-btn" disabled title="Em breve — aguarde a implementação dos royalties">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-              Emitir Royalties
-              <span class="em-breve-badge">em breve</span>
-            </button>
+            @if (apuracaoExistentePreview()?.fpp_emitido) {
+              <span class="titulo-emitido-badge emissao-btn">FPP já emitido ✓</span>
+            } @else {
+              <button class="btn primary emissao-btn" [disabled]="emitindoFpp()" (click)="abrirModalFppPreview()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Emitir FPP
+              </button>
+            }
+            @if (apuracaoExistentePreview()?.royalties_emitidos) {
+              <span class="titulo-emitido-badge emissao-btn">Royalties já emitidos ✓</span>
+            } @else {
+              <button class="btn ghost emissao-btn" [disabled]="emitindoRoyalties()" (click)="abrirModalRoyaltiesPreview()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Emitir Royalties
+              </button>
+            }
           </div>
 
         </div>
@@ -430,6 +450,11 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                     } @else {
                       <button class="btn outline xs" (click)="abrirModalFppHistorico(a)">Emitir FPP</button>
                     }
+                    @if (a.royalties_emitidos) {
+                      <span class="titulo-emitido-badge">Royalties ✓</span>
+                    } @else {
+                      <button class="badge-roy-pendente" [disabled]="abrindoModalRoyalties()" (click)="abrirModalRoyaltiesHistorico(a)" title="Emitir Royalties">ROY</button>
+                    }
                   </div>
 
                 </div>
@@ -470,7 +495,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                 <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
                                 <td class="pagamento-cell">
                                   @if (t.data_pagamento) {
-                                    <span class="pago-badge" [attr.data-tooltip]="t.data_pagamento | date:'dd/MM/yyyy'">Pago</span>
+                                    <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
                                   } @else if (sugestoesConciliacao()[t.id]) {
                                     <span class="identificado-badge">Identificado</span>
                                   } @else if (t.data_vencimento && t.data_vencimento < today) {
@@ -572,6 +597,136 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 Emitindo…
               } @else {
                 Confirmar e Emitir Título FPP
+              }
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- ── Modal Emissão Royalties ──────────────────────────── -->
+      @if (modalRoyalties()) {
+        <div class="dialog-overlay" (click)="fecharModalRoyalties()"></div>
+        <div class="dialog-map dialog-royalties">
+          <div class="dialog-header">
+            <div class="dialog-header-info">
+              <div class="dialog-title">Emitir Título — Royalties</div>
+              <div class="dialog-subtitle">{{ modalRoyalties()!.periodoLabel }}</div>
+            </div>
+            <button class="btn ghost icon sm" (click)="fecharModalRoyalties()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="dialog-body">
+            @if (royAmbosTipos()) {
+              <div class="quinzena-selector roy-tab-selector">
+                <button class="q-btn" [class.active]="royTabAtiva() === 'linha'" (click)="royTabAtiva.set('linha')">Linha</button>
+                <button class="q-btn" [class.active]="royTabAtiva() === 'sazonal'" (click)="royTabAtiva.set('sazonal')">Sazonal</button>
+              </div>
+            }
+            @if (modalRoyalties()!.royLinha > 0 && (!royAmbosTipos() || royTabAtiva() === 'linha')) {
+              <div class="roy-fields-grid">
+                <label class="input">
+                  <span>Royalties Linha (bruto) (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royBrutoLinhaStr()"
+                         (input)="onRoyBrutoLinhaInput($any($event.target).value)"
+                         placeholder="0,00" [autofocus]="true" />
+                </label>
+                <label class="input">
+                  <span>(-) Crédito Devolução Garantida (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royDevGarantidaStr()"
+                         (input)="royDevGarantidaStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>(-) Crédito Devoluções de Produto (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royDevProdutoLinhaStr()"
+                         (input)="royDevProdutoLinhaStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>(-) Outros Créditos (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royOutrosLinhaStr()"
+                         (input)="royOutrosLinhaStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>Vencimento — Parcela 1 (R$ {{ royParcela1Linha() | number:'1.2-2':'pt-BR' }})</span>
+                  <input type="date"
+                         [value]="royVencimentoLinhaP1()"
+                         (input)="royVencimentoLinhaP1.set($any($event.target).value)" />
+                </label>
+                <label class="input">
+                  <span>Vencimento — Parcela 2 (R$ {{ royParcela2Linha() | number:'1.2-2':'pt-BR' }})</span>
+                  <input type="date"
+                         [value]="royVencimentoLinhaP2()"
+                         (input)="royVencimentoLinhaP2.set($any($event.target).value)" />
+                </label>
+              </div>
+              <div class="calc-row total">
+                <span>Royalties líquido — Linha (2 parcelas)</span>
+                <span>R$ {{ royaltiesLiquidoLinha() | number:'1.2-2':'pt-BR' }}</span>
+              </div>
+              <div class="calc-divider"></div>
+            }
+            @if (modalRoyalties()!.roySazonal > 0 && (!royAmbosTipos() || royTabAtiva() === 'sazonal')) {
+              <div class="roy-fields-grid">
+                <label class="input">
+                  <span>Royalties Sazonal (bruto) (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royBrutoSazonalStr()"
+                         (input)="royBrutoSazonalStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>(-) Crédito Devoluções de Produto (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royDevProdutoSazonalStr()"
+                         (input)="royDevProdutoSazonalStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>(-) Outros Créditos (R$)</span>
+                  <input type="text" inputmode="decimal"
+                         [value]="royOutrosSazonalStr()"
+                         (input)="royOutrosSazonalStr.set($any($event.target).value)"
+                         placeholder="0,00" />
+                </label>
+                <label class="input">
+                  <span>Vencimento</span>
+                  <input type="date"
+                         [value]="royVencimentoSazonal()"
+                         (input)="royVencimentoSazonal.set($any($event.target).value)" />
+                </label>
+              </div>
+              <div class="calc-row total">
+                <span>Royalties líquido — Sazonal</span>
+                <span>R$ {{ royaltiesLiquidoSazonal() | number:'1.2-2':'pt-BR' }}</span>
+              </div>
+              <div class="calc-divider"></div>
+            }
+            <div class="calc-row total-geral">
+              <span>Royalties líquido total a cobrar</span>
+              <span>R$ {{ royaltiesLiquidoTotal() | number:'1.2-2':'pt-BR' }}</span>
+            </div>
+            <div class="fpp-modal-info">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Royalties bruto vem calculado, mas pode ser ajustado caso não bata com o valor da franqueadora — ao alterar o bruto Linha, a Devolução Garantida é recalculada automaticamente ((Σ produtos sem imposto das notas de Linha + royalties bruto Linha) × 5%). Royalties Linha é cobrado em 2 parcelas iguais, vencendo em 30 e 45 dias do fechamento; Sazonal em parcela única, em 3 meses. Ajuste as datas se necessário.
+            </div>
+            <button class="btn primary w-full"
+                    [disabled]="emitindoRoyalties()"
+                    (click)="confirmarEmissaoRoyalties()">
+              @if (emitindoRoyalties()) {
+                <svg class="spin-sm" width="16" height="16" viewBox="0 0 36 36" fill="none">
+                  <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+                  <path d="M18 3 A15 15 0 0 1 33 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                Emitindo…
+              } @else {
+                Confirmar e Emitir Título de Royalties
               }
             </button>
           </div>
@@ -694,6 +849,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       small { font-size: 11px; color: var(--text-4); }
       &.active { border-color: var(--bordo, #7A1F2B); background: color-mix(in srgb, var(--bordo, #7A1F2B) 8%, transparent); color: var(--bordo, #7A1F2B); font-weight: 600; }
     }
+    .roy-tab-selector { margin-bottom: 4px; }
     .calc-btn { white-space: nowrap; }
     .empty-preview {
       display: flex; align-items: center; gap: 8px;
@@ -976,7 +1132,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .dialog-ocorr { font-size: 11px; color: var(--text-4); margin-top: 2px; }
-    .dialog-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+    .dialog-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; }
     .map-loading { display: flex; align-items: center; gap: 10px; padding: 24px; justify-content: center; color: var(--text-3); font-size: 13px; }
     .map-search {
       width: 100%; box-sizing: border-box;
@@ -1013,13 +1169,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       display: inline-flex; align-items: center; gap: 7px;
       flex: 1; justify-content: center; min-width: 160px;
     }
-    .em-breve-badge {
-      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-      padding: 2px 6px; border-radius: 4px;
-      background: color-mix(in srgb, var(--text-4) 15%, transparent);
-      color: var(--text-4);
-    }
-
     /* ─── Títulos badges no histórico ─── */
     .titulos-badges {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1028,6 +1177,15 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
       background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
+    }
+    .badge-roy-pendente {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: color-mix(in srgb, #C28A1E 16%, transparent); color: #7A5510;
+      border: none; cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s;
+      &:hover:not(:disabled) { opacity: 0.75; }
+      &:disabled { opacity: 0.5; cursor: default; }
     }
 
     /* ─── Accordion do histórico ─── */
@@ -1068,18 +1226,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .pago-badge, .pendente-badge, .atraso-badge, .identificado-badge {
       display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
     }
-    .pago-badge {
-      background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32);
-      position: relative; cursor: default;
-      &[data-tooltip]::after {
-        content: attr(data-tooltip);
-        position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
-        background: #1a1a1a; color: #fff; font-size: 11px; font-weight: 400;
-        padding: 3px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none;
-        opacity: 0; transition: opacity .15s;
-      }
-      &[data-tooltip]:hover::after { opacity: 1; }
-    }
+    .pago-badge { background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32); }
     .pendente-badge    { background: color-mix(in srgb, #C28A1E 12%, transparent); color: #7A5510; }
     .atraso-badge      { background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; }
     .identificado-badge{ background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; }
@@ -1095,6 +1242,11 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 
     /* ─── Modal FPP ─── */
     .dialog-fpp { width: 420px; }
+    /* ─── Modal Royalties ─── */
+    .dialog-royalties { width: 520px; }
+    .roy-fields-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
+    }
     .fpp-modal-info {
       display: flex; align-items: flex-start; gap: 8px;
       padding: 10px 12px; border-radius: 8px; font-size: 12px; color: var(--text-3);
@@ -1140,6 +1292,22 @@ export class ListaApuracoesComponent implements OnInit {
   fppValorSazonalStr     = signal('');
   fppVencimentoLinha     = signal('');
   fppVencimentoSazonal   = signal('');
+
+  emitindoRoyalties          = signal(false);
+  abrindoModalRoyalties      = signal(false);
+  modalRoyalties             = signal<ModalRoyaltiesCtx | null>(null);
+  royBrutoLinhaStr           = signal('');
+  royBrutoSazonalStr         = signal('');
+  royVencimentoLinhaP1       = signal('');
+  royVencimentoLinhaP2       = signal('');
+  royVencimentoSazonal       = signal('');
+  royDevGarantidaStr         = signal('');
+  royDevProdutoLinhaStr      = signal('');
+  royDevProdutoSazonalStr    = signal('');
+  royOutrosLinhaStr          = signal('');
+  royOutrosSazonalStr        = signal('');
+  royTabAtiva                = signal<'linha' | 'sazonal'>('linha');
+
   expandidosHistorico   = signal<Set<string>>(new Set());
   titulosPorApuracao    = signal<Record<string, TituloApuracao[]>>({});
   carregandoTitulos     = signal<string | null>(null);
@@ -1173,6 +1341,71 @@ export class ListaApuracoesComponent implements OnInit {
     if (!p) return 0;
     return p.fpp + p.roy_linha + p.roy_sazonal;
   });
+
+  private apuracaoDoPeriodo(ano: number, mes: number, quinzena: 1 | 2): ApuracaoCrm | undefined {
+    return this.apuracoes().find(a => a.ano === ano && a.mes === mes && a.quinzena === quinzena);
+  }
+
+  /** Apuração já existente (se houver) para o período selecionado no preview — usada para bloquear reemissão. */
+  apuracaoExistentePreview = computed(() => {
+    this.preview(); // recalcula quando um novo preview é gerado para o período selecionado
+    return this.apuracaoDoPeriodo(this.selecionado.ano, this.selecionado.mes, this.selecionado.quinzena);
+  });
+
+  /** true quando o período tem royalties de Linha E de Sazonal — exibe o chaveador de abas no modal. */
+  royAmbosTipos = computed(() => {
+    const ctx = this.modalRoyalties();
+    return !!ctx && ctx.royLinha > 0 && ctx.roySazonal > 0;
+  });
+
+  private parseMoeda(s: string): number {
+    const v = parseFloat(s.trim().replace(',', '.'));
+    return isNaN(v) ? 0 : v;
+  }
+
+  private formatMoeda(n: number): string {
+    return n.toFixed(2).replace('.', ',');
+  }
+
+  royBrutoLinhaEditado   = computed(() => this.parseMoeda(this.royBrutoLinhaStr()));
+  royBrutoSazonalEditado = computed(() => this.parseMoeda(this.royBrutoSazonalStr()));
+
+  royaltiesLiquidoLinha = computed(() => {
+    const ctx = this.modalRoyalties();
+    if (!ctx) return 0;
+    const creditos = this.parseMoeda(this.royDevGarantidaStr())
+      + this.parseMoeda(this.royDevProdutoLinhaStr())
+      + this.parseMoeda(this.royOutrosLinhaStr());
+    return this.royBrutoLinhaEditado() - creditos;
+  });
+
+  royaltiesLiquidoSazonal = computed(() => {
+    const ctx = this.modalRoyalties();
+    if (!ctx) return 0;
+    const creditos = this.parseMoeda(this.royDevProdutoSazonalStr())
+      + this.parseMoeda(this.royOutrosSazonalStr());
+    return this.royBrutoSazonalEditado() - creditos;
+  });
+
+  royaltiesLiquidoTotal = computed(() => this.royaltiesLiquidoLinha() + this.royaltiesLiquidoSazonal());
+
+  /** Royalties Linha é cobrado em 2 parcelas iguais (30 e 45 dias); a 2ª absorve o resto do arredondamento. */
+  royParcela1Linha = computed(() => Math.round(this.royaltiesLiquidoLinha() / 2 * 100) / 100);
+  royParcela2Linha = computed(() => Math.round((this.royaltiesLiquidoLinha() - this.royParcela1Linha()) * 100) / 100);
+
+  /**
+   * O royalties bruto Linha pode ser ajustado manualmente (pode não bater com o valor calculado
+   * pela franqueadora). Quando ajustado, a Devolução Garantida — que depende do bruto Linha na
+   * fórmula (Σ produtos sem imposto + royalties bruto Linha) × 5% — precisa ser recalculada.
+   */
+  onRoyBrutoLinhaInput(valor: string) {
+    this.royBrutoLinhaStr.set(valor);
+    const ctx = this.modalRoyalties();
+    if (!ctx) return;
+    const brutoAjustado = this.parseMoeda(valor);
+    const sugestao = (ctx.valorProdutosSemImpostoLinha + brutoAjustado) * 0.05;
+    this.royDevGarantidaStr.set(sugestao > 0 ? this.formatMoeda(sugestao) : '');
+  }
 
   async ngOnInit() {
     await this.carregar();
@@ -1212,8 +1445,8 @@ export class ListaApuracoesComponent implements OnInit {
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
     const fppLinha   = p?.fpp_linha   ?? 0;
     const fppSazonal = p?.fpp_sazonal ?? 0;
-    this.fppValorLinhaStr.set(fppLinha   > 0 ? fppLinha.toFixed(2)   : '');
-    this.fppValorSazonalStr.set(fppSazonal > 0 ? fppSazonal.toFixed(2) : '');
+    this.fppValorLinhaStr.set(fppLinha   > 0 ? this.formatMoeda(fppLinha)   : '');
+    this.fppValorSazonalStr.set(fppSazonal > 0 ? this.formatMoeda(fppSazonal) : '');
     this.fppVencimentoLinha.set(this.service.vencimentoFpp(fim));
     this.fppVencimentoSazonal.set(this.service.vencimentoFppSazonal(fim));
     this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena, fppLinha, fppSazonal });
@@ -1224,8 +1457,8 @@ export class ListaApuracoesComponent implements OnInit {
     const totalGeral = a.total_linha + a.total_sazonal;
     const fppLinha   = totalGeral > 0 && a.total_linha   > 0 ? a.valor_fpp * (a.total_linha   / totalGeral) : (a.total_sazonal === 0 ? a.valor_fpp : 0);
     const fppSazonal = totalGeral > 0 && a.total_sazonal > 0 ? a.valor_fpp * (a.total_sazonal / totalGeral) : (a.total_linha   === 0 ? a.valor_fpp : 0);
-    this.fppValorLinhaStr.set(fppLinha   > 0 ? fppLinha.toFixed(2)   : '');
-    this.fppValorSazonalStr.set(fppSazonal > 0 ? fppSazonal.toFixed(2) : '');
+    this.fppValorLinhaStr.set(fppLinha   > 0 ? this.formatMoeda(fppLinha)   : '');
+    this.fppValorSazonalStr.set(fppSazonal > 0 ? this.formatMoeda(fppSazonal) : '');
     this.fppVencimentoLinha.set(a.data_vencimento);
     this.fppVencimentoSazonal.set(this.service.vencimentoFppSazonal(a.data_fim));
     this.modalFpp.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id, fppLinha, fppSazonal });
@@ -1238,6 +1471,15 @@ export class ListaApuracoesComponent implements OnInit {
   async confirmarEmissaoFpp() {
     const ctx = this.modalFpp();
     if (!ctx) return;
+
+    const existente = ctx.modo === 'preview'
+      ? this.apuracaoDoPeriodo(ctx.ano, ctx.mes, ctx.quinzena)
+      : this.apuracoes().find(a => a.id === ctx.apuracaoId);
+    if (existente?.fpp_emitido) {
+      this.snack.open('FPP já foi emitido para este período.', 'OK', { duration: 4000 });
+      this.modalFpp.set(null);
+      return;
+    }
 
     const parseFpp = (s: string) => parseFloat(s.trim().replace(',', '.'));
     const itensFpp: Array<{ subtipo: 'linha' | 'sazonal'; valor: number; dataVencimento: string }> = [];
@@ -1262,7 +1504,9 @@ export class ListaApuracoesComponent implements OnInit {
     try {
       let apuracaoId: string;
 
-      if (ctx.modo === 'preview') {
+      if (existente) {
+        apuracaoId = existente.id;
+      } else if (ctx.modo === 'preview') {
         const p = this.preview();
         if (!p) return;
         const apuracao = await this.service.confirmar(p, ctx.ano, ctx.mes, ctx.quinzena);
@@ -1296,6 +1540,164 @@ export class ListaApuracoesComponent implements OnInit {
       this.snack.open(msg, 'OK', { duration: 4000 });
     } finally {
       this.emitindoFpp.set(false);
+    }
+  }
+
+  abrirModalRoyaltiesPreview() {
+    const { ano, mes, quinzena } = this.selecionado;
+    const { fim } = this.service.intervalo(ano, mes, quinzena);
+    const p = this.preview();
+    const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
+    const royLinha   = p?.roy_linha   ?? 0;
+    const roySazonal = p?.roy_sazonal ?? 0;
+    this.royBrutoLinhaStr.set(royLinha > 0 ? this.formatMoeda(royLinha) : '');
+    this.royBrutoSazonalStr.set(roySazonal > 0 ? this.formatMoeda(roySazonal) : '');
+    this.royVencimentoLinhaP1.set(this.service.vencimentoFpp(fim));
+    this.royVencimentoLinhaP2.set(this.service.vencimentoRoyaltiesLinhaParcela2(fim));
+    this.royVencimentoSazonal.set(this.service.vencimentoFppSazonal(fim));
+    this.royDevGarantidaStr.set(p && p.credito_devolucao_garantida > 0 ? this.formatMoeda(p.credito_devolucao_garantida) : '');
+    this.royDevProdutoLinhaStr.set('');
+    this.royDevProdutoSazonalStr.set('');
+    this.royOutrosLinhaStr.set('');
+    this.royOutrosSazonalStr.set('');
+    this.royTabAtiva.set(royLinha > 0 ? 'linha' : 'sazonal');
+    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena, royLinha, roySazonal, valorProdutosSemImpostoLinha: p?.valor_produtos_sem_imposto_linha ?? 0 });
+  }
+
+  async abrirModalRoyaltiesHistorico(a: ApuracaoCrm) {
+    const quinzLabel = a.quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
+    this.royBrutoLinhaStr.set(a.valor_roy_linha > 0 ? this.formatMoeda(a.valor_roy_linha) : '');
+    this.royBrutoSazonalStr.set(a.valor_roy_sazonal > 0 ? this.formatMoeda(a.valor_roy_sazonal) : '');
+    this.royVencimentoLinhaP1.set(a.data_vencimento);
+    this.royVencimentoLinhaP2.set(this.service.vencimentoRoyaltiesLinhaParcela2(a.data_fim));
+    this.royVencimentoSazonal.set(this.service.vencimentoFppSazonal(a.data_fim));
+    this.royDevProdutoLinhaStr.set('');
+    this.royDevProdutoSazonalStr.set('');
+    this.royOutrosLinhaStr.set('');
+    this.royOutrosSazonalStr.set('');
+    this.royTabAtiva.set(a.valor_roy_linha > 0 ? 'linha' : 'sazonal');
+
+    // credito_devolucao_garantida só fica gravado na apuração DEPOIS de emitido; para uma apuração
+    // ainda não emitida, precisamos recalcular a sugestão a partir dos pedidos do período (mesma
+    // fórmula do preview), já que ela não é persistida no confirmar().
+    this.abrindoModalRoyalties.set(true);
+    let valorProdutosSemImpostoLinha = 0;
+    try {
+      const p = await this.service.calcularPreview(a.ano, a.mes, a.quinzena);
+      this.royDevGarantidaStr.set(p.credito_devolucao_garantida > 0 ? this.formatMoeda(p.credito_devolucao_garantida) : '');
+      valorProdutosSemImpostoLinha = p.valor_produtos_sem_imposto_linha;
+    } catch {
+      this.royDevGarantidaStr.set(a.credito_devolucao_garantida > 0 ? this.formatMoeda(a.credito_devolucao_garantida) : '');
+      this.snack.open('Não foi possível recalcular a Devolução Garantida sugerida — informe manualmente.', 'OK', { duration: 4000 });
+    } finally {
+      this.abrindoModalRoyalties.set(false);
+    }
+
+    this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[a.mes - 1]}/${a.ano}`, modo: 'historico', ano: a.ano, mes: a.mes, quinzena: a.quinzena, apuracaoId: a.id, royLinha: a.valor_roy_linha, roySazonal: a.valor_roy_sazonal, valorProdutosSemImpostoLinha });
+  }
+
+  fecharModalRoyalties() {
+    this.modalRoyalties.set(null);
+  }
+
+  async confirmarEmissaoRoyalties() {
+    const ctx = this.modalRoyalties();
+    if (!ctx) return;
+
+    const existente = ctx.modo === 'preview'
+      ? this.apuracaoDoPeriodo(ctx.ano, ctx.mes, ctx.quinzena)
+      : this.apuracoes().find(a => a.id === ctx.apuracaoId);
+    if (existente?.royalties_emitidos) {
+      this.snack.open('Royalties já foram emitidos para este período.', 'OK', { duration: 4000 });
+      this.modalRoyalties.set(null);
+      return;
+    }
+
+    const itensRoy: Array<{
+      subtipo: 'linha' | 'sazonal';
+      valorBruto: number;
+      valorLiquido: number;
+      parcelas: Array<{ valor: number; dataVencimento: string }>;
+      devolucaoGarantida: number;
+      devolucoesProduto: number;
+      outros: number;
+    }> = [];
+
+    if (ctx.royLinha > 0) {
+      const bruto = this.royBrutoLinhaEditado();
+      if (bruto <= 0) { this.snack.open('Informe o valor do royalties bruto Linha.', 'OK', { duration: 3000 }); return; }
+      const d1 = this.royVencimentoLinhaP1();
+      const d2 = this.royVencimentoLinhaP2();
+      if (!d1 || !d2) { this.snack.open('Informe o vencimento das duas parcelas dos Royalties Linha.', 'OK', { duration: 3000 }); return; }
+      itensRoy.push({
+        subtipo: 'linha',
+        valorBruto: bruto,
+        valorLiquido: this.royaltiesLiquidoLinha(),
+        parcelas: [
+          { valor: this.royParcela1Linha(), dataVencimento: d1 },
+          { valor: this.royParcela2Linha(), dataVencimento: d2 },
+        ],
+        devolucaoGarantida: this.parseMoeda(this.royDevGarantidaStr()),
+        devolucoesProduto:  this.parseMoeda(this.royDevProdutoLinhaStr()),
+        outros:             this.parseMoeda(this.royOutrosLinhaStr()),
+      });
+    }
+    if (ctx.roySazonal > 0) {
+      const bruto = this.royBrutoSazonalEditado();
+      if (bruto <= 0) { this.snack.open('Informe o valor do royalties bruto Sazonal.', 'OK', { duration: 3000 }); return; }
+      const d = this.royVencimentoSazonal();
+      if (!d) { this.snack.open('Informe o vencimento dos Royalties Sazonal.', 'OK', { duration: 3000 }); return; }
+      itensRoy.push({
+        subtipo: 'sazonal',
+        valorBruto: bruto,
+        valorLiquido: this.royaltiesLiquidoSazonal(),
+        parcelas: [{ valor: this.royaltiesLiquidoSazonal(), dataVencimento: d }],
+        devolucaoGarantida: 0,
+        devolucoesProduto:  this.parseMoeda(this.royDevProdutoSazonalStr()),
+        outros:             this.parseMoeda(this.royOutrosSazonalStr()),
+      });
+    }
+    if (itensRoy.length === 0) { this.snack.open('Nenhum Royalties a emitir.', 'OK', { duration: 3000 }); return; }
+
+    this.emitindoRoyalties.set(true);
+    try {
+      let apuracaoId: string;
+
+      if (existente) {
+        apuracaoId = existente.id;
+      } else if (ctx.modo === 'preview') {
+        const p = this.preview();
+        if (!p) return;
+        const apuracao = await this.service.confirmar(p, ctx.ano, ctx.mes, ctx.quinzena);
+        apuracaoId = apuracao.id;
+      } else {
+        apuracaoId = ctx.apuracaoId!;
+      }
+
+      await this.service.emitirRoyalties(apuracaoId, itensRoy, ctx.ano, ctx.mes, ctx.quinzena);
+
+      this.snack.open('Título de Royalties emitido com sucesso!', 'OK', { duration: 4000 });
+      this.modalRoyalties.set(null);
+
+      if (ctx.modo === 'preview') {
+        this.preview.set(null);
+        this.expandidos.set(new Set());
+      }
+
+      this.titulosPorApuracao.update(m => {
+        const copia = { ...m };
+        delete copia[apuracaoId];
+        return copia;
+      });
+
+      await this.carregar();
+    } catch (err: any) {
+      const msg = err?.message?.includes('unique')
+        ? 'Já existe apuração confirmada para este período.'
+        : 'Erro ao emitir título de Royalties.';
+      this.snack.open(msg, 'OK', { duration: 4000 });
+    } finally {
+      this.emitindoRoyalties.set(false);
     }
   }
 
