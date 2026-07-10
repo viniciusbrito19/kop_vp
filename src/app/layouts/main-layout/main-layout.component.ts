@@ -1,7 +1,9 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
+import { PageHeaderService } from '../../core/services/page-header.service';
 import { environment } from '../../../environments/environment';
 
 interface NavItem {
@@ -31,6 +33,20 @@ const ICONS: Record<string, string> = {
   outros:    icon('<rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/>'),
 };
 
+const PAGE_TITLES: Record<string, string> = {
+  'pedidos':               'Pedidos',
+  'receitas':              'Receitas',
+  'despesas':              'Despesas',
+  'financeiro':            'Extrato',
+  'fluxo-caixa':           'Fluxo de Caixa',
+  'apuracao-crm':          'Royalties e FPP',
+  'fornecedores':          'Fornecedores',
+  'produtos':              'Produtos',
+  'categorias-fornecedor': 'Categorias',
+  'tipos-pedido':          'Tipos de Pedido',
+  'outros':                'Outros',
+};
+
 @Component({
   selector: 'app-main-layout',
   standalone: true,
@@ -41,16 +57,20 @@ const ICONS: Record<string, string> = {
 export class MainLayoutComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private auth = inject(AuthService);
+  private router = inject(Router);
+  private pageHeader = inject(PageHeaderService);
+
+  pageSubtitle = this.pageHeader.subtitle;
 
   collapsed = false;
   darkMode = false;
   loggingOut = signal(false);
   showInfo = signal(false);
+  mobileMenuOpen = signal(false);
 
   displayName = signal('');
   initials   = signal('');
-  firstName  = signal('');
-  dateLabel  = signal('');
+  pageTitle  = signal('');
 
   readonly appVersion = environment.appVersion;
 
@@ -59,16 +79,11 @@ export class MainLayoutComponent implements OnInit {
     const name: string = user?.user_metadata?.['display_name'] ?? user?.email ?? '';
     this.displayName.set(name);
     this.initials.set(this.toInitials(name));
-    this.firstName.set(this.toFirstName(name));
-    this.dateLabel.set(this.buildDateLabel());
 
-    this.mobileNavItems = [
-      { label: 'Pedidos',    route: '/pedidos',    iconSvg: this.safe(ICONS['orders'])  },
-      { label: 'Receitas',   route: '/receitas',   iconSvg: this.safe(ICONS['receive']) },
-      { label: 'Despesas',   route: '/despesas',   iconSvg: this.safe(ICONS['wallet'])  },
-      { label: 'Financeiro', route: '/financeiro', iconSvg: this.safe(ICONS['finance']) },
-      { label: 'Outros',     route: '/outros',     iconSvg: this.safe(ICONS['outros'])  },
-    ];
+    this.updatePageTitle(this.router.url);
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe(e => this.updatePageTitle(e.urlAfterRedirects));
   }
 
   private toInitials(name: string): string {
@@ -77,17 +92,10 @@ export class MainLayoutComponent implements OnInit {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  private toFirstName(name: string): string {
-    const raw = name.trim().split(/\s+/)[0] ?? '';
-    return raw.includes('@') ? raw.split('@')[0] : raw;
-  }
-
-  private buildDateLabel(): string {
-    const now = new Date();
-    const weekday = now.toLocaleDateString('pt-BR', { weekday: 'long' });
-    const day     = now.getDate();
-    const month   = now.toLocaleDateString('pt-BR', { month: 'long' });
-    return weekday.charAt(0).toUpperCase() + weekday.slice(1) + ', ' + day + ' de ' + month;
+  private updatePageTitle(url: string): void {
+    const segment = url.split('?')[0].split('/').filter(Boolean)[0] ?? '';
+    this.pageTitle.set(PAGE_TITLES[segment] ?? 'Kop VP');
+    this.pageHeader.setSubtitle(null);
   }
 
   navOperacao: NavItem[] = [
@@ -110,14 +118,20 @@ export class MainLayoutComponent implements OnInit {
     return [...this.navOperacao, ...this.navConfiguracoes];
   }
 
-  mobileNavItems: NavItem[] = [];
-
   private safe(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   toggleCollapse(): void {
     this.collapsed = !this.collapsed;
+  }
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen.update(v => !v);
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
   }
 
   toggleInfo(): void {

@@ -6,6 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProdutosService } from '../../services/produtos.service';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 import { Item } from '../../models/produto.model';
 import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './importar-produtos-dialog.component';
 
@@ -29,7 +30,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       <div class="content">
 
         <!-- ── Header ──────────────────────────────────── -->
-        <div class="row heading-row">
+        <div class="row heading-row list-page-heading">
           <div>
             <h1 class="page">Lista de <span class="accent serif">produtos</span></h1>
             <div class="page-sub">{{ itens().length }} itens cadastrados no catálogo</div>
@@ -457,6 +458,7 @@ export class ListaProdutosComponent implements OnInit {
   private svc    = inject(ProdutosService);
   private snack  = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private pageHeader = inject(PageHeaderService);
 
   itens           = signal<Item[]>([]);
   carregando      = signal(false);
@@ -507,6 +509,10 @@ export class ListaProdutosComponent implements OnInit {
       this.isentoFpp();
       this.isentoRoyalties();
       this.paginaAtual.set(1);
+    });
+
+    effect(() => {
+      this.pageHeader.setSubtitle(`${this.itens().length} itens cadastrados no catálogo`);
     });
   }
 

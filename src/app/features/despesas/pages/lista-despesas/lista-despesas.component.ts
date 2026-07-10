@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal, effect } from '@angular/core';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
@@ -13,6 +13,7 @@ import { DespesasService, TituloDespesa, TituloPedidoMes } from '../../services/
 import { DespesaRecorrente, LABELS_CATEGORIA, CategoriaDespesa } from '../../models/despesa.model';
 import { TemplateDespesaDialogComponent } from './template-despesa-dialog.component';
 import { GerarMesDialogComponent } from './gerar-mes-dialog.component';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 const PEDIDOS_COR = '#2A7A8C';
 
@@ -66,7 +67,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
       <div class="page-wrap">
 
         <!-- ── Header ────────────────────────────────────────── -->
-        <div class="row header-row" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
+        <div class="row header-row list-page-heading" style="align-items:flex-end;justify-content:space-between;margin-bottom:22px">
           <div class="header-title">
             <h1 class="page">Despesas <em style="color:var(--bordo);font-style:italic">mensais</em></h1>
             <div class="page-sub">O que a loja gasta todo mês para abrir as portas · {{ mesLabel }}</div>
@@ -757,9 +758,18 @@ export class ListaDespesasComponent implements OnInit {
   private svc    = inject(DespesasService);
   private dialog = inject(MatDialog);
   private snack  = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
   @ViewChild(MatSort)      sort?: MatSort;
+
+  constructor() {
+    effect(() => {
+      this.refAno();
+      this.refMes();
+      this.pageHeader.setSubtitle(`O que a loja gasta todo mês para abrir as portas · ${this.mesLabel}`);
+    });
+  }
 
   carregando         = signal(false);
   filtroLista        = signal<'todas' | 'a_vencer' | 'pagas'>('todas');

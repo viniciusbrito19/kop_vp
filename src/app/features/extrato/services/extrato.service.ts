@@ -9,6 +9,36 @@ import { CorrelacaoService } from './correlacao.service';
 
 type LancamentoInsert = Omit<LancamentoExtrato, 'id' | 'created_at' | 'pedido'>;
 
+export type ColunaOrdenavelExtrato = 'data_lancamento' | 'tipo' | 'valor';
+
+export interface FiltrosExtrato {
+  dataInicio: string | null;
+  dataFim: string | null;
+  natureza: NaturezaLancamento | '' | null;
+  tipo: TipoLancamento | '' | null;
+  destinatario: string | null;
+  vinculado: boolean | null;
+}
+
+export interface ListarExtratoParams {
+  page: number;
+  pageSize: number;
+  sortActive: ColunaOrdenavelExtrato | '';
+  sortDirection: 'asc' | 'desc' | '';
+  filtros: FiltrosExtrato;
+}
+
+export interface TotaisExtrato {
+  totalEntradas: number;
+  totalSaidas: number;
+  qtdEntradas: number;
+  qtdSaidas: number;
+}
+
+const SELECT_LANCAMENTO = '*, titulos(pedido_id, categoria, descricao, pedidos(id, codigo))';
+const SELECT_LANCAMENTO_VINCULADO =
+  '*, titulos!inner(pedido_id, categoria, descricao, pedidos(id, codigo))';
+
 @Injectable({ providedIn: 'root' })
 export class ExtratoService {
   private db = inject(SupabaseService).client;
@@ -22,7 +52,33 @@ export class ExtratoService {
     if (error) throw error;
   }
 
-  async listar(): Promise<LancamentoExtrato[]> {
+  async listar(params: ListarExtratoParams): Promise<{ data: LancamentoExtrato[]; count: number }> {
+    const { page, pageSize, sortActive, sortDirection, filtros } = params;
+    const offset = page * pageSize;
+
+    let query = this.db
+      .from('lancamentos_extrato')
+      .select(filtros.vinculado ? SELECT_LANCAMENTO_VINCULADO : SELECT_LANCAMENTO, { count: 'exact' });
+
+    query = this.aplicarFiltros(query, filtros);
+
+    if (sortActive && sortDirection) {
+      query = query.order(sortActive, { ascending: sortDirection === 'asc' });
+    } else {
+      query = query.order('data_lancamento', { ascending: false });
+    }
+    query = query.order('ordem_original', { ascending: false });
+    query = query.range(offset, offset + pageSize - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return { data: (data ?? []).map(this.mapearLinha), count: count ?? 0 };
+  }
+
+  /** Busca a tabela inteira (sem paginação) — usado por telas que precisam agregar
+   * sobre todo o histórico do extrato (ex.: KPIs de recebimento em receitas-futuras). */
+  async listarTodos(): Promise<LancamentoExtrato[]> {
     const PAGE = 1000;
     const raw: any[] = [];
     let offset = 0;
@@ -30,7 +86,7 @@ export class ExtratoService {
     while (true) {
       const { data, error } = await this.db
         .from('lancamentos_extrato')
-        .select('*, titulos(pedido_id, categoria, descricao, pedidos(id, codigo))')
+        .select(SELECT_LANCAMENTO)
         .order('data_lancamento', { ascending: false })
         .order('ordem_original', { ascending: false })
         .range(offset, offset + PAGE - 1);
@@ -41,15 +97,58 @@ export class ExtratoService {
       offset += PAGE;
     }
 
-    return raw.map(row => {
-      const { titulos: rawTitulos, ...rest } = row as any;
-      const titulo = (rawTitulos as any[] | null)?.[0];
-      const pedido  = titulo?.pedido_id ? (titulo?.pedidos ?? null) : null;
-      const despesa = titulo && !titulo.pedido_id
-        ? { descricao: titulo.descricao ?? null, categoria: titulo.categoria ?? null }
-        : null;
-      return { ...rest, pedido, despesa } as LancamentoExtrato;
+    return raw.map(this.mapearLinha);
+  }
+
+  private mapearLinha(row: any): LancamentoExtrato {
+    const { titulos: rawTitulos, ...rest } = row;
+    const titulo = (rawTitulos as any[] | null)?.[0];
+    const pedido  = titulo?.pedido_id ? (titulo?.pedidos ?? null) : null;
+    const despesa = titulo && !titulo.pedido_id
+      ? { descricao: titulo.descricao ?? null, categoria: titulo.categoria ?? null }
+      : null;
+    return { ...rest, pedido, despesa } as LancamentoExtrato;
+  }
+
+  async totais(filtros: FiltrosExtrato): Promise<TotaisExtrato> {
+    const { data, error } = await this.db.rpc('extrato_totais', {
+      p_data_inicio:  filtros.dataInicio || null,
+      p_data_fim:     filtros.dataFim || null,
+      p_natureza:     filtros.natureza || null,
+      p_tipo:         filtros.tipo || null,
+      p_destinatario: filtros.destinatario || null,
+      p_vinculado:    filtros.vinculado || null,
     });
+    if (error) throw error;
+
+    const linha = (data as any[] | null)?.[0];
+    return {
+      totalEntradas: Number(linha?.total_entradas ?? 0),
+      totalSaidas:   Number(linha?.total_saidas ?? 0),
+      qtdEntradas:   Number(linha?.qtd_entradas ?? 0),
+      qtdSaidas:     Number(linha?.qtd_saidas ?? 0),
+    };
+  }
+
+  async saldoAtual(): Promise<number> {
+    const { data, error } = await this.db
+      .from('lancamentos_extrato')
+      .select('saldo')
+      .order('data_lancamento', { ascending: false })
+      .order('ordem_original', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.saldo ?? 0;
+  }
+
+  private aplicarFiltros(query: any, filtros: FiltrosExtrato): any {
+    if (filtros.dataInicio) query = query.gte('data_lancamento', filtros.dataInicio);
+    if (filtros.dataFim) query = query.lte('data_lancamento', filtros.dataFim);
+    if (filtros.natureza) query = query.eq('natureza', filtros.natureza);
+    if (filtros.tipo) query = query.eq('tipo', filtros.tipo);
+    if (filtros.destinatario) query = query.ilike('destinatario_remetente', `%${filtros.destinatario}%`);
+    return query;
   }
 
   async excluir(id: string): Promise<void> {

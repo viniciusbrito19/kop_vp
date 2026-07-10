@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
 import { TipoPedido } from '../../models/tipo-pedido.model';
 import { TipoPedidoDialogComponent } from './tipo-pedido-dialog.component';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 @Component({
   selector: 'app-lista-tipos-pedido',
@@ -21,6 +22,7 @@ export class ListaTiposPedidoComponent implements OnInit {
   private service = inject(TiposPedidoService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   tipos = signal<TipoPedido[]>([]);
   carregando = signal(false);
@@ -31,6 +33,13 @@ export class ListaTiposPedidoComponent implements OnInit {
     if (!q) return this.tipos();
     return this.tipos().filter(t => t.nome.toLowerCase().includes(q));
   });
+
+  constructor() {
+    effect(() => {
+      const n = this.tiposFiltrados().length;
+      this.pageHeader.setSubtitle(`${n} tipo${n !== 1 ? 's' : ''} cadastrado${n !== 1 ? 's' : ''}`);
+    });
+  }
 
   async ngOnInit() {
     await this.carregar();

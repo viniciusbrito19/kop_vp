@@ -61,6 +61,7 @@ type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean
       align-items: center;
       position: relative;
       flex: 1;
+      min-width: 0;
       gap: 4px;
     }
 

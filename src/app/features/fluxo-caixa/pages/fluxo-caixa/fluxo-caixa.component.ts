@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FluxoCaixaService, ResumoMes, MesResumo } from '../../services/fluxo-caixa.service';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 // SVG chart constants
 const ML = 58;   // left margin (y-axis labels)
@@ -25,7 +26,7 @@ const CH = 300;  // total viewBox height
       <div class="page-wrapper">
 
         <!-- ── Header ─────────────────────────────────────────── -->
-        <div class="fc-header">
+        <div class="fc-header list-page-heading">
           <div class="fc-header-title">
             <h1 class="page">Fluxo de <span class="accent serif">caixa</span></h1>
             <div class="page-sub fc-sub">Quanto sua loja custa por mês · o que entra e o que sai · onde você estará daqui a 3 meses</div>
@@ -400,6 +401,7 @@ const CH = 300;  // total viewBox height
 export class FluxoCaixaComponent implements OnInit {
   private svc   = inject(FluxoCaixaService);
   private snack = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   carregando = signal(false);
   periodo    = signal<'3m' | '6m' | '12m' | 'ytd'>('12m');
@@ -594,7 +596,10 @@ export class FluxoCaixaComponent implements OnInit {
   }
 
   // ── Lifecycle ───────────────────────────────────────────────
-  async ngOnInit() { await this.carregar(); }
+  async ngOnInit() {
+    this.pageHeader.setSubtitle('Quanto sua loja custa por mês · o que entra e o que sai · onde você estará daqui a 3 meses');
+    await this.carregar();
+  }
 
   async carregar() {
     this.carregando.set(true);

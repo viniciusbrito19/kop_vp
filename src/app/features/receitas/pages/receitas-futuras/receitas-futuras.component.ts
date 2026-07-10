@@ -12,6 +12,7 @@ import { RecebimentoCartao, GrupoDia } from '../../models/receita.model';
 import { ExtratoService } from '../../../extrato/services/extrato.service';
 import { LancamentoExtrato } from '../../../extrato/models/extrato.model';
 import { DatePickerComponent } from '../../../../shared/components/date-picker.component';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -34,7 +35,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
       <div class="outer-wrap" style="padding:28px 32px 48px;max-width:1600px">
 
         <!-- ── Header ─────────────────────────────────────── -->
-        <div class="row header-row" style="justify-content:space-between;margin-bottom:22px">
+        <div class="row header-row list-page-heading" style="justify-content:space-between;margin-bottom:22px">
           <div>
             <h1 class="page">Receitas <span class="accent serif">futuras</span></h1>
             <div class="page-sub">O que a loja vai receber nos próximos dias · {{ mesLabel }}</div>
@@ -395,6 +396,7 @@ export class ReceitasFuturasComponent implements OnInit {
   private svc        = inject(ReceitasService);
   private extratoSvc = inject(ExtratoService);
   private snack      = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
   @ViewChild(MatSort)      sort?: MatSort;
@@ -636,14 +638,17 @@ export class ReceitasFuturasComponent implements OnInit {
   }
 
   // ── Ações ────────────────────────────────────────────────
-  async ngOnInit() { await this.carregar(); }
+  async ngOnInit() {
+    this.pageHeader.setSubtitle(`O que a loja vai receber nos próximos dias · ${this.mesLabel}`);
+    await this.carregar();
+  }
 
   async carregar() {
     this.carregando.set(true);
     try {
       [this.todos, this.extrato] = await Promise.all([
         this.svc.listar(),
-        this.extratoSvc.listar(),
+        this.extratoSvc.listarTodos(),
       ]);
       this.dsTabela.data = this.todos;
     } catch {

@@ -2,12 +2,12 @@
 <div class="content">
 
   <!-- Page heading -->
-  <div class="page-header">
+  <div class="page-header list-page-heading">
     <div class="page-header-title">
       <h1 class="page">Extrato <span class="accent serif">financeiro</span></h1>
       <div class="page-sub">
         @if (carregando()) { Carregando lançamentos… }
-        @else { {{ totalLancamentos() }} lançamentos importados }
+        @else { {{ totalCount() }} lançamentos importados }
       </div>
     </div>
     <div class="page-header-actions">
@@ -119,7 +119,7 @@
       <!-- Limpar filtros + contador -->
       <div class="spacer"></div>
       <span class="resultado-count" [class.visivel]="filtrosAtivos">
-        {{ dataSource.filteredData.length }} de {{ dataSource.data.length }}
+        {{ totalCount() }} resultado{{ totalCount() !== 1 ? 's' : '' }}
       </span>
       <button
         class="btn ghost sm icon"
@@ -135,7 +135,9 @@
 
     <!-- Tabela (desktop) -->
     <div class="card table-card table-section">
-      <table mat-table [dataSource]="dataSource" matSort class="extrato-table">
+      <table mat-table [dataSource]="dataSource" matSort
+             [matSortActive]="sortActive()" [matSortDirection]="sortDirection()"
+             (matSortChange)="onSort($event)" class="extrato-table">
 
         <!-- Data -->
         <ng-container matColumnDef="data_lancamento">
@@ -278,7 +280,7 @@
 
         <tr class="mat-row" *matNoDataRow>
           <td class="mat-cell empty-cell" [attr.colspan]="colunas.length">
-            @if (dataSource.data.length === 0) {
+            @if (!filtrosAtivos) {
               <div class="empty-state">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 <p>Nenhum lançamento encontrado.</p>
@@ -295,14 +297,21 @@
         </tr>
       </table>
 
-      <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons />
+      <mat-paginator
+        [length]="totalCount()"
+        [pageIndex]="pageIndex()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="[25, 50, 100]"
+        (page)="onPage($event)"
+        showFirstLastButtons
+      />
     </div>
 
     <!-- Cards mobile (≤640px) -->
     <div class="mobile-list">
-      @if (dataSource.filteredData.length === 0) {
+      @if (dataSource.data.length === 0) {
         <div class="empty-state">
-          @if (dataSource.data.length === 0) {
+          @if (!filtrosAtivos) {
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             <p>Nenhum lançamento encontrado.</p>
             <p style="color:var(--text-4);font-size:13px">Importe um arquivo CSV para começar.</p>
@@ -315,7 +324,7 @@
       }
 
       <div class="card mobile-card-list">
-        @for (l of dataSource.filteredData; track l.id) {
+        @for (l of dataSource.data; track l.id) {
           <div class="mobile-card" [class.row-editando]="editandoId() === l.id">
 
             <div class="mc-icon" [class.mc-icon-entrada]="l.natureza === 'entrada'" [class.mc-icon-saida]="l.natureza === 'saida'">

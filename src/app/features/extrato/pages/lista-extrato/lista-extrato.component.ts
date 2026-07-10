@@ -2,24 +2,23 @@ import {
   Component,
   OnInit,
   OnDestroy,
-  ViewChild,
   inject,
   signal,
-  computed,
+  effect,
 } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 import { Router } from '@angular/router';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePickerComponent } from '../../../../shared/components/date-picker.component';
-import { ExtratoService } from '../../services/extrato.service';
+import { ExtratoService, ColunaOrdenavelExtrato, FiltrosExtrato } from '../../services/extrato.service';
 import { CorrelacaoService } from '../../services/correlacao.service';
 import {
   LancamentoExtrato,
@@ -31,15 +30,7 @@ import { DespesasService } from '../../../despesas/services/despesas.service';
 import { FornecedoresService } from '../../../fornecedores/services/fornecedores.service';
 import { DespesaRecorrente } from '../../../despesas/models/despesa.model';
 import { Fornecedor } from '../../../fornecedores/models/fornecedor.model';
-
-interface FiltroExtrato {
-  dataInicio: string | null;
-  dataFim: string | null;
-  natureza: NaturezaLancamento | '' | null;
-  tipo: TipoLancamento | '' | null;
-  destinatario: string | null;
-  vinculado: boolean | null;
-}
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 const TIPOS_SAIDA: TipoLancamento[] = [
   'pix_enviado', 'pagamento_efetuado', 'compra_debito', 'debito_conta', 'outros_pagamentos',
@@ -75,10 +66,16 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   private snack        = inject(MatSnackBar);
   private fb           = inject(FormBuilder);
   private router       = inject(Router);
+  private pageHeader   = inject(PageHeaderService);
   private destroy$     = new Subject<void>();
 
-  @ViewChild(MatPaginator) paginator?: MatPaginator;
-  @ViewChild(MatSort)      sort?: MatSort;
+  constructor() {
+    effect(() => {
+      this.pageHeader.setSubtitle(
+        this.carregando() ? 'Carregando lançamentos…' : `${this.totalCount()} lançamentos importados`
+      );
+    });
+  }
 
   dataSource = new MatTableDataSource<LancamentoExtrato>([]);
   carregando   = signal(false);
@@ -89,17 +86,18 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   excluindoId    = signal<string | null>(null);
   desvinculandoId = signal<string | null>(null);
 
-  private _lancamentos = signal<LancamentoExtrato[]>([]);
+  // ── Paginação / ordenação server-side ────────────────────────────────
+  pageIndex     = signal(0);
+  pageSize      = signal(25);
+  sortActive    = signal<ColunaOrdenavelExtrato | ''>('');
+  sortDirection = signal<'asc' | 'desc' | ''>('');
 
-  totalLancamentos = computed(() => this._lancamentos().length);
-  totalEntradas    = computed(() => this._lancamentos().filter(l => l.natureza === 'entrada').reduce((s, l) => s + l.valor, 0));
-  totalSaidas      = computed(() => Math.abs(this._lancamentos().filter(l => l.natureza === 'saida').reduce((s, l) => s + l.valor, 0)));
-  qtdEntradas      = computed(() => this._lancamentos().filter(l => l.natureza === 'entrada').length);
-  qtdSaidas        = computed(() => this._lancamentos().filter(l => l.natureza === 'saida').length);
-  saldoAtual       = computed(() => {
-    const lista = this._lancamentos();
-    return lista.length ? lista[0].saldo : 0;
-  });
+  totalCount    = signal(0);
+  totalEntradas = signal(0);
+  totalSaidas   = signal(0);
+  qtdEntradas   = signal(0);
+  qtdSaidas     = signal(0);
+  saldoAtual    = signal(0);
 
   // ── Painel lateral ────────────────────────────────────────────────────
   painelAberto          = signal(false);
@@ -144,9 +142,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   get ctrlVinculado()    { return this.filtros.controls.vinculado as FormControl; }
 
   toggleVinculado() {
-    this.ctrlVinculado.setValue(!this.ctrlVinculado.value, { emitEvent: false });
-    this.dataSource.filter = JSON.stringify(this.filtros.value);
-    this.dataSource.paginator?.firstPage();
+    this.ctrlVinculado.setValue(!this.ctrlVinculado.value);
   }
 
   get filtrosAtivos(): boolean {
@@ -272,14 +268,13 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.configurarFilterPredicate();
     await this.carregar();
 
     this.filtros.valueChanges
       .pipe(debounceTime(200), takeUntil(this.destroy$))
-      .subscribe(v => {
-        this.dataSource.filter = JSON.stringify(v);
-        this.dataSource.paginator?.firstPage();
+      .subscribe(() => {
+        this.pageIndex.set(0);
+        this.carregar();
       });
   }
 
@@ -288,40 +283,59 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private configurarFilterPredicate() {
-    this.dataSource.filterPredicate = (row: LancamentoExtrato, filterJson: string) => {
-      const f: FiltroExtrato = JSON.parse(filterJson);
-      if (f.dataInicio && row.data_lancamento < f.dataInicio) return false;
-      if (f.dataFim && row.data_lancamento > f.dataFim) return false;
-      if (f.natureza && row.natureza !== f.natureza) return false;
-      if (f.tipo && row.tipo !== f.tipo) return false;
-      if (f.destinatario) {
-        if (!row.destinatario_remetente.toLowerCase().includes(f.destinatario.toLowerCase())) {
-          return false;
-        }
-      }
-      if (f.vinculado && !row.pedido && !row.despesa) return false;
-      return true;
+  limparFiltros() {
+    this.filtros.reset({ dataInicio: '', dataFim: '', natureza: '', tipo: '', destinatario: '', vinculado: false });
+  }
+
+  private filtrosAtuais(): FiltrosExtrato {
+    const v = this.filtros.value;
+    return {
+      dataInicio: v.dataInicio || null,
+      dataFim: v.dataFim || null,
+      natureza: v.natureza || null,
+      tipo: v.tipo || null,
+      destinatario: v.destinatario || null,
+      vinculado: v.vinculado || null,
     };
   }
 
-  limparFiltros() {
-    this.filtros.reset({ dataInicio: '', dataFim: '', natureza: '', tipo: '', destinatario: '', vinculado: false });
-    this.dataSource.filter = '';
+  onPage(event: PageEvent) {
+    this.pageIndex.set(event.pageIndex);
+    this.pageSize.set(event.pageSize);
+    this.carregar();
+  }
+
+  onSort(sort: Sort) {
+    this.sortActive.set((sort.direction ? sort.active : '') as ColunaOrdenavelExtrato | '');
+    this.sortDirection.set(sort.direction as 'asc' | 'desc' | '');
+    this.pageIndex.set(0);
+    this.carregar();
   }
 
   async carregar() {
     this.carregando.set(true);
     try {
-      const dados = await this.service.listar();
-      this.dataSource.data = dados;
-      this._lancamentos.set(dados);
+      const filtros = this.filtrosAtuais();
+      const [listagem, totais, saldo] = await Promise.all([
+        this.service.listar({
+          page: this.pageIndex(),
+          pageSize: this.pageSize(),
+          sortActive: this.sortActive(),
+          sortDirection: this.sortDirection(),
+          filtros,
+        }),
+        this.service.totais(filtros),
+        this.service.saldoAtual(),
+      ]);
+      this.dataSource.data = listagem.data;
+      this.totalCount.set(listagem.count);
+      this.totalEntradas.set(totais.totalEntradas);
+      this.totalSaidas.set(totais.totalSaidas);
+      this.qtdEntradas.set(totais.qtdEntradas);
+      this.qtdSaidas.set(totais.qtdSaidas);
+      this.saldoAtual.set(saldo);
     } finally {
       this.carregando.set(false);
-      setTimeout(() => {
-        if (this.paginator) this.dataSource.paginator = this.paginator;
-        if (this.sort) this.dataSource.sort = this.sort;
-      });
     }
   }
 
@@ -419,8 +433,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
     this.excluindoId.set(l.id);
     try {
       await this.service.excluir(l.id);
-      this.dataSource.data = this.dataSource.data.filter(r => r.id !== l.id);
-      this._lancamentos.set(this._lancamentos().filter(r => r.id !== l.id));
+      await this.carregar();
     } catch {
       this.snack.open('Erro ao excluir lançamento.', 'OK', { duration: 4000 });
     } finally {

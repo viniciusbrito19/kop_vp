@@ -499,6 +499,12 @@ mat-card {
   .content   { padding: 20px 16px 32px; overflow-x: hidden; }
   .list-head { display: none; }
 
+  /* Título/subtítulo já aparecem no header mobile fixo (ver PageHeaderService) */
+  .list-page-heading h1.page,
+  .list-page-heading .page-sub {
+    display: none;
+  }
+
   /* Garante que células de grid nunca ultrapassem o container */
   .form-grid > * { min-width: 0; }
 

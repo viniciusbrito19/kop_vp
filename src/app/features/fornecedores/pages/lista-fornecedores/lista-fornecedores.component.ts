@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FornecedoresService } from '../../services/fornecedores.service';
 import { Fornecedor } from '../../models/fornecedor.model';
 import { FornecedorDialogComponent } from './fornecedor-dialog.component';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 @Component({
   selector: 'app-lista-fornecedores',
@@ -21,6 +22,7 @@ export class ListaFornecedoresComponent implements OnInit {
   private service = inject(FornecedoresService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   fornecedores = signal<Fornecedor[]>([]);
   carregando = signal(false);
@@ -36,6 +38,12 @@ export class ListaFornecedoresComponent implements OnInit {
       (f.chaves ?? []).some(c => c.chave.toLowerCase().includes(q))
     );
   });
+
+  constructor() {
+    effect(() => {
+      this.pageHeader.setSubtitle(`${this.fornecedoresFiltrados().length} fornecedores cadastrados`);
+    });
+  }
 
   async ngOnInit() {
     await this.carregar();

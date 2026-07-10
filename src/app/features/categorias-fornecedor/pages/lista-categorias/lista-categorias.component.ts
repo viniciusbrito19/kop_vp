@@ -1,8 +1,9 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CategoriasFornecedorService } from '../../services/categorias-fornecedor.service';
 import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 @Component({
   selector: 'app-lista-categorias-fornecedor',
@@ -16,7 +17,7 @@ import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
     <div class="content">
 
       <!-- Page heading -->
-      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:28px">
+      <div class="row list-page-heading" style="align-items:center;justify-content:space-between;margin-bottom:28px">
         <div>
           <h1 class="page">Categorias de <span class="accent serif">fornecedor</span></h1>
           <div class="page-sub">{{ categoriasFiltradas().length }} categoria{{ categoriasFiltradas().length !== 1 ? 's' : '' }} cadastrada{{ categoriasFiltradas().length !== 1 ? 's' : '' }}</div>
@@ -205,6 +206,7 @@ import { CategoriaFornecedor } from '../../models/categoria-fornecedor.model';
 export class ListaCategoriasComponent implements OnInit {
   private service = inject(CategoriasFornecedorService);
   private snack   = inject(MatSnackBar);
+  private pageHeader = inject(PageHeaderService);
 
   categorias   = signal<CategoriaFornecedor[]>([]);
   carregando   = signal(false);
@@ -219,6 +221,13 @@ export class ListaCategoriasComponent implements OnInit {
     if (!q) return this.categorias();
     return this.categorias().filter(c => c.nome.toLowerCase().includes(q));
   });
+
+  constructor() {
+    effect(() => {
+      const n = this.categoriasFiltradas().length;
+      this.pageHeader.setSubtitle(`${n} categoria${n !== 1 ? 's' : ''} cadastrada${n !== 1 ? 's' : ''}`);
+    });
+  }
 
   async ngOnInit() {
     await this.carregar();

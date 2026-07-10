@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +15,7 @@ import { TitulosService } from '../../services/titulos.service';
 import { Pedido } from '../../models/pedido.model';
 import { Titulo } from '../../models/titulo.model';
 import { TituloDialogComponent } from './titulo-dialog.component';
+import { PageHeaderService } from '../../../../core/services/page-header.service';
 
 type StatusPedidoCalc = 'pago' | 'aberto' | 'atrasado';
 
@@ -43,6 +44,15 @@ export class ListaPedidosComponent implements OnInit {
   private snack      = inject(MatSnackBar);
   private dialog     = inject(MatDialog);
   private route      = inject(ActivatedRoute);
+  private pageHeader = inject(PageHeaderService);
+
+  constructor() {
+    effect(() => {
+      this.pageHeader.setSubtitle(
+        `${this.pedidosUnicos().length} pedidos · próximo vencimento ${this.proximoVencimento()}`
+      );
+    });
+  }
 
   pedidos           = signal<Pedido[]>([]);
   carregando        = signal(false);
