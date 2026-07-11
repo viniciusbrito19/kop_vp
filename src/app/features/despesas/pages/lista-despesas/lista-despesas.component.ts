@@ -25,6 +25,7 @@ interface ItemAVencer {
   valor: number;
   tipo: 'fixa' | 'pedido';
   fixa?: DespesaRecorrente;
+  atrasado: boolean;
 }
 
 const CAT_COR: Record<CategoriaDespesa, string> = {
@@ -299,9 +300,13 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                   <div style="text-align:right;flex-shrink:0">
                     <div class="serif" style="font-size:16px;line-height:1.1">{{ moeda(t.valor_estimado) }}</div>
                     <div style="margin-top:5px">
-                      @if (isPago(t)) {
+                      @if (statusFixa(t) === 'pago') {
                         <span class="pill ok" style="font-size:10px;padding:2px 8px">
                           <mat-icon style="font-size:10px;width:10px;height:10px">check</mat-icon> pago
+                        </span>
+                      } @else if (statusFixa(t) === 'atrasado') {
+                        <span class="pill bad" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">warning</mat-icon> atrasado
                         </span>
                       } @else {
                         <span class="pill warn" style="font-size:10px;padding:2px 8px">
@@ -470,9 +475,13 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                   <div style="text-align:right;flex-shrink:0">
                     <div class="serif" style="font-size:16px;line-height:1.1">{{ moeda(t.valor) }}</div>
                     <div style="margin-top:5px">
-                      @if (t.data_pagamento) {
+                      @if (statusTitulo(t) === 'pago') {
                         <span class="pill ok" style="font-size:10px;padding:2px 8px">
                           <mat-icon style="font-size:10px;width:10px;height:10px">check</mat-icon> pago
+                        </span>
+                      } @else if (statusTitulo(t) === 'atrasado') {
+                        <span class="pill bad" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">warning</mat-icon> atrasado
                         </span>
                       } @else {
                         <span class="pill warn" style="font-size:10px;padding:2px 8px">
@@ -519,7 +528,7 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
             @if (itensAVencer.length > 0) {
               <div class="card" style="padding:22px">
                 <h3 class="serif" style="margin:0;font-size:20px;font-weight:400;margin-bottom:14px">
-                  Próximas a vencer
+                  Vencidas e a vencer
                 </h3>
 
                 <div class="col gap-3">
@@ -529,7 +538,9 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                          [style.border-top]="i > 0 ? '1px dashed var(--line)' : 'none'">
 
                       <!-- badge de data -->
-                      <div style="width:44px;height:44px;border-radius:12px;background:var(--warn-soft);color:var(--warn);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto">
+                      <div [style.background]="item.atrasado ? 'var(--bad-soft)' : 'var(--warn-soft)'"
+                           [style.color]="item.atrasado ? 'var(--bad)' : 'var(--warn)'"
+                           style="width:44px;height:44px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto">
                         <span style="font-size:8px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;opacity:0.7">
                           {{ mesAbrev }}
                         </span>
@@ -625,8 +636,11 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
               <ng-container matColumnDef="status">
                 <th mat-header-cell *matHeaderCellDef>Status</th>
                 <td mat-cell *matCellDef="let t">
-                  <span class="pill" [class.ok]="t.data_pagamento" [class.warn]="!t.data_pagamento">
-                    {{ t.data_pagamento ? 'Pago' : 'Pendente' }}
+                  <span class="pill"
+                        [class.ok]="statusTitulo(t) === 'pago'"
+                        [class.bad]="statusTitulo(t) === 'atrasado'"
+                        [class.warn]="statusTitulo(t) === 'a_vencer'">
+                    {{ statusTitulo(t) === 'pago' ? 'Pago' : statusTitulo(t) === 'atrasado' ? 'Atrasado' : 'Pendente' }}
                   </span>
                 </td>
               </ng-container>
@@ -830,6 +844,30 @@ export class ListaDespesasComponent implements OnInit {
     return this.titulosMes.some(t => t.despesa_recorrente_id === tpl.id && !!t.data_pagamento);
   }
 
+  private tituloDoTemplate(tpl: DespesaRecorrente): TituloDespesa | undefined {
+    return this.titulosMes.find(t => t.despesa_recorrente_id === tpl.id);
+  }
+
+  statusFixa(tpl: DespesaRecorrente): 'pago' | 'a_vencer' | 'atrasado' {
+    const titulo = this.tituloDoTemplate(tpl);
+    if (titulo?.data_pagamento) return 'pago';
+    const vencimento = titulo?.data_vencimento
+      ? new Date(titulo.data_vencimento + 'T00:00:00')
+      : new Date(this.refAno(), this.refMes() - 1, tpl.dia_venc);
+    return vencimento < this._inicioHoje ? 'atrasado' : 'a_vencer';
+  }
+
+  statusTitulo(t: { data_pagamento: string | null; data_vencimento: string | null }): 'pago' | 'a_vencer' | 'atrasado' {
+    if (t.data_pagamento) return 'pago';
+    if (!t.data_vencimento) return 'a_vencer';
+    return new Date(t.data_vencimento + 'T00:00:00') < this._inicioHoje ? 'atrasado' : 'a_vencer';
+  }
+
+  private get _inicioHoje(): Date {
+    const h = this._hoje;
+    return new Date(h.getFullYear(), h.getMonth(), h.getDate());
+  }
+
   get paidCount(): number   { return this.templatesAtivos.filter(t =>  this.isPago(t)).length; }
   get dueCount(): number    { return this.templatesAtivos.filter(t => !this.isPago(t)).length; }
   get totalFixo(): number   { return this.templatesAtivos.reduce((s, t) => s + t.valor_estimado, 0); }
@@ -895,6 +933,7 @@ export class ListaDespesasComponent implements OnInit {
     const fixas: ItemAVencer[] = this.templatesAVencer.map(t => ({
       id: t.id, label: t.descricao, subLabel: `vence dia ${t.dia_venc}`,
       dia: t.dia_venc, valor: t.valor_estimado, tipo: 'fixa', fixa: t,
+      atrasado: this.statusFixa(t) === 'atrasado',
     }));
     const pedidos: ItemAVencer[] = this.titulosPedidos()
       .filter(t => !t.data_pagamento)
@@ -905,6 +944,7 @@ export class ListaDespesasComponent implements OnInit {
           label: t.pedido?.fornecedor?.nome ?? t.pedido?.codigo ?? t.codigo,
           subLabel: `vence dia ${dia} · pedido`,
           dia, valor: t.valor, tipo: 'pedido' as const,
+          atrasado: this.statusTitulo(t) === 'atrasado',
         };
       });
     return [...fixas, ...pedidos].sort((a, b) => a.dia - b.dia);
