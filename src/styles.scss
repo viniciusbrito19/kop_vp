@@ -485,6 +485,16 @@ mat-card {
    Responsive — breakpoints mobile / tablet
    ======================================================================== */
 
+/* Blocos exclusivos do layout mobile de Royalties e FPP — ocultos por padrão;
+   reexibidos dentro do @media (max-width: 640px) abaixo. Precisam estar aqui
+   (não no styles do componente) para ter a mesma especificidade das regras
+   que os reexibem — um display:none no componente, com o atributo de
+   encapsulamento do Angular, venceria mesmo dentro do media query mobile. */
+app-lista-apuracoes .mobile-stats,
+app-lista-apuracoes .nota-mobile-info,
+app-lista-apuracoes .titulos-mobile-list,
+app-lista-apuracoes .calc-resumo-title.mobile-only { display: none; }
+
 @media (max-width: 768px) {
   .kpi-grid   { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .row-expand { grid-template-columns: 1fr !important; }
@@ -512,51 +522,123 @@ mat-card {
   input, select, textarea { font-size: 16px !important; }
 
   /* Royalties e FPP (app-lista-apuracoes) — mantido aqui, e não no styles do componente,
-     porque a tela já usa quase todo o orçamento de 16kB por componente só com o CSS desktop. */
+     porque a tela já usa quase todo o orçamento de 16kB por componente só com o CSS desktop.
+     Observação: os estilos do componente são encapsulados pelo Angular com um atributo
+     [_ngcontent-*] em cada seletor, o que eleva a especificidade deles. Sempre que uma regra
+     abaixo sobrescreve uma propriedade que o componente também define no MESMO seletor
+     (ex.: display, grid-template-columns, padding, border-radius, align-items, min-width),
+     é preciso !important — do contrário a regra "desktop" do componente vence mesmo aqui
+     dentro do media query mobile. */
   app-lista-apuracoes .page-header { flex-wrap: wrap; gap: 12px; }
-  app-lista-apuracoes .form-section { padding: 14px 16px; }
-  app-lista-apuracoes .form-controls { grid-template-columns: 1fr; gap: 10px; align-items: stretch; }
+  app-lista-apuracoes .form-section { padding: 14px 16px !important; border-radius: 14px !important; }
+  app-lista-apuracoes .form-controls { grid-template-columns: 1fr !important; gap: 10px !important; align-items: stretch !important; }
   app-lista-apuracoes .calc-btn { width: 100%; justify-content: center; }
   app-lista-apuracoes .preview-full-header,
-  app-lista-apuracoes .preview-header-actions { flex-direction: column; align-items: stretch; }
+  app-lista-apuracoes .preview-header-actions { flex-direction: column; align-items: stretch !important; }
+  app-lista-apuracoes .alerta-ean { box-sizing: border-box; }
   app-lista-apuracoes .btn-export-csv { width: 100%; justify-content: center; }
+
+  /* ── Notas incluídas: card mobile ── */
   app-lista-apuracoes .notas-list-head,
-  app-lista-apuracoes .list-head.apuracao-grid { display: none; }
-  app-lista-apuracoes .nota-header,
-  app-lista-apuracoes .row-main.apuracao-grid {
-    grid-template-columns: 18px 1fr auto;
+  app-lista-apuracoes .list-head.apuracao-grid { display: none !important; }
+  app-lista-apuracoes .nota-card { border-radius: 14px !important; }
+  app-lista-apuracoes .nota-header {
+    grid-template-columns: 18px 1fr !important;
     grid-template-rows: auto auto;
     row-gap: 4px;
     column-gap: 8px;
+    padding: 12px 14px !important;
   }
-  app-lista-apuracoes .nota-header > :nth-child(1),
-  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(1) { grid-column: 1; grid-row: 1 / 3; align-self: center; }
-  app-lista-apuracoes .nota-header { padding: 10px 12px; }
-  app-lista-apuracoes .nota-header > :nth-child(2),
+  app-lista-apuracoes .nota-header > :nth-child(1) { grid-column: 1; grid-row: 1 / 3; align-self: start; margin-top: 2px; }
+  app-lista-apuracoes .nota-header > :nth-child(2) { grid-column: 2; grid-row: 1; }
+  app-lista-apuracoes .nota-header > :nth-child(3) { grid-column: 2; grid-row: 2; }
+  app-lista-apuracoes .nota-header > :nth-child(4),
   app-lista-apuracoes .nota-header > :nth-child(5),
   app-lista-apuracoes .nota-header > :nth-child(6),
-  app-lista-apuracoes .nota-header > :nth-child(8) { display: none; }
-  app-lista-apuracoes .nota-header > :nth-child(3) { grid-column: 2; grid-row: 1; }
-  app-lista-apuracoes .nota-header > :nth-child(4) { grid-column: 2; grid-row: 2; justify-self: start; }
-  app-lista-apuracoes .nota-header > :nth-child(7) { grid-column: 3; grid-row: 2; font-size: 11px; }
-  app-lista-apuracoes .nota-header > :nth-child(9) { grid-column: 3; grid-row: 1; }
+  app-lista-apuracoes .nota-header > :nth-child(7),
+  app-lista-apuracoes .nota-header > :nth-child(8),
+  app-lista-apuracoes .nota-header > :nth-child(9) { display: none; }
+  app-lista-apuracoes .nota-mobile-info {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px 14px 14px; border-top: 1px solid var(--line);
+  }
+  app-lista-apuracoes .nota-mobile-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  app-lista-apuracoes .nota-mobile-date { margin-left: auto; font-size: 11px; color: var(--text-4); }
+  app-lista-apuracoes .warn-ean-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: color-mix(in srgb, #C28A1E 16%, transparent); color: #7A5510;
+  }
+  app-lista-apuracoes .nota-mobile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  app-lista-apuracoes .nms { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  app-lista-apuracoes .nms-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  app-lista-apuracoes .nms-value { font-size: 13px; font-weight: 700; color: var(--text); }
+  app-lista-apuracoes .nms-value.fpp { color: #5A1620; }
+  app-lista-apuracoes .nms-value.roy { color: #82622F; }
   app-lista-apuracoes .itens-table { min-width: 640px; }
+
+  /* ── Totais ── */
+  app-lista-apuracoes .calc-resumo-title.mobile-only {
+    display: block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-4); margin: 4px 0 -6px;
+  }
+  app-lista-apuracoes .calc-row.total-geral span:last-child { color: var(--bordo, #7A1F2B); }
+
+  /* ── Histórico: card mobile ── */
+  app-lista-apuracoes .row-card { border-radius: 14px; }
+  app-lista-apuracoes .row-main.apuracao-grid {
+    grid-template-columns: 18px 1fr auto !important;
+    grid-template-rows: auto auto;
+    row-gap: 4px !important;
+    column-gap: 8px !important;
+    padding: 14px;
+  }
+  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(1) { grid-column: 1; grid-row: 1 / 3; align-self: start; margin-top: 2px; }
+  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(2) { grid-column: 2; grid-row: 1; }
   app-lista-apuracoes .row-main.apuracao-grid > :nth-child(3),
+  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(4),
   app-lista-apuracoes .row-main.apuracao-grid > :nth-child(5),
   app-lista-apuracoes .row-main.apuracao-grid > :nth-child(6),
   app-lista-apuracoes .row-main.apuracao-grid > :nth-child(7) { display: none; }
-  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(2) { grid-column: 2; grid-row: 1; }
-  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(4) { grid-column: 2; grid-row: 2; text-align: left; font-size: 12px; }
   app-lista-apuracoes .row-main.apuracao-grid > :nth-child(8) { grid-column: 3; grid-row: 1; justify-self: end; }
-  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(9) { grid-column: 3; grid-row: 2; justify-self: end; }
-  app-lista-apuracoes .apuracao-expand { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  app-lista-apuracoes .titulos-table { min-width: 620px; }
+  app-lista-apuracoes .row-main.apuracao-grid > :nth-child(9) { grid-column: 2 / 4; grid-row: 2; justify-self: start; }
+  app-lista-apuracoes .mobile-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    padding: 12px 14px 14px; border-top: 1px solid var(--line);
+  }
+  app-lista-apuracoes .mobile-stat { display: flex; flex-direction: column; gap: 2px; }
+  app-lista-apuracoes .ms-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-4); }
+  app-lista-apuracoes .ms-value { font-size: 13px; font-weight: 700; color: var(--text); }
+  app-lista-apuracoes .ms-value.fpp { color: #5A1620; }
+  app-lista-apuracoes .ms-value.roy { color: #82622F; }
+  app-lista-apuracoes .apuracao-expand { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 14px !important; }
+
+  /* ── Títulos: cards mobile (substitui a tabela) ── */
+  app-lista-apuracoes .titulos-table { display: none; }
+  app-lista-apuracoes .titulos-mobile-list { display: flex; flex-direction: column; gap: 8px; }
+  app-lista-apuracoes .titulo-mobile-card {
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    background: var(--surface); display: flex; flex-direction: column; gap: 6px;
+  }
+  app-lista-apuracoes .titulo-mobile-edit { gap: 8px; }
+  app-lista-apuracoes .titulo-mobile-edit .map-search { margin: 0; }
+  app-lista-apuracoes .tm-row1 { display: flex; align-items: center; gap: 8px; }
+  app-lista-apuracoes .tm-desc {
+    flex: 1; min-width: 0; font-size: 12px; font-weight: 500; color: var(--text-2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  app-lista-apuracoes .tm-row2 { display: flex; align-items: center; justify-content: space-between; }
+  app-lista-apuracoes .tm-venc { font-size: 11px; color: var(--text-4); }
+  app-lista-apuracoes .tm-valor { font-size: 13px; font-weight: 700; color: var(--text); }
+
   app-lista-apuracoes .recon-stats { flex-wrap: wrap; gap: 10px; }
-  app-lista-apuracoes .recon-stat { flex: 1 1 calc(50% - 5px); padding: 8px 10px; }
+  app-lista-apuracoes .recon-stat { flex: 1 1 calc(50% - 5px); padding: 8px 10px !important; }
   app-lista-apuracoes .sem-match-row { flex-wrap: wrap; }
   app-lista-apuracoes .emissao-btns { flex-direction: column; }
-  app-lista-apuracoes .emissao-btn { width: 100%; min-width: 0; }
-  app-lista-apuracoes .roy-fields-grid { grid-template-columns: 1fr; }
+  app-lista-apuracoes .emissao-btn { width: 100%; min-width: 0 !important; }
+  app-lista-apuracoes .roy-fields-grid { grid-template-columns: 1fr !important; }
   app-lista-apuracoes .roy-tab-selector {
     grid-template-columns: none !important;
     grid-auto-flow: column;

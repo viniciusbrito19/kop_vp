@@ -274,6 +274,31 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   <span class="nota-valor">R$ {{ p.valor_venda | number:'1.2-2':'pt-BR' }}</span>
                 </div>
 
+                <!-- Info compacta mobile: badge/data + FPP/Royalties/Venda -->
+                <div class="nota-mobile-info mobile-only">
+                  <div class="nota-mobile-top">
+                    <span class="tipo-badge" [ngClass]="p.tipo">{{ p.tipo === 'linha' ? 'Linha' : 'Sazonal' }}</span>
+                    @if (p.itens_sem_ean > 0) {
+                      <span class="warn-ean-badge">⚠ {{ p.itens_sem_ean }} s/EAN</span>
+                    }
+                    <span class="nota-mobile-date">{{ p.data_emissao | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                  <div class="nota-mobile-stats">
+                    <div class="nms">
+                      <span class="nms-label">FPP</span>
+                      <span class="nms-value fpp">R$ {{ fppPedido(p) | number:'1.2-2':'pt-BR' }}</span>
+                    </div>
+                    <div class="nms">
+                      <span class="nms-label">ROY. {{ p.aliquota_royalties * 100 | number:'1.0-2':'pt-BR' }}%</span>
+                      <span class="nms-value roy">R$ {{ royPedido(p) | number:'1.2-2':'pt-BR' }}</span>
+                    </div>
+                    <div class="nms">
+                      <span class="nms-label">VENDA</span>
+                      <span class="nms-value">R$ {{ p.valor_venda | number:'1.2-2':'pt-BR' }}</span>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Tabela de itens (expansível) -->
                 @if (expandidos().has(p.pedido_id)) {
                   <div class="nota-itens">
@@ -339,6 +364,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
           </div>
 
           <!-- Resumo de cálculo -->
+          <div class="calc-resumo-title mobile-only">Totais</div>
           <div class="calc-resumo">
             <div class="calc-row">
               <span>Total venda (Linha)</span>
@@ -478,6 +504,36 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 
                 </div>
 
+                <!-- Grade de estatísticas mobile -->
+                <div class="mobile-stats mobile-only">
+                  <div class="mobile-stat">
+                    <span class="ms-label">Total venda</span>
+                    <span class="ms-value">R$ {{ a.total_venda | number:'1.2-2':'pt-BR' }}</span>
+                  </div>
+                  <div class="mobile-stat">
+                    <span class="ms-label">Vencimento</span>
+                    <span class="ms-value">{{ a.data_vencimento | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                  <div class="mobile-stat">
+                    <span class="ms-label">FPP</span>
+                    <span class="ms-value fpp">R$ {{ a.valor_fpp | number:'1.2-2':'pt-BR' }}</span>
+                  </div>
+                  <div class="mobile-stat">
+                    <span class="ms-label">Roy. Linha</span>
+                    <span class="ms-value roy">R$ {{ a.valor_roy_linha | number:'1.2-2':'pt-BR' }}</span>
+                  </div>
+                  <div class="mobile-stat">
+                    <span class="ms-label">Roy. Sazonal</span>
+                    <span class="ms-value roy">R$ {{ a.valor_roy_sazonal | number:'1.2-2':'pt-BR' }}</span>
+                  </div>
+                  @if (titulosPorApuracao()[a.id]) {
+                    <div class="mobile-stat">
+                      <span class="ms-label">Títulos</span>
+                      <span class="ms-value">{{ titulosPorApuracao()[a.id].length }}</span>
+                    </div>
+                  }
+                </div>
+
                 @if (expandidosHistorico().has(a.id)) {
                   <div class="apuracao-expand">
 
@@ -613,6 +669,89 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                             }
                           </tbody>
                         </table>
+                      }
+                      @if (titulosPorApuracao()[a.id].length > 0 || adicionandoTituloPara() === a.id) {
+                        <div class="titulos-mobile-list mobile-only">
+                          @for (t of titulosPorApuracao()[a.id]; track t.id) {
+                            @if (editandoTituloId() === t.id) {
+                              <div class="titulo-mobile-card titulo-mobile-edit">
+                                <input class="map-search mono" [value]="edicaoTitulo().codigo" (input)="edicaoTitulo.update(v => ({ ...v, codigo: $any($event.target).value }))" placeholder="Código" />
+                                <input class="map-search" [value]="edicaoTitulo().descricao" (input)="edicaoTitulo.update(v => ({ ...v, descricao: $any($event.target).value }))" placeholder="Descrição" />
+                                <select class="map-search" [value]="edicaoTitulo().categoria" (change)="edicaoTitulo.update(v => ({ ...v, categoria: $any($event.target).value }))">
+                                  <option value="fpp">fpp</option>
+                                  <option value="royalties">royalties</option>
+                                  <option value="outros">outros</option>
+                                </select>
+                                <input type="date" class="map-search" [value]="edicaoTitulo().vencimento" (change)="edicaoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" />
+                                <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="edicaoTitulo().valorStr" (input)="edicaoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
+                                <div class="titulo-add-actions">
+                                  <button class="btn ghost xs" [disabled]="salvandoEdicaoTitulo()" (click)="cancelarEdicaoTitulo()">Cancelar</button>
+                                  <button class="btn primary xs" [disabled]="salvandoEdicaoTitulo()" (click)="salvarEdicaoTitulo(a.id, t.id)">
+                                    {{ salvandoEdicaoTitulo() ? 'Salvando…' : 'Salvar' }}
+                                  </button>
+                                </div>
+                              </div>
+                            } @else {
+                              <div class="titulo-mobile-card">
+                                <div class="tm-row1">
+                                  <span class="cat-badge cat-{{ t.categoria ?? 'default' }}">{{ t.categoria ?? '—' }}</span>
+                                  <span class="tm-desc">{{ t.descricao ?? t.codigo }}</span>
+                                  <button class="btn ghost icon sm" type="button"
+                                          [matMenuTriggerFor]="tituloMenu"
+                                          [matMenuTriggerData]="{ apuracaoId: a.id, titulo: t }"
+                                          title="Mais opções">
+                                    <mat-icon style="font-size:18px;width:18px;height:18px">more_vert</mat-icon>
+                                  </button>
+                                </div>
+                                <div class="tm-row2">
+                                  <span class="tm-venc">
+                                    @if (t.data_vencimento) { vence {{ t.data_vencimento | date:'dd/MM/yyyy' }} } @else { — }
+                                  </span>
+                                  <span class="tm-valor">R$ {{ t.valor | number:'1.2-2':'pt-BR' }}</span>
+                                </div>
+                                <div class="tm-row3 pagamento-cell">
+                                  @if (t.data_pagamento) {
+                                    <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
+                                  } @else if (sugestoesConciliacao()[t.id]) {
+                                    <span class="identificado-badge">Identificado</span>
+                                  } @else if (t.data_vencimento && t.data_vencimento < today) {
+                                    <span class="atraso-badge">Em atraso</span>
+                                  } @else {
+                                    <span class="pendente-badge">Em aberto</span>
+                                  }
+                                  @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
+                                    <button
+                                      class="btn-conciliar"
+                                      [disabled]="conciliando() === t.id"
+                                      (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
+                                      [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
+                                      {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                            }
+                          }
+                          @if (adicionandoTituloPara() === a.id) {
+                            <div class="titulo-mobile-card titulo-mobile-edit">
+                              <input class="map-search mono" [value]="novoTitulo().codigo" (input)="novoTitulo.update(v => ({ ...v, codigo: $any($event.target).value }))" placeholder="Código" />
+                              <input class="map-search" [value]="novoTitulo().descricao" (input)="novoTitulo.update(v => ({ ...v, descricao: $any($event.target).value }))" placeholder="Descrição" />
+                              <select class="map-search" [value]="novoTitulo().categoria" (change)="novoTitulo.update(v => ({ ...v, categoria: $any($event.target).value }))">
+                                <option value="fpp">fpp</option>
+                                <option value="royalties">royalties</option>
+                                <option value="outros">outros</option>
+                              </select>
+                              <input type="date" class="map-search" [value]="novoTitulo().vencimento" (change)="novoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" />
+                              <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="novoTitulo().valorStr" (input)="novoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
+                              <div class="titulo-add-actions">
+                                <button class="btn ghost xs" [disabled]="salvandoTitulo()" (click)="cancelarAdicionarTitulo()">Cancelar</button>
+                                <button class="btn primary xs" [disabled]="salvandoTitulo()" (click)="salvarNovoTitulo(a.id)">
+                                  {{ salvandoTitulo() ? 'Salvando…' : 'Salvar título' }}
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
                       }
                       @if (adicionandoTituloPara() !== a.id) {
                         <button class="btn ghost xs add-titulo-trigger" (click)="abrirAdicionarTitulo(a.id)">
@@ -1349,6 +1488,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     }
 
     /* ─── Utilitários ─── */
+    /* .mobile-only é ocultado no styles.scss global (mesma especificidade do breakpoint
+       mobile que o reexibe — um display:none aqui, com o atributo de encapsulamento do
+       Angular, teria especificidade maior e venceria mesmo dentro do @media mobile). */
     .w-full { width: 100%; }
     .load-wrap { display: flex; justify-content: center; padding: 48px; }
     .spin-ring, .spin-sm { animation: spin 0.9s linear infinite; }
