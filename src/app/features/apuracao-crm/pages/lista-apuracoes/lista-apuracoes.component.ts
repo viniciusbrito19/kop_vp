@@ -519,7 +519,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                       <option value="outros">outros</option>
                                     </select>
                                   </td>
-                                  <td><input type="date" class="map-search" [value]="edicaoTitulo().vencimento" (input)="edicaoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
+                                  <td><input type="date" class="map-search" [value]="edicaoTitulo().vencimento" (change)="edicaoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
                                   <td>—</td>
                                   <td>
                                     <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="edicaoTitulo().valorStr" (input)="edicaoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
@@ -593,7 +593,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                     <option value="outros">outros</option>
                                   </select>
                                 </td>
-                                <td><input type="date" class="map-search" [value]="novoTitulo().vencimento" (input)="novoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
+                                <td><input type="date" class="map-search" [value]="novoTitulo().vencimento" (change)="novoTitulo.update(v => ({ ...v, vencimento: $any($event.target).value }))" /></td>
                                 <td>—</td>
                                 <td>
                                   <input type="text" inputmode="decimal" class="map-search add-titulo-valor" [value]="novoTitulo().valorStr" (input)="novoTitulo.update(v => ({ ...v, valorStr: $any($event.target).value }))" placeholder="0,00" />
@@ -657,7 +657,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 <span>Vencimento{{ modalFpp()!.fppSazonal > 0 ? ' — FPP Linha' : '' }}</span>
                 <input type="date"
                        [value]="fppVencimentoLinha()"
-                       (input)="fppVencimentoLinha.set($any($event.target).value)" />
+                       (change)="fppVencimentoLinha.set($any($event.target).value)" />
               </label>
             }
             @if (modalFpp()!.fppSazonal > 0) {
@@ -672,7 +672,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 <span>Vencimento{{ modalFpp()!.fppLinha > 0 ? ' — FPP Sazonal' : '' }}</span>
                 <input type="date"
                        [value]="fppVencimentoSazonal()"
-                       (input)="fppVencimentoSazonal.set($any($event.target).value)" />
+                       (change)="fppVencimentoSazonal.set($any($event.target).value)" />
               </label>
             }
             <div class="fpp-modal-info">
@@ -764,13 +764,13 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                       <span>Vencimento — Parcela 1 (R$ {{ parcela1Grupo(g) | number:'1.2-2':'pt-BR' }})</span>
                       <input type="date"
                              [value]="g.vencimentoP1"
-                             (input)="updateGrupo(g.key, { vencimentoP1: $any($event.target).value })" />
+                             (change)="updateGrupo(g.key, { vencimentoP1: $any($event.target).value })" />
                     </label>
                     <label class="input">
                       <span>Vencimento — Parcela 2 (R$ {{ parcela2Grupo(g) | number:'1.2-2':'pt-BR' }})</span>
                       <input type="date"
                              [value]="g.vencimentoP2"
-                             (input)="updateGrupo(g.key, { vencimentoP2: $any($event.target).value })" />
+                             (change)="updateGrupo(g.key, { vencimentoP2: $any($event.target).value })" />
                     </label>
                   }
                 </div>
@@ -788,7 +788,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                         <span>Vencimento</span>
                         <input type="date"
                                [value]="p.vencimento"
-                               (input)="updateParcelaSazonal(g, $index, { vencimento: $any($event.target).value })" />
+                               (change)="updateParcelaSazonal(g, $index, { vencimento: $any($event.target).value })" />
                       </label>
                     </div>
                   }
@@ -1674,7 +1674,7 @@ export class ListaApuracoesComponent implements OnInit {
   }
 
   /** Constrói o estado editável de cada grupo (tipo, alíquota) a partir de um preview recém-calculado. */
-  private construirGrupos(p: PreviewApuracao, dataFim: string): GrupoRoyaltiesEdicao[] {
+  private construirGrupos(p: PreviewApuracao, dataFim: string, quinzena: 1 | 2): GrupoRoyaltiesEdicao[] {
     return p.grupos_royalties.map(g => ({
       key:                     `${g.tipo}_${g.aliquota}`,
       tipo:                    g.tipo,
@@ -1685,7 +1685,7 @@ export class ListaApuracoesComponent implements OnInit {
       outrosStr:               '',
       vencimentoP1:            g.tipo === 'linha' ? this.service.vencimentoFpp(dataFim) : '',
       vencimentoP2:            g.tipo === 'linha' ? this.service.vencimentoRoyaltiesLinhaParcela2(dataFim) : '',
-      parcelasSazonal:         g.tipo === 'sazonal' ? this.calcularParcelasSazonal(g.roy_bruto, this.service.vencimentosRoyaltiesSazonal(dataFim)) : [],
+      parcelasSazonal:         g.tipo === 'sazonal' ? this.calcularParcelasSazonal(g.roy_bruto, this.service.vencimentosRoyaltiesSazonal(dataFim, quinzena)) : [],
       valorProdutosSemImposto: g.valor_produtos_sem_imposto,
     }));
   }
@@ -1696,7 +1696,7 @@ export class ListaApuracoesComponent implements OnInit {
     const p = this.preview();
     if (!p) return;
     const quinzLabel = quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena';
-    const grupos = this.construirGrupos(p, fim);
+    const grupos = this.construirGrupos(p, fim, quinzena);
     this.royGrupos.set(grupos);
     this.royGrupoAtivo.set(grupos[0]?.key ?? '');
     this.modalRoyalties.set({ periodoLabel: `${quinzLabel} de ${MESES[mes - 1]}/${ano}`, modo: 'preview', ano, mes, quinzena });
@@ -1709,7 +1709,7 @@ export class ListaApuracoesComponent implements OnInit {
     this.abrindoModalRoyalties.set(true);
     try {
       const p = await this.service.calcularPreview(a.ano, a.mes, a.quinzena);
-      const grupos = this.construirGrupos(p, a.data_fim);
+      const grupos = this.construirGrupos(p, a.data_fim, a.quinzena);
       this.royGrupos.set(grupos);
       this.royGrupoAtivo.set(grupos[0]?.key ?? '');
     } catch {

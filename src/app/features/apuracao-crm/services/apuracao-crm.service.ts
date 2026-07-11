@@ -641,11 +641,14 @@ export class ApuracaoCrmService {
   }
 
   /**
-   * Vencimentos das 5 parcelas de Royalties Sazonal, encadeados a partir do fim do período apurado:
-   * P1 = fim + 50d; P2 = P1 + 20d; P3 = P2 + 20d; P4 = P3 + 10d; P5 = P4 + 10d.
+   * Vencimentos das 5 parcelas de Royalties Sazonal, encadeados a partir do fim do período apurado.
+   * A 1ª parcela depende da quinzena: 1ª quinzena = fim + 50d; 2ª quinzena = dia 7 do 2º mês
+   * subsequente ao da quinzena (fixo, para não variar com o tamanho dos meses — ex.: quinzena
+   * encerrada em fevereiro → 07/04).
+   * Demais parcelas: P2 = P1 + 20d; P3 = P2 + 20d; P4 = P3 + 10d; P5 = P4 + 10d.
    */
-  vencimentosRoyaltiesSazonal(dataFim: string): string[] {
-    const p1 = this.somarDias(dataFim, 50);
+  vencimentosRoyaltiesSazonal(dataFim: string, quinzena: 1 | 2): string[] {
+    const p1 = quinzena === 1 ? this.somarDias(dataFim, 50) : this.diaFixoMesesDepois(dataFim, 2, 7);
     const p2 = this.somarDias(p1, 20);
     const p3 = this.somarDias(p2, 20);
     const p4 = this.somarDias(p3, 10);
@@ -663,6 +666,13 @@ export class ApuracaoCrmService {
   private somarDias(data: string, dias: number): string {
     const [ano, mes, dia] = data.split('-').map(Number);
     const d = new Date(ano, mes - 1, dia + dias);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Dia fixo `dia` do mês `mesesDepois` meses após o de `data` (ignora o dia original de `data`). */
+  private diaFixoMesesDepois(data: string, mesesDepois: number, dia: number): string {
+    const [ano, mes] = data.split('-').map(Number);
+    const d = new Date(ano, mes - 1 + mesesDepois, dia);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
