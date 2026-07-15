@@ -9,13 +9,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
-import { DespesasService, TituloDespesa, TituloPedidoMes } from '../../services/despesas.service';
-import { DespesaRecorrente, LABELS_CATEGORIA, CategoriaDespesa } from '../../models/despesa.model';
+import { DespesasService, TituloDespesa, TituloPedidoMes, TituloRoyaltiesMes } from '../../services/despesas.service';
+import { DespesaRecorrente, CategoriaDespesa } from '../../models/despesa.model';
 import { TemplateDespesaDialogComponent } from './template-despesa-dialog.component';
 import { GerarMesDialogComponent } from './gerar-mes-dialog.component';
 import { PageHeaderService } from '../../../../core/services/page-header.service';
-
-const PEDIDOS_COR = '#2A7A8C';
 
 interface ItemAVencer {
   id: string;
@@ -104,122 +102,85 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
           </div>
         </div>
 
-        <!-- ── KPI row ───────────────────────────────────────── -->
-        <div class="kpi-grid">
+        <!-- ── Break-even diário ─────────────────────────────── -->
+        <div class="be-bar">
+          <div class="be-icon">
+            <mat-icon style="font-size:20px;width:20px;height:20px">track_changes</mat-icon>
+          </div>
+          <div class="be-main">
+            <div class="be-label">BREAK-EVEN DIÁRIO</div>
+            <div class="serif be-value">{{ moedaCompact(breakEvenGeralDia) }}</div>
+          </div>
+          <div class="be-progress">
+            <div class="be-track">
+              <div class="be-fill" [style.width.%]="pctPagoGeral"></div>
+            </div>
+          </div>
+          <div class="be-total">
+            <div class="be-total-pct">{{ fmtPct(pctPagoGeral) }}% pago</div>
+            <div class="serif be-total-value">{{ moedaCompact(totalPrevistoGeral) }}</div>
+            <div class="be-total-label">total previsto no mês</div>
+          </div>
+        </div>
 
-          <!-- KPIs bordô empilhados: custo fixo + custo de pedidos -->
-          <div class="col kpi-stack kpi-main-stack">
+        <!-- ── KPI cards: Fixas / Pedidos / Royalties+FPP ────── -->
+        <div class="kpi3-grid">
 
-            <div class="kpi bordo kpi-half" style="padding:16px 18px">
-              <div class="kpi-label">
-                <mat-icon style="font-size:14px;width:14px;height:14px">account_balance_wallet</mat-icon>
-                CUSTO FIXO MENSAL
-              </div>
-              <div class="serif kpi-bordo-val" style="font-size:30px;line-height:1.05;margin-top:4px">
-                {{ moedaCompact(totalFixo) }}
-              </div>
-              <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
-                Custo fixo da loja por mês.<br>
-                <b style="opacity:1">{{ moedaCompact(breakEvenDia) }}/dia</b> de operação.
-              </div>
-              <div style="margin-top:10px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,0.10);display:flex;align-items:center;gap:10px">
-                <div style="height:5px;flex:1;background:rgba(255,255,255,0.20);border-radius:999px;overflow:hidden">
-                  <div [style.width.%]="pctPago" style="height:100%;background:var(--gold);border-radius:999px;transition:width 0.4s ease"></div>
-                </div>
-                <span style="font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap">{{ fmtPct(pctPago) }}% pago</span>
+          <div class="card kpi3-card">
+            <div class="kpi3-head">
+              <div class="kpi3-icon"><mat-icon style="font-size:18px;width:18px;height:18px">home</mat-icon></div>
+              <div>
+                <div class="kpi3-title">Despesas Fixas</div>
+                <div class="kpi3-sub">{{ templatesFixasPuras.length }} contas · mensal</div>
               </div>
             </div>
-
-            <div class="kpi bordo kpi-half" style="padding:16px 18px">
-              <div class="kpi-label">
-                <mat-icon style="font-size:14px;width:14px;height:14px">receipt_long</mat-icon>
-                CUSTO DE PEDIDOS DO MÊS
-              </div>
-              <div class="serif kpi-bordo-val" style="font-size:30px;line-height:1.05;margin-top:4px">
-                {{ moedaCompact(totalPedidosFixo) }}
-              </div>
-              <div style="font-size:11px;opacity:0.78;margin-top:4px;line-height:1.4">
-                Total dos títulos de pedidos do mês.<br>
-                <b style="opacity:1">{{ paidPedidosCount }} de {{ titulosPedidos().length }}</b> títulos pagos.
-              </div>
-              <div style="margin-top:10px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,0.10);display:flex;align-items:center;gap:10px">
-                <div style="height:5px;flex:1;background:rgba(255,255,255,0.20);border-radius:999px;overflow:hidden">
-                  <div [style.width.%]="pctPedidosPago" style="height:100%;background:var(--gold);border-radius:999px;transition:width 0.4s ease"></div>
-                </div>
-                <span style="font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap">{{ fmtPct(pctPedidosPago) }}% pago</span>
-              </div>
+            <div class="serif kpi3-value">{{ moeda(totalFixoPuro) }}</div>
+            <div class="kpi3-bar">
+              <div class="kpi3-seg ok" [style.width.%]="pctFixoPuroPago"></div>
+              <div class="kpi3-seg gold" [style.width.%]="100 - pctFixoPuroPago"></div>
             </div>
-
+            <div class="kpi3-legend">
+              <span><i class="dot ok"></i>Pago <b>{{ moeda(totalFixoPuroPago) }}</b></span>
+              <span><i class="dot gold"></i>Pendente <b>{{ moeda(totalFixoPuroDevido) }}</b></span>
+            </div>
           </div>
 
-          <!-- KPI 2×2: fixas pagas / pedidos pagos / fixas a vencer / pedidos a vencer -->
-          <div class="col kpi-stack">
-
-            <!-- linha superior: fixas -->
-            <div class="kpi-row-pair">
-              <div class="kpi kpi-half">
-                <div class="kpi-label">
-                  <mat-icon style="font-size:14px;width:14px;height:14px">check_circle</mat-icon>
-                  FIXAS PAGAS ESTE MÊS
-                </div>
-                <div class="kpi-value serif">{{ moedaCompact(totalPago) }}</div>
-                <div class="kpi-foot">{{ paidCount }} de {{ templatesAtivos.length }} categorias</div>
-              </div>
-
-              <div class="kpi kpi-half">
-                <div class="kpi-label">
-                  <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-                  FIXAS A VENCER NESTE MÊS
-                </div>
-                <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalDevido) }}</div>
-                <div class="kpi-foot">{{ dueCount }} categorias pendentes</div>
+          <div class="card kpi3-card">
+            <div class="kpi3-head">
+              <div class="kpi3-icon"><mat-icon style="font-size:18px;width:18px;height:18px">description</mat-icon></div>
+              <div>
+                <div class="kpi3-title">Pedidos</div>
+                <div class="kpi3-sub">{{ titulosPedidos().length }} notas · fornecedores</div>
               </div>
             </div>
-
-            <!-- linha inferior: pedidos -->
-            <div class="kpi-row-pair">
-              <div class="kpi kpi-half">
-                <div class="kpi-label">
-                  <mat-icon style="font-size:14px;width:14px;height:14px">check_circle</mat-icon>
-                  PEDIDOS PAGOS ESTE MÊS
-                </div>
-                <div class="kpi-value serif">{{ moedaCompact(totalPedidosPago) }}</div>
-                <div class="kpi-foot">{{ paidPedidosCount }} de {{ titulosPedidos().length }} títulos</div>
-              </div>
-
-              <div class="kpi kpi-half">
-                <div class="kpi-label">
-                  <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-                  PEDIDOS A VENCER NESTE MÊS
-                </div>
-                <div class="kpi-value serif" style="color:var(--bad)">{{ moedaCompact(totalPedidosDevido) }}</div>
-                <div class="kpi-foot">{{ duePedidosCount }} títulos pendentes</div>
-              </div>
+            <div class="serif kpi3-value">{{ moeda(totalPedidosFixo) }}</div>
+            <div class="kpi3-bar">
+              <div class="kpi3-seg ok" [style.width.%]="pctPedidosPago"></div>
+              <div class="kpi3-seg gold" [style.width.%]="100 - pctPedidosPago"></div>
             </div>
-
+            <div class="kpi3-legend">
+              <span><i class="dot ok"></i>Pago <b>{{ moeda(totalPedidosPago) }}</b></span>
+              <span><i class="dot gold"></i>Pendente <b>{{ moeda(totalPedidosDevido) }}</b></span>
+            </div>
           </div>
 
-          <!-- KPI Break-even empilhado: fixo + pedidos -->
-          <div class="col kpi-stack kpi-be-stack">
-
-            <div class="kpi gold kpi-half">
-              <div class="kpi-label">
-                <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
-                BREAK-EVEN / DIA
+          <div class="card kpi3-card">
+            <div class="kpi3-head">
+              <div class="kpi3-icon"><mat-icon style="font-size:18px;width:18px;height:18px">copyright</mat-icon></div>
+              <div>
+                <div class="kpi3-title">Royalties + FPP</div>
+                <div class="kpi3-sub">quinzenal · franquia</div>
               </div>
-              <div class="kpi-value serif">{{ moedaCompact(breakEvenDia) }}</div>
-              <div class="kpi-foot">meta diária · custos fixos</div>
             </div>
-
-            <div class="kpi gold kpi-half">
-              <div class="kpi-label">
-                <mat-icon style="font-size:14px;width:14px;height:14px">bolt</mat-icon>
-                BREAK-EVEN PEDIDOS / DIA
-              </div>
-              <div class="kpi-value serif">{{ moedaCompact(breakEvenPedidosDia) }}</div>
-              <div class="kpi-foot">meta diária · custos de pedidos</div>
+            <div class="serif kpi3-value">{{ moeda(totalRoyalties) }}</div>
+            <div class="kpi3-bar">
+              <div class="kpi3-seg ok" [style.width.%]="pctRoyaltiesPago"></div>
+              <div class="kpi3-seg gold" [style.width.%]="100 - pctRoyaltiesPago"></div>
             </div>
-
+            <div class="kpi3-legend">
+              <span><i class="dot ok"></i>Pago <b>{{ moeda(totalRoyaltiesPago) }}</b></span>
+              <span><i class="dot gold"></i>Pendente <b>{{ moeda(totalRoyaltiesDevido) }}</b></span>
+            </div>
           </div>
 
         </div>
@@ -357,54 +318,116 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
             </div>
           </div>
 
-          <!-- Por categoria -->
+          <!-- Royalties e FPP -->
           <div class="card" style="padding:22px">
-            <h3 class="serif" style="margin:0;font-size:20px;font-weight:400">Por categoria</h3>
-            <div style="font-size:12px;color:var(--text-3);margin-top:2px;margin-bottom:18px">
-              onde o dinheiro vai · {{ mesLabel }}
-            </div>
 
-            <!-- Donut SVG -->
-            <div style="display:flex;justify-content:center;margin-bottom:20px">
-              <div class="donut-wrap" style="position:relative;width:160px;height:160px">
-                <svg width="160" height="160" viewBox="0 0 160 160">
-                  @if (categoriasData.length === 0) {
-                    <circle cx="80" cy="80" r="56" fill="none"
-                            stroke="var(--line-2)" stroke-width="24"/>
-                  }
-                  <g transform="rotate(-90 80 80)">
-                    @for (seg of donutSegments; track $index) {
-                      <circle cx="80" cy="80" r="56" fill="none"
-                              [attr.stroke]="seg.cor"
-                              stroke-width="24"
-                              stroke-linecap="butt"
-                              [attr.stroke-dasharray]="seg.dashArray"
-                              [attr.stroke-dashoffset]="seg.dashOffset"/>
-                    }
-                  </g>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                  <div class="serif" style="font-size:20px;line-height:1">{{ moedaCompact(totalGeralDespesas) }}</div>
-                  <div style="font-size:10px;color:var(--text-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:2px">TOTAL</div>
+            <!-- cabeçalho -->
+            <div class="row" style="justify-content:space-between;margin-bottom:18px;align-items:flex-start">
+              <div>
+                <h3 class="serif" style="margin:0;font-size:22px;font-weight:400">Royalties e FPP</h3>
+                <div style="font-size:12px;color:var(--text-3);margin-top:2px">
+                  {{ paidRoyaltiesCount }} pagos · {{ dueRoyaltiesCount }} a vencer · vencimentos em {{ mesLabel }}
                 </div>
+              </div>
+              <div class="seg">
+                @for (opt of filtroOpts; track opt.value) {
+                  <button [class.on]="filtroListaRoyalties() === opt.value"
+                          (click)="filtroListaRoyalties.set(opt.value); paginaRoyalties.set(0)">{{ opt.label }}</button>
+                }
               </div>
             </div>
 
-            <!-- lista de categorias -->
-            <div class="col gap-2">
-              @for (c of categoriasData; track c.label) {
-                <div class="row gap-3" style="align-items:center">
-                  <span [style.background]="c.cor"
-                        style="width:10px;height:10px;border-radius:3px;flex:0 0 auto"></span>
-                  <span style="flex:1;font-size:12px;font-weight:500">{{ c.label }}</span>
-                  <span style="font-size:11px;color:var(--text-3);min-width:28px;text-align:right">
-                    {{ fmtPct(c.pct) }}%
-                  </span>
-                  <span class="mono" style="font-size:12px;font-weight:600;min-width:72px;text-align:right">
-                    {{ moedaCompact(c.valor) }}
-                  </span>
+            <!-- barra de progresso -->
+            <div style="margin-bottom:22px;padding:14px 16px;background:var(--surface-2);border-radius:12px">
+              <div class="row" style="justify-content:space-between;font-size:12px;margin-bottom:8px">
+                <span style="color:var(--text-3)">Progresso do mês</span>
+                <span style="font-weight:700">
+                  <span style="color:var(--ok)">{{ moedaCompact(totalRoyaltiesPago) }}</span>
+                  <span style="color:var(--text-3)"> de {{ moedaCompact(totalRoyalties) }}</span>
+                </span>
+              </div>
+              <div style="height:8px;background:var(--line-2);border-radius:999px;overflow:hidden;position:relative">
+                <div [style.width.%]="pctRoyaltiesPago"
+                     style="position:absolute;inset:0;background:linear-gradient(90deg,var(--bordo) 0%,var(--bordo-2) 100%);border-radius:999px;transition:width 0.4s ease"></div>
+              </div>
+              <div class="row" style="justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-3)">
+                <span>{{ fmtPct(pctRoyaltiesPago) }}% liquidado</span>
+                <span style="color:var(--bad);font-weight:600">faltam {{ moedaCompact(totalRoyaltiesDevido) }}</span>
+              </div>
+            </div>
+
+            <!-- linhas de título de royalties/fpp -->
+            <div>
+              @for (t of titulosRoyaltiesPaginados; track t.id; let i = $index) {
+                <div class="row gap-3"
+                     style="padding:12px 0;align-items:center"
+                     [style.border-top]="i > 0 ? '1px solid var(--line)' : 'none'">
+
+                  <!-- ícone -->
+                  <div style="width:40px;height:40px;border-radius:11px;background:var(--surface-2);color:var(--text-3);display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+                    <mat-icon style="font-size:18px;width:18px;height:18px">copyright</mat-icon>
+                  </div>
+
+                  <!-- info -->
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      {{ t.descricao ?? t.codigo }}
+                    </div>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+                      vence {{ data(t.data_vencimento) }} · {{ labelRoyalty(t.categoria) }}
+                    </div>
+                  </div>
+
+                  <!-- valor e status -->
+                  <div style="text-align:right;flex-shrink:0">
+                    <div class="serif" style="font-size:16px;line-height:1.1">{{ moeda(t.valor) }}</div>
+                    <div style="margin-top:5px">
+                      @if (statusTitulo(t) === 'pago') {
+                        <span class="pill ok" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">check</mat-icon> pago
+                        </span>
+                      } @else if (statusTitulo(t) === 'atrasado') {
+                        <span class="pill bad" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">warning</mat-icon> atrasado
+                        </span>
+                      } @else {
+                        <span class="pill warn" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">schedule</mat-icon> a vencer
+                        </span>
+                      }
+                    </div>
+                  </div>
                 </div>
               }
+
+              @if (titulosRoyaltiesFiltrados.length === 0) {
+                <div style="text-align:center;padding:32px;color:var(--text-4);font-size:14px">
+                  Nenhum pagamento encontrado.
+                </div>
+              }
+            </div>
+
+            <!-- paginação royalties -->
+            @if (totalPaginasRoyalties > 1) {
+              <div class="pag-bar">
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaRoyalties() === 0"
+                        (click)="paginaRoyalties.set(paginaRoyalties() - 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <span class="pag-info">{{ paginaRoyalties() + 1 }} / {{ totalPaginasRoyalties }}</span>
+                <button class="btn icon ghost pag-btn" type="button"
+                        [disabled]="paginaRoyalties() >= totalPaginasRoyalties - 1"
+                        (click)="paginaRoyalties.set(paginaRoyalties() + 1)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            }
+
+            <!-- rodapé total -->
+            <div class="row" style="margin-top:14px;padding-top:14px;border-top:2px solid var(--bordo-tint)">
+              <div style="flex:1;font-size:13px;color:var(--text-2);font-weight:600">Total de royalties e FPP no mês</div>
+              <div class="serif" style="font-size:26px;color:var(--bordo)">{{ moeda(totalRoyalties) }}</div>
             </div>
           </div>
 
@@ -689,12 +712,38 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
 
     /* ── Layout base ─────────────────────────────────────── */
     .page-wrap  { padding: 28px 32px 48px; max-width: 1600px; box-sizing: border-box; width: 100%; }
-    .kpi-grid      { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr) minmax(0,1fr); gap: 14px; margin-bottom: 22px; }
     .main-grid     { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; }
-    .kpi-stack     { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-    .kpi-main-stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-    .kpi-row-pair  { display: flex; gap: 14px; flex: 1; min-width: 0; }
-    .kpi-half      { flex: 1; min-width: 0; overflow: hidden; }
+
+    /* ── Break-even bar ───────────────────────────────────── */
+    .be-bar        { display: flex; align-items: center; gap: 24px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 24px; margin-bottom: 18px; }
+    .be-icon       { width: 44px; height: 44px; border-radius: 50%; background: var(--gold-tint); color: var(--gold-2); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+    .be-main       { flex: 0 0 auto; }
+    .be-label      { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-3); }
+    .be-value      { font-size: 28px; line-height: 1.1; margin-top: 2px; }
+    .be-progress   { flex: 1; min-width: 0; }
+    .be-track      { height: 10px; background: var(--line-2); border-radius: 999px; overflow: hidden; }
+    .be-fill       { height: 100%; background: linear-gradient(90deg, var(--bordo) 0%, var(--bordo-2) 100%); border-radius: 999px; transition: width 0.4s ease; }
+    .be-total      { text-align: right; flex: 0 0 auto; }
+    .be-total-pct  { font-size: 11px; font-weight: 700; color: var(--text-3); margin-bottom: 2px; }
+    .be-total-value { font-size: 22px; line-height: 1.1; }
+    .be-total-label { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── KPI cards (Fixas / Pedidos / Royalties+FPP) ──────── */
+    .kpi3-grid     { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 22px; }
+    .kpi3-card     { padding: 20px 22px; min-width: 0; }
+    .kpi3-head     { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .kpi3-icon     { width: 38px; height: 38px; border-radius: 11px; background: var(--gold-tint); color: var(--gold-2); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+    .kpi3-title    { font-size: 14px; font-weight: 600; }
+    .kpi3-sub      { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .kpi3-value    { font-size: 28px; line-height: 1.1; margin-bottom: 12px; }
+    .kpi3-bar      { height: 7px; border-radius: 999px; overflow: hidden; display: flex; background: var(--line-2); margin-bottom: 10px; }
+    .kpi3-seg.ok   { background: var(--ok); }
+    .kpi3-seg.gold { background: var(--gold-2); }
+    .kpi3-legend   { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); }
+    .kpi3-legend b { color: var(--text); font-weight: 700; }
+    .kpi3-legend .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .kpi3-legend .dot.ok   { background: var(--ok); }
+    .kpi3-legend .dot.gold { background: var(--gold-2); }
 
     /* ── Nav de mês ─────────────────────────────────────── */
     .mes-nav       { align-items: center; background: var(--surface-2); border-radius: 10px; padding: 3px 6px; gap: 4px; }
@@ -736,29 +785,19 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
       .header-actions > .btn.outline { display: none !important; }
       .mes-nav-label { min-width: 60px !important; font-size: 12px; }
 
-      /* KPI grid: coluna única — minmax(0) evita overflow do conteúdo */
-      .kpi-grid       { grid-template-columns: minmax(0,1fr); gap: 10px; margin-bottom: 14px; }
-      .kpi-main-stack { flex-direction: row; }   /* bordô lado a lado */
-      .kpi-be-stack   { flex-direction: row; }   /* break-even lado a lado */
-      .kpi-stack      { gap: 10px; }
-      .kpi-row-pair   { gap: 10px; }
+      /* Break-even bar: empilha em coluna no mobile */
+      .be-bar         { flex-wrap: wrap; gap: 12px; padding: 14px 16px; margin-bottom: 10px; }
+      .be-progress    { order: 3; flex-basis: 100%; }
+      .be-total       { text-align: left; }
 
-      /* Reduz valor dos cards bordô */
-      .kpi-bordo-val  { font-size: 20px !important; }
-      .kpi.bordo      { padding: 12px 12px !important; }
-
-      /* Rótulos longos podem quebrar linha */
-      .kpi-label { white-space: normal !important; line-height: 1.3; }
+      /* KPI cards: coluna única — minmax(0) evita overflow do conteúdo */
+      .kpi3-grid      { grid-template-columns: minmax(0,1fr); gap: 10px; margin-bottom: 14px; }
 
       /* Layout principal: coluna única */
       .main-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
 
       /* Cards da lista: limita largura */
       .card { overflow: hidden; }
-
-      /* Donut menor */
-      .donut-wrap     { width: 120px !important; height: 120px !important; }
-      .donut-wrap svg { width: 120px !important; height: 120px !important; }
 
       /* Segmented control compacto */
       .seg button { padding: 4px 8px !important; font-size: 11px !important; }
@@ -786,16 +825,20 @@ export class ListaDespesasComponent implements OnInit {
   }
 
   carregando         = signal(false);
-  filtroLista        = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
-  filtroListaPedidos = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  filtroLista          = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  filtroListaPedidos   = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  filtroListaRoyalties = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
   paginaFixas        = signal(0);
   paginaPedidos      = signal(0);
+  paginaRoyalties    = signal(0);
   paginaAvencer      = signal(0);
-  readonly PAGE_FIXAS   = 5;
-  readonly PAGE_PEDIDOS = 6;
-  readonly PAGE_AVENCER = 5;
+  readonly PAGE_FIXAS     = 5;
+  readonly PAGE_PEDIDOS   = 6;
+  readonly PAGE_ROYALTIES = 6;
+  readonly PAGE_AVENCER   = 5;
   showTitulos        = false;
   titulosPedidos     = signal<TituloPedidoMes[]>([]);
+  titulosRoyalties   = signal<TituloRoyaltiesMes[]>([]);
   refAno             = signal(new Date().getFullYear());
   refMes             = signal(new Date().getMonth() + 1);
   private readonly _hoje = new Date();
@@ -810,8 +853,6 @@ export class ListaDespesasComponent implements OnInit {
     { value: 'a_vencer' as const, label: 'A vencer' },
     { value: 'pagas'    as const, label: 'Pagas'    },
   ];
-
-  private readonly CIRCUMFERENCE = 2 * Math.PI * 56;
 
   // ── Mês ─────────────────────────────────────────────────────
   private get _now() { return new Date(this.refAno(), this.refMes() - 1, 1); }
@@ -874,8 +915,27 @@ export class ListaDespesasComponent implements OnInit {
   get totalPago(): number   { return this.templatesAtivos.filter(t => this.isPago(t)).reduce((s, t) => s + t.valor_estimado, 0); }
   get totalDevido(): number { return this.totalFixo - this.totalPago; }
   get pctPago(): number     { return this.totalFixo > 0 ? (this.totalPago / this.totalFixo) * 100 : 0; }
-  get breakEvenDia(): number        { return this.totalFixo / 30; }
-  get breakEvenPedidosDia(): number { return this.totalPedidosFixo / 30; }
+
+  private isRoyaltyCat(t: DespesaRecorrente): boolean {
+    return t.categoria === 'royalties' || t.categoria === 'fpp';
+  }
+
+  get templatesFixasPuras(): DespesaRecorrente[] { return this.templatesAtivos.filter(t => !this.isRoyaltyCat(t)); }
+
+  get totalFixoPuro(): number       { return this.templatesFixasPuras.reduce((s, t) => s + t.valor_estimado, 0); }
+  get totalFixoPuroPago(): number   { return this.templatesFixasPuras.filter(t => this.isPago(t)).reduce((s, t) => s + t.valor_estimado, 0); }
+  get totalFixoPuroDevido(): number { return this.totalFixoPuro - this.totalFixoPuroPago; }
+  get pctFixoPuroPago(): number     { return this.totalFixoPuro > 0 ? (this.totalFixoPuroPago / this.totalFixoPuro) * 100 : 0; }
+
+  get totalRoyalties(): number       { return this.titulosRoyalties().reduce((s, t) => s + t.valor, 0); }
+  get totalRoyaltiesPago(): number   { return this.titulosRoyalties().filter(t => !!t.data_pagamento).reduce((s, t) => s + t.valor, 0); }
+  get totalRoyaltiesDevido(): number { return this.totalRoyalties - this.totalRoyaltiesPago; }
+  get pctRoyaltiesPago(): number     { return this.totalRoyalties > 0 ? (this.totalRoyaltiesPago / this.totalRoyalties) * 100 : 0; }
+
+  get totalPrevistoGeral(): number { return this.totalFixoPuro + this.totalPedidosFixo + this.totalRoyalties; }
+  get totalPagoGeral(): number     { return this.totalFixoPuroPago + this.totalPedidosPago + this.totalRoyaltiesPago; }
+  get pctPagoGeral(): number       { return this.totalPrevistoGeral > 0 ? (this.totalPagoGeral / this.totalPrevistoGeral) * 100 : 0; }
+  get breakEvenGeralDia(): number  { return this.totalPrevistoGeral / 30; }
 
   get templatesFiltrados(): DespesaRecorrente[] {
     const f = this.filtroLista();
@@ -916,8 +976,28 @@ export class ListaDespesasComponent implements OnInit {
   get paidPedidosCount(): number    { return this.titulosPedidos().filter(t => !!t.data_pagamento).length; }
   get duePedidosCount(): number     { return this.titulosPedidos().filter(t => !t.data_pagamento).length; }
 
-  get totalGeralDespesas(): number { return this.totalFixo + this.totalPedidosFixo; }
-  get totalDevidoGeral(): number   { return this.totalDevido + this.totalPedidosDevido; }
+  get titulosRoyaltiesFiltrados(): TituloRoyaltiesMes[] {
+    const f = this.filtroListaRoyalties();
+    if (f === 'a_vencer') return this.titulosRoyalties().filter(t => !t.data_pagamento);
+    if (f === 'pagas')    return this.titulosRoyalties().filter(t => !!t.data_pagamento);
+    return this.titulosRoyalties();
+  }
+
+  get totalPaginasRoyalties(): number {
+    return Math.ceil(this.titulosRoyaltiesFiltrados.length / this.PAGE_ROYALTIES);
+  }
+
+  get titulosRoyaltiesPaginados(): TituloRoyaltiesMes[] {
+    const inicio = this.paginaRoyalties() * this.PAGE_ROYALTIES;
+    return this.titulosRoyaltiesFiltrados.slice(inicio, inicio + this.PAGE_ROYALTIES);
+  }
+
+  get paidRoyaltiesCount(): number { return this.titulosRoyalties().filter(t => !!t.data_pagamento).length; }
+  get dueRoyaltiesCount(): number  { return this.titulosRoyalties().filter(t => !t.data_pagamento).length; }
+
+  labelRoyalty(cat: string | null): string {
+    return cat === 'fpp' ? 'FPP' : cat === 'royalties' ? 'Royalties' : '—';
+  }
 
   get totalVencendo7Dias(): number {
     const hoje     = this._hoje;
@@ -963,40 +1043,6 @@ export class ListaDespesasComponent implements OnInit {
     return this.templatesAtivos.filter(t => !this.isPago(t));
   }
 
-  get categoriasData(): { label: string; valor: number; cor: string; pct: number }[] {
-    const groups = new Map<string, { valor: number; cor: string }>();
-    for (const t of this.templatesAtivos) {
-      const label = t.categoria ? LABELS_CATEGORIA[t.categoria] : 'Outro';
-      const cor   = t.categoria ? CAT_COR[t.categoria] : '#967333';
-      const prev  = groups.get(label);
-      groups.set(label, { valor: (prev?.valor ?? 0) + t.valor_estimado, cor });
-    }
-    if (this.totalPedidosFixo > 0) {
-      groups.set('Pedidos', { valor: this.totalPedidosFixo, cor: PEDIDOS_COR });
-    }
-    const total = this.totalGeralDespesas;
-    return Array.from(groups.entries())
-      .sort((a, b) => b[1].valor - a[1].valor)
-      .map(([label, { valor, cor }]) => ({
-        label, valor, cor,
-        pct: total > 0 ? (valor / total) * 100 : 0,
-      }));
-  }
-
-  get donutSegments(): { cor: string; dashArray: string; dashOffset: string }[] {
-    let cumPct = 0;
-    return this.categoriasData.map(c => {
-      const dash = (c.pct / 100) * this.CIRCUMFERENCE;
-      const seg  = {
-        cor:        c.cor,
-        dashArray:  `${dash} ${this.CIRCUMFERENCE}`,
-        dashOffset: `${-(cumPct / 100) * this.CIRCUMFERENCE}`,
-      };
-      cumPct += c.pct;
-      return seg;
-    });
-  }
-
   catCor(cat: CategoriaDespesa | null): string  { return cat ? CAT_COR[cat]  : '#967333'; }
   catIcon(cat: CategoriaDespesa | null): string { return cat ? CAT_ICON[cat] : 'more_horiz'; }
 
@@ -1025,21 +1071,21 @@ export class ListaDespesasComponent implements OnInit {
   mesAnterior() {
     if (this.refMes() === 1) { this.refMes.set(12); this.refAno.set(this.refAno() - 1); }
     else { this.refMes.set(this.refMes() - 1); }
-    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaRoyalties.set(0); this.paginaAvencer.set(0);
     this.carregar();
   }
 
   proximoMes() {
     if (this.refMes() === 12) { this.refMes.set(1); this.refAno.set(this.refAno() + 1); }
     else { this.refMes.set(this.refMes() + 1); }
-    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaRoyalties.set(0); this.paginaAvencer.set(0);
     this.carregar();
   }
 
   irParaHoje() {
     this.refAno.set(this._hoje.getFullYear());
     this.refMes.set(this._hoje.getMonth() + 1);
-    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaAvencer.set(0);
+    this.paginaFixas.set(0); this.paginaPedidos.set(0); this.paginaRoyalties.set(0); this.paginaAvencer.set(0);
     this.carregar();
   }
 
@@ -1049,14 +1095,16 @@ export class ListaDespesasComponent implements OnInit {
   async carregar() {
     this.carregando.set(true);
     try {
-      const [templates, titulos, titulosPedidos] = await Promise.all([
+      const [templates, titulos, titulosPedidos, titulosRoyalties] = await Promise.all([
         this.svc.listarTemplates(),
         this.svc.listarTitulosDespesa(),
         this.svc.listarTitulosPedidosMes(this.refAno(), this.refMes()),
+        this.svc.listarTitulosRoyaltiesMes(this.refAno(), this.refMes()),
       ]);
       this.dsTemplates.data = templates;
       this.dsTitulos.data   = titulos;
       this.titulosPedidos.set(titulosPedidos);
+      this.titulosRoyalties.set(titulosRoyalties);
     } finally {
       this.carregando.set(false);
     }
