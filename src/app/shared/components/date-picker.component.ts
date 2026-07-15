@@ -24,7 +24,7 @@ type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean
       </button>
     }
     @if (_open()) {
-      <div class="dp-cal" (click)="$event.stopPropagation()">
+      <div class="dp-cal" [class.dp-align-right]="align === 'right'" (click)="$event.stopPropagation()">
         <div class="dp-cal-head">
           <button class="dp-nav" type="button" (click)="prevMonth($event)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -103,6 +103,11 @@ type Cell = { d: number; iso: string; cur: boolean; today: boolean; sel: boolean
       box-shadow: var(--shadow-md);
       padding: 14px;
       width: 272px;
+      max-width: calc(100vw - 24px);
+    }
+    .dp-cal.dp-align-right {
+      left: auto;
+      right: 0;
     }
 
     .dp-cal-head {
@@ -183,6 +188,7 @@ export class DatePickerComponent {
 
   @Input() placeholder = 'dd/mm/aaaa';
   @Input() min = '';
+  @Input() align: 'left' | 'right' = 'left';
   @Output() valueChange = new EventEmitter<string>();
 
   @Input() set value(iso: string) {

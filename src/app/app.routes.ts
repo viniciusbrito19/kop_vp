@@ -13,7 +13,12 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'pedidos', pathMatch: 'full' },
+      { path: '', redirectTo: 'visao-geral', pathMatch: 'full' },
+      {
+        path: 'visao-geral',
+        loadChildren: () =>
+          import('./features/visao-geral/visao-geral.routes').then(m => m.visaoGeralRoutes),
+      },
       {
         path: 'pedidos',
         loadChildren: () =>

@@ -20,6 +20,7 @@ function icon(paths: string): string {
 }
 
 const ICONS: Record<string, string> = {
+  dashboard: icon('<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>'),
   orders:    icon('<path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M17 4v4h4"/><path d="M10 12h8M10 16h6M10 8h3"/>'),
   suppliers: icon('<path d="M3 9 5 4h14l2 5"/><path d="M3 9v11h18V9"/><path d="M3 9h18"/><path d="M9 9v3a3 3 0 0 0 6 0V9"/>'),
   finance:   icon('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01M18 14v.01"/>'),
@@ -34,6 +35,7 @@ const ICONS: Record<string, string> = {
 };
 
 const PAGE_TITLES: Record<string, string> = {
+  'visao-geral':           'Visão Geral',
   'pedidos':               'Pedidos',
   'receitas':              'Receitas',
   'despesas':              'Despesas',
@@ -99,6 +101,7 @@ export class MainLayoutComponent implements OnInit {
   }
 
   navOperacao: NavItem[] = [
+    { label: 'Visão Geral',    route: '/visao-geral',    iconSvg: this.safe(ICONS['dashboard'])  },
     { label: 'Pedidos',        route: '/pedidos',        iconSvg: this.safe(ICONS['orders'])     },
     { label: 'Receitas',       route: '/receitas',       iconSvg: this.safe(ICONS['receive'])    },
     { label: 'Despesas',       route: '/despesas',       iconSvg: this.safe(ICONS['wallet'])     },
