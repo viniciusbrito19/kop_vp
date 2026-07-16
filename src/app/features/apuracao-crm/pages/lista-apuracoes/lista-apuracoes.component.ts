@@ -5,7 +5,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { ApuracaoCrmService, PERCENTUAIS_ROYALTIES_SAZONAL } from '../../services/apuracao-crm.service';
 import { PageHeaderService } from '../../../../core/services/page-header.service';
-import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao, TituloApuracao, SugestaoConciliacao } from '../../models/apuracao.model';
+import { ApuracaoCrm, PreviewApuracao, ResultadoReconciliacao, ItemSemMatch, ItemEanSemCatalogo, ItemMultiMatch, ProdutoCatalogo, PedidoApuracao, TituloApuracao } from '../../models/apuracao.model';
 
 interface ModalFppCtx {
   periodoLabel: string;
@@ -123,6 +123,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                           <button class="candidate-btn" (click)="resolverMultiMatch(m, c)">
                             <span class="candidate-sap mono">{{ c.codigo_sap }}</span>
                             <span class="candidate-desc">{{ c.descricao }}</span>
+                            <span class="candidate-ean mono">EAN {{ c.ean }}</span>
+                            <span class="badge-cobra" [class.off]="!c.cobra_fpp" [title]="c.cobra_fpp ? 'Cobra FPP' : 'Isento de FPP'">FPP</span>
+                            <span class="badge-cobra" [class.off]="!c.cobra_royalties" [title]="c.cobra_royalties ? 'Cobra Royalties' : 'Isento de Royalties'">ROY</span>
                           </button>
                         }
                       </div>
@@ -594,36 +597,17 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                 </tr>
                               } @else {
                                 <tr>
-                                  <td class="mono">{{ t.codigo }}</td>
+                                  <td>{{ t.codigo }}</td>
                                   <td>{{ t.descricao ?? '—' }}</td>
                                   <td><span class="cat-badge cat-{{ t.categoria ?? 'default' }}">{{ t.categoria ?? '—' }}</span></td>
                                   <td>{{ t.data_vencimento ? (t.data_vencimento | date:'dd/MM/yyyy') : '—' }}</td>
                                   <td class="pagamento-cell">
                                     @if (t.data_pagamento) {
                                       <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
-                                    } @else if (sugestoesConciliacao()[t.id]) {
-                                      <span class="identificado-badge">Identificado</span>
                                     } @else if (t.data_vencimento && t.data_vencimento < today) {
                                       <span class="atraso-badge">Em atraso</span>
                                     } @else {
                                       <span class="pendente-badge">Em aberto</span>
-                                    }
-                                    @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
-                                      <button
-                                        class="btn-conciliar"
-                                        [disabled]="conciliando() === t.id"
-                                        (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
-                                        [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
-                                        @if (conciliando() === t.id) {
-                                          <svg class="spin-sm" width="11" height="11" viewBox="0 0 36 36" fill="none">
-                                            <circle cx="18" cy="18" r="15" stroke="rgba(0,0,0,0.15)" stroke-width="3"/>
-                                            <path d="M18 3 A15 15 0 0 1 33 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                                          </svg>
-                                        } @else {
-                                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                                        }
-                                        {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
-                                      </button>
                                     }
                                   </td>
                                   <td style="text-align:right;font-weight:600">R$ {{ t.valor | number:'1.2-2':'pt-BR' }}</td>
@@ -712,21 +696,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                 <div class="tm-row3 pagamento-cell">
                                   @if (t.data_pagamento) {
                                     <span class="pago-badge">{{ t.data_pagamento | date:'dd/MM/yyyy' }}</span>
-                                  } @else if (sugestoesConciliacao()[t.id]) {
-                                    <span class="identificado-badge">Identificado</span>
                                   } @else if (t.data_vencimento && t.data_vencimento < today) {
                                     <span class="atraso-badge">Em atraso</span>
                                   } @else {
                                     <span class="pendente-badge">Em aberto</span>
-                                  }
-                                  @if (!t.data_pagamento && sugestoesConciliacao()[t.id]) {
-                                    <button
-                                      class="btn-conciliar"
-                                      [disabled]="conciliando() === t.id"
-                                      (click)="confirmarConciliacao(a.id, t, sugestoesConciliacao()[t.id])"
-                                      [title]="'Lançamento NIBS de ' + (sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM/yyyy')">
-                                      {{ sugestoesConciliacao()[t.id].dataLancamento | date:'dd/MM' }}
-                                    </button>
                                   }
                                 </div>
                               </div>
@@ -1010,6 +983,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                       @if (p.preco_venda != null) {
                         <span class="map-preco">R$ {{ p.preco_venda | number:'1.2-2':'pt-BR' }}</span>
                       }
+                      <span class="badge-cobra" [class.off]="!p.cobra_fpp" [title]="p.cobra_fpp ? 'Cobra FPP' : 'Isento de FPP'">FPP</span>
+                      <span class="badge-cobra" [class.off]="!p.cobra_royalties" [title]="p.cobra_royalties ? 'Cobra Royalties' : 'Isento de Royalties'">ROY</span>
                     </div>
                   </div>
                 }
@@ -1341,6 +1316,14 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     }
     .candidate-sap { font-size: 10px; font-weight: 700; font-family: monospace; color: var(--text-4); }
     .candidate-desc { font-size: 12px; }
+    .candidate-ean { font-size: 10px; color: var(--text-4); background: var(--surface-3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
+
+    .badge-cobra {
+      display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px;
+      border-radius: 4px; letter-spacing: .04em; flex-shrink: 0;
+      background: color-mix(in srgb, #2E7D32 15%, transparent); color: #2E7D32;
+    }
+    .badge-cobra.off { background: color-mix(in srgb, var(--text-4) 12%, transparent); color: var(--text-4); }
 
     /* ─── Dialog mapeamento ─── */
     .dialog-overlay {
@@ -1452,26 +1435,17 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .cat-fpp       { background: color-mix(in srgb, #5A1620 14%, transparent); color: #5A1620; }
     .cat-royalties { background: color-mix(in srgb, #82622F 14%, transparent); color: #82622F; }
     .cat-default   { background: var(--surface-2); color: var(--text-3); }
-    .pago-badge, .pendente-badge, .atraso-badge, .identificado-badge {
+    .pago-badge, .pendente-badge, .atraso-badge {
       display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
     }
     .pago-badge { background: var(--ok-soft, #e6f4ea); color: var(--ok, #2E7D32); }
     .pendente-badge    { background: color-mix(in srgb, #C28A1E 12%, transparent); color: #7A5510; }
     .atraso-badge      { background: color-mix(in srgb, #C62828 12%, transparent); color: #C62828; }
-    .identificado-badge{ background: color-mix(in srgb, #1565C0 12%, transparent); color: #1565C0; }
     .pagamento-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .add-titulo-valor { text-align: right; }
     .titulo-add-row td, .titulo-add-actions-row td { padding: 5px 10px; }
     .titulo-add-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .add-titulo-trigger { margin-top: 8px; }
-    .btn-conciliar {
-      display: inline-flex; align-items: center; gap: 3px;
-      font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: none; cursor: pointer;
-      background: color-mix(in srgb, #2E7D32 14%, transparent); color: #2E7D32;
-      transition: opacity .15s;
-      &:hover:not(:disabled) { opacity: .75; }
-      &:disabled { opacity: .5; cursor: default; }
-    }
 
     /* ─── Modal FPP ─── */
     .dialog-fpp { width: 420px; }
@@ -1542,9 +1516,6 @@ export class ListaApuracoesComponent implements OnInit {
   expandidosHistorico   = signal<Set<string>>(new Set());
   titulosPorApuracao    = signal<Record<string, TituloApuracao[]>>({});
   carregandoTitulos     = signal<string | null>(null);
-  // tituloId → melhor lançamento NIBS candidato
-  sugestoesConciliacao  = signal<Record<string, SugestaoConciliacao>>({});
-  conciliando           = signal<string | null>(null);
 
   /** Id da apuração com o formulário inline de novo título aberto (ou null). */
   adicionandoTituloPara = signal<string | null>(null);
@@ -1989,8 +1960,8 @@ export class ListaApuracoesComponent implements OnInit {
         this.service.buscarTitulos(apuracaoId),
         this.service.buscarLancamentosNibs(),
       ]);
-      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: titulos }));
-      this.gerarSugestoes(titulos, lancamentosNibs);
+      const titulosAtualizados = await this.identificarEConciliar(titulos, lancamentosNibs);
+      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: titulosAtualizados }));
     } catch {
       this.snack.open('Erro ao carregar títulos.', 'OK', { duration: 3000 });
     } finally {
@@ -1998,16 +1969,17 @@ export class ListaApuracoesComponent implements OnInit {
     }
   }
 
-  private gerarSugestoes(
+  /** Identifica títulos com pagamento correspondente no extrato NIBS e concilia automaticamente, sem exigir confirmação manual. */
+  private async identificarEConciliar(
     titulos: TituloApuracao[],
     lancamentos: { id: string; valor: number; data_lancamento: string }[],
-  ) {
-    const novas: Record<string, SugestaoConciliacao> = { ...this.sugestoesConciliacao() };
+  ): Promise<TituloApuracao[]> {
     const TOLERANCIA = 0.01;
-    const usados = new Set(Object.values(novas).map(s => s.lancamentoId));
+    const usados = new Set<string>();
+    const matches: Array<{ tituloId: string; lancamentoId: string; dataLancamento: string }> = [];
 
     for (const t of titulos) {
-      if (t.data_pagamento || t.lancamento_extrato_id || novas[t.id]) continue;
+      if (t.data_pagamento || t.lancamento_extrato_id) continue;
 
       const candidatos = lancamentos.filter(
         l => !usados.has(l.id) && Math.abs(l.valor - t.valor) <= TOLERANCIA,
@@ -2019,38 +1991,24 @@ export class ListaApuracoesComponent implements OnInit {
       const melhor = candidatos.reduce((a, b) =>
         Math.abs(dateDiff(a.data_lancamento, ref)) <= Math.abs(dateDiff(b.data_lancamento, ref)) ? a : b,
       );
-      novas[t.id] = { lancamentoId: melhor.id, dataLancamento: melhor.data_lancamento };
+      matches.push({ tituloId: t.id, lancamentoId: melhor.id, dataLancamento: melhor.data_lancamento });
       usados.add(melhor.id);
     }
-    this.sugestoesConciliacao.set(novas);
-  }
 
-  async confirmarConciliacao(apuracaoId: string, titulo: TituloApuracao, sugestao: SugestaoConciliacao) {
-    this.conciliando.set(titulo.id);
-    try {
-      await this.service.conciliarTitulo(titulo.id, sugestao.lancamentoId, sugestao.dataLancamento);
+    if (matches.length === 0) return titulos;
 
-      // Atualiza título localmente
-      this.titulosPorApuracao.update(m => ({
-        ...m,
-        [apuracaoId]: m[apuracaoId].map(t =>
-          t.id === titulo.id
-            ? { ...t, data_pagamento: sugestao.dataLancamento, lancamento_extrato_id: sugestao.lancamentoId }
-            : t,
-        ),
-      }));
+    await Promise.all(matches.map(m => this.service.conciliarTitulo(m.tituloId, m.lancamentoId, m.dataLancamento)));
+    this.snack.open(
+      `${matches.length} título(s) conciliado(s) automaticamente com o extrato NIBS.`,
+      'OK',
+      { duration: 4000 },
+    );
 
-      // Remove sugestão usada
-      this.sugestoesConciliacao.update(m => {
-        const copia = { ...m };
-        delete copia[titulo.id];
-        return copia;
-      });
-    } catch {
-      this.snack.open('Erro ao conciliar pagamento.', 'OK', { duration: 3000 });
-    } finally {
-      this.conciliando.set(null);
-    }
+    const porTituloId = new Map(matches.map(m => [m.tituloId, m]));
+    return titulos.map(t => {
+      const m = porTituloId.get(t.id);
+      return m ? { ...t, data_pagamento: m.dataLancamento, lancamento_extrato_id: m.lancamentoId } : t;
+    });
   }
 
   abrirAdicionarTitulo(apuracaoId: string) {

@@ -407,10 +407,10 @@ export class ApuracaoCrmService {
       return { reconciliados: [], multiMatch: [], semMatch: [], eanSemCatalogo: [], totalItens: 0, jaComEan: 0 };
     }
 
-    // 1. Catálogo: EAN, descricao, codigo_sap, preco_venda
+    // 1. Catálogo: EAN, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties
     const { data: produtos, error: e1 } = await this.db
       .from('itens')
-      .select('ean, descricao, codigo_sap, preco_venda')
+      .select('ean, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties')
       .not('ean', 'is', null)
       .not('descricao', 'is', null);
     if (e1) throw e1;
@@ -439,13 +439,19 @@ export class ApuracaoCrmService {
 
     // 3. Índice do catálogo por codigo_sap e por EAN (para lookup de preço de tabela)
     const precoPorEanCatalogo = new Map<string, number>();
-    const indiceSap = new Map<string, Array<{ ean: string; descricao: string; codigo_sap: string }>>();
+    const indiceSap = new Map<string, Array<{ ean: string; descricao: string; codigo_sap: string; cobra_fpp: boolean; cobra_royalties: boolean }>>();
     for (const p of (produtos ?? []) as any[]) {
       if (!p.ean || p.preco_venda == null || !p.codigo_sap) continue;
       precoPorEanCatalogo.set(p.ean, p.preco_venda);
       const sapNorm = this.stripLeadingZeros(String(p.codigo_sap));
       const lista = indiceSap.get(sapNorm) ?? [];
-      lista.push({ ean: p.ean, descricao: p.descricao, codigo_sap: p.codigo_sap });
+      lista.push({
+        ean: p.ean,
+        descricao: p.descricao,
+        codigo_sap: p.codigo_sap,
+        cobra_fpp: p.cobra_fpp ?? true,
+        cobra_royalties: p.cobra_royalties ?? true,
+      });
       indiceSap.set(sapNorm, lista);
     }
 
@@ -472,6 +478,8 @@ export class ApuracaoCrmService {
       if (cProdNorm) {
         const candidatos = indiceSap.get(cProdNorm) ?? [];
 
+        const candidatosComCobranca = candidatos.filter(c => c.cobra_fpp && c.cobra_royalties);
+
         if (candidatos.length === 1) {
           // Correspondência única → reconciliar automaticamente
           reconciliados.push({
@@ -479,6 +487,15 @@ export class ApuracaoCrmService {
             descricao_pedido:  item.descricao ?? '',
             descricao_produto: candidatos[0].descricao,
             ean:               candidatos[0].ean,
+            estrategia:        'c_prod',
+          });
+        } else if (candidatos.length > 1 && candidatosComCobranca.length === 1) {
+          // Múltiplos candidatos, mas só um cobra FPP e Royalties → reconciliar automaticamente por esse critério
+          reconciliados.push({
+            item_pedido_id:    item.id,
+            descricao_pedido:  item.descricao ?? '',
+            descricao_produto: candidatosComCobranca[0].descricao,
+            ean:               candidatosComCobranca[0].ean,
             estrategia:        'c_prod',
           });
         } else if (candidatos.length > 1) {
@@ -556,12 +573,16 @@ export class ApuracaoCrmService {
   async buscarProdutos(): Promise<ProdutoCatalogo[]> {
     const { data, error } = await this.db
       .from('itens')
-      .select('ean, descricao, codigo_sap, preco_venda')
+      .select('ean, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties')
       .not('ean', 'is', null)
       .not('descricao', 'is', null)
       .order('descricao');
     if (error) throw error;
-    return (data ?? []) as ProdutoCatalogo[];
+    return ((data ?? []) as any[]).map(p => ({
+      ...p,
+      cobra_fpp: p.cobra_fpp ?? true,
+      cobra_royalties: p.cobra_royalties ?? true,
+    })) as ProdutoCatalogo[];
   }
 
   async aplicarMatchManual(descricao: string, ean: string, c_prod?: string | null): Promise<number> {

@@ -36,11 +36,6 @@ export interface TituloApuracao {
   lancamento_extrato_id: string | null;
 }
 
-export interface SugestaoConciliacao {
-  lancamentoId: string;
-  dataLancamento: string;
-}
-
 export interface ItemApuracao {
   descricao: string;
   quantidade: number;
@@ -106,7 +101,7 @@ export interface ItemMultiMatch {
   item_pedido_id: string;
   descricao_pedido: string | null;
   c_prod: string;
-  candidatos: Array<{ ean: string; descricao: string; codigo_sap: string }>;
+  candidatos: Array<{ ean: string; descricao: string; codigo_sap: string; cobra_fpp: boolean; cobra_royalties: boolean }>;
   pedido_id: string;
   numero_nf: string | null;
 }
@@ -140,4 +135,6 @@ export interface ProdutoCatalogo {
   descricao: string;
   codigo_sap: string | null;
   preco_venda: number | null;
+  cobra_fpp: boolean;
+  cobra_royalties: boolean;
 }
