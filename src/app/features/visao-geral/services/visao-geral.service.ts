@@ -30,6 +30,19 @@ function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
+function enumerarMeses(inicioIso: string, fimIso: string): { ano: number; mes: number }[] {
+  const [anoIni, mesIni] = inicioIso.split('-').map(Number);
+  const [anoFim, mesFim] = fimIso.split('-').map(Number);
+  const meses: { ano: number; mes: number }[] = [];
+  let ano = anoIni, mes = mesIni;
+  while (ano < anoFim || (ano === anoFim && mes <= mesFim)) {
+    meses.push({ ano, mes });
+    mes++;
+    if (mes > 12) { mes = 1; ano++; }
+  }
+  return meses;
+}
+
 interface LancamentoRow {
   data_lancamento: string;
   valor: number;
@@ -62,7 +75,7 @@ export class VisaoGeralService {
     // (títulos em aberto para saídas, recebimentos de cartão previstos para entradas).
     const inicioPrevisto = inicio > hoje ? inicio : hoje;
 
-    const [lancamentosDesdeInicio, titulosAbertosNoPeriodo, recebimentosPrevistos, titulosFixas, titulosPedidosMes, pendentes, saldoCaixa] = await Promise.all([
+    const [lancamentosDesdeInicio, titulosAbertosNoPeriodo, recebimentosPrevistos, titulosFixas, templatesFixas, titulosPedidosMes, pendentes, saldoCaixa] = await Promise.all([
       this.db
         .from('lancamentos_extrato')
         .select('data_lancamento, valor, natureza')
@@ -82,6 +95,7 @@ export class VisaoGeralService {
         .lte('data_prevista', fim)
         .limit(20000),
       this.despesasSvc.listarTitulosDespesa(),
+      this.despesasSvc.listarTemplates(),
       this.despesasSvc.listarTitulosPedidosMes(ano, mes),
       this.db
         .from('titulos')
@@ -112,11 +126,32 @@ export class VisaoGeralService {
 
     const rowsReaisNoPeriodo = todasDesdeInicio.filter(r => r.data_lancamento.slice(0, 10) < hoje);
 
+    // Templates ativos de despesa fixa (exclui royalties/FPP, que seguem fluxo próprio de apuração).
+    // Nem todo template já tem o título do mês gerado — nesse caso projetamos o valor estimado
+    // na data do dia de vencimento do template, senão eles ficam de fora do gráfico.
+    const templatesFixasAtivos = templatesFixas.filter(tpl =>
+      tpl.ativo && !['royalties', 'fpp'].includes(tpl.categoria ?? '')
+    );
+
+    const fixasProjetadasSemTitulo: TituloAbertoRow[] = [];
+    for (const tpl of templatesFixasAtivos) {
+      for (const { ano: anoM, mes: mesM } of enumerarMeses(inicioPrevisto, fim)) {
+        const prefixoM = `${anoM}-${String(mesM).padStart(2, '0')}`;
+        const jaTemTitulo = titulosFixas.some(t => t.despesa_recorrente_id === tpl.id && t.data_vencimento?.startsWith(prefixoM));
+        if (jaTemTitulo) continue;
+        const diaMaxM = new Date(anoM, mesM, 0).getDate();
+        const dataVenc = `${anoM}-${String(mesM).padStart(2, '0')}-${String(Math.min(tpl.dia_venc, diaMaxM)).padStart(2, '0')}`;
+        if (dataVenc >= inicioPrevisto && dataVenc <= fim) {
+          fixasProjetadasSemTitulo.push({ valor: tpl.valor_estimado, data_vencimento: dataVenc });
+        }
+      }
+    }
+
     const granularidade = this.granularidadePara(inicio, fim);
     const buckets = this.montarBuckets(
       inicio, fim, granularidade,
       rowsReaisNoPeriodo,
-      (titulosAbertosNoPeriodo.data ?? []) as TituloAbertoRow[],
+      [...(titulosAbertosNoPeriodo.data ?? []) as TituloAbertoRow[], ...fixasProjetadasSemTitulo],
       (recebimentosPrevistos.data ?? []) as RecebimentoPrevistoRow[],
       saldoInicial,
     );
@@ -125,32 +160,38 @@ export class VisaoGeralService {
     const totalSaidas   = buckets.reduce((s, b) => s + b.saidas, 0);
 
     const mesPrefixo = `${ano}-${String(mes).padStart(2, '0')}`;
-    const fixasMes = titulosFixas.filter(t =>
-      t.data_vencimento?.startsWith(mesPrefixo) &&
-      !['royalties', 'fpp'].includes(t.categoria ?? '')
-    );
     const royaltiesFppMes = titulosFixas.filter(t =>
       t.data_vencimento?.startsWith(mesPrefixo) &&
       ['royalties', 'fpp'].includes(t.categoria ?? '')
     );
 
-    // Custo fixo mensal (capital de giro) = compromisso total do mês, pago ou não.
-    const valorFixasMes = fixasMes.reduce((s, t) => s + t.valor, 0);
+    const diaMax = new Date(ano, mes, 0).getDate();
+    const dataProjetada = (diaVenc: number) =>
+      `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(diaVenc, diaMax)).padStart(2, '0')}`;
 
-    // "Despesas previstas por tipo" = o que ainda falta pagar no mês (título em aberto).
-    const fixasPrevistas = fixasMes.filter(t => !t.data_pagamento);
+    const fixasComTitulo = templatesFixasAtivos.map(tpl => ({
+      tpl,
+      titulo: titulosFixas.find(t => t.despesa_recorrente_id === tpl.id && t.data_vencimento?.startsWith(mesPrefixo)),
+    }));
+
+    // Custo fixo mensal (capital de giro) = compromisso total do mês, pago ou não,
+    // com base no valor estimado de todos os templates ativos (independe de o título já ter sido gerado).
+    const valorFixasMes = templatesFixasAtivos.reduce((s, tpl) => s + tpl.valor_estimado, 0);
+
+    // "Despesas pendentes" = o que ainda falta pagar no mês (título em aberto ou nem gerado ainda).
+    const fixasPrevistas = fixasComTitulo.filter(({ titulo }) => !titulo?.data_pagamento);
     const royaltiesFppPrevistas = royaltiesFppMes.filter(t => !t.data_pagamento);
     const pedidosPrevistos = titulosPedidosMes.filter(t => !t.data_pagamento);
 
     const despesasPorTipo: DespesasPorTipo = {
-      fixas: fixasPrevistas.reduce((s, t) => s + t.valor, 0),
+      fixas: fixasPrevistas.reduce((s, { tpl, titulo }) => s + (titulo?.valor ?? tpl.valor_estimado), 0),
       pedidos: pedidosPrevistos.reduce((s, t) => s + t.valor, 0),
       royaltiesFpp: royaltiesFppPrevistas.reduce((s, t) => s + t.valor, 0),
-      itensFixas: fixasPrevistas.map(t => ({
-        id: t.id,
-        descricao: t.descricao ?? t.codigo,
-        dataVencimento: t.data_vencimento ?? '',
-        valor: t.valor,
+      itensFixas: fixasPrevistas.map(({ tpl, titulo }) => ({
+        id: titulo?.id ?? tpl.id,
+        descricao: titulo?.descricao ?? tpl.descricao,
+        dataVencimento: titulo?.data_vencimento ?? dataProjetada(tpl.dia_venc),
+        valor: titulo?.valor ?? tpl.valor_estimado,
       })).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)),
       itensPedidos: pedidosPrevistos.map(t => ({
         id: t.id,
@@ -213,7 +254,7 @@ export class VisaoGeralService {
       somaDia.set(dia, acc);
     };
 
-    // Passado: lançamentos reais do extrato bancário.
+    // Antes de hoje: única e exclusivamente o extrato bancário real (o que já aconteceu).
     for (const r of lancamentosReais) {
       const dia = r.data_lancamento.slice(0, 10);
       add(dia, r.natureza === 'entrada' ? r.valor : 0, r.natureza === 'saida' ? Math.abs(r.valor) : 0);
