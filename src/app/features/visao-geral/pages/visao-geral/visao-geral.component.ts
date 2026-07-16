@@ -10,7 +10,7 @@ import { AlertaItem, BucketFluxo, CapitalGiro, DespesasPorTipo, ItemDespesaTipo 
 
 type TipoDespesaChave = 'fixas' | 'pedidos' | 'royaltiesFpp';
 
-const ML = 50, MR = 16, MT = 30, MB = 28, CW = 920, CH = 240;
+const ML = 60, MR = 16, MT = 40, MB = 34, CW = 920, CH = 320;
 
 function toIso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -71,7 +71,7 @@ function startOfWeek(d: Date): Date {
                 @for (tick of yTicks(); track $index) {
                   <line [attr.x1]="ML" [attr.y1]="yS(tick)" [attr.x2]="ML + chartW" [attr.y2]="yS(tick)"
                         stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-                  <text [attr.x]="ML - 8" [attr.y]="yS(tick) + 4" text-anchor="end" font-size="10" fill="var(--text-3)">{{ kFmt(tick) }}</text>
+                  <text [attr.x]="ML - 8" [attr.y]="yS(tick) + 4" text-anchor="end" font-size="12" fill="var(--text-3)">{{ kFmt(tick) }}</text>
                 }
                 <line [attr.x1]="ML" [attr.y1]="yS(0)" [attr.x2]="ML + chartW" [attr.y2]="yS(0)" stroke="var(--line-2)" stroke-width="1.5"/>
 
@@ -87,14 +87,14 @@ function startOfWeek(d: Date): Date {
                         (mousemove)="moveTooltip($event)"
                         (mouseleave)="hideTooltip()"/>
                   @if (b.entradas > 0) {
-                    <text [attr.x]="barX(i, 'e') + barW() / 2" [attr.y]="yS(b.entradas) - 6"
-                          text-anchor="middle" font-size="9" font-weight="700" fill="#4A8C6A">{{ kFmt(b.entradas) }}</text>
+                    <text [attr.x]="barX(i, 'e') + barW() / 2" [attr.y]="yS(b.entradas) - 8"
+                          text-anchor="middle" font-size="12" font-weight="700" fill="#4A8C6A">{{ kFmt(b.entradas) }}</text>
                   }
                   @if (b.saidas > 0) {
-                    <text [attr.x]="barX(i, 's') + barW() / 2" [attr.y]="yS(b.saidas) - 6"
-                          text-anchor="middle" font-size="9" font-weight="700" fill="#7A1F2B">{{ kFmt(b.saidas) }}</text>
+                    <text [attr.x]="barX(i, 's') + barW() / 2" [attr.y]="yS(b.saidas) - 8"
+                          text-anchor="middle" font-size="12" font-weight="700" fill="#7A1F2B">{{ kFmt(b.saidas) }}</text>
                   }
-                  <text [attr.x]="barCenter(i)" [attr.y]="yS(0) + 18" text-anchor="middle" font-size="10" fill="var(--text-2)">{{ b.label }}</text>
+                  <text [attr.x]="barCenter(i)" [attr.y]="yS(0) + 24" text-anchor="middle" font-size="12" fill="var(--text-2)">{{ b.label }}</text>
                 }
               </svg>
 
@@ -119,19 +119,19 @@ function startOfWeek(d: Date): Date {
                 @for (tick of yTicksSaldo(); track $index) {
                   <line [attr.x1]="ML" [attr.y1]="yS2(tick)" [attr.x2]="ML + chartW" [attr.y2]="yS2(tick)"
                         stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-                  <text [attr.x]="ML - 8" [attr.y]="yS2(tick) + 4" text-anchor="end" font-size="10" fill="var(--text-3)">{{ kFmt(tick) }}</text>
+                  <text [attr.x]="ML - 8" [attr.y]="yS2(tick) + 4" text-anchor="end" font-size="12" fill="var(--text-3)">{{ kFmt(tick) }}</text>
                 }
-                <polyline [attr.points]="saldoPts()" fill="none" stroke="var(--gold)" stroke-width="2.5"
+                <polyline [attr.points]="saldoPts()" fill="none" stroke="var(--gold)" stroke-width="3"
                           stroke-linejoin="round" stroke-linecap="round"/>
                 @for (b of buckets(); track $index; let i = $index) {
-                  <circle [attr.cx]="barCenter(i)" [attr.cy]="yS2(b.saldo)" r="3.5" fill="white" stroke="var(--gold)" stroke-width="2"/>
-                  <circle [attr.cx]="barCenter(i)" [attr.cy]="yS2(b.saldo)" r="10" fill="transparent" style="cursor:pointer"
+                  <circle [attr.cx]="barCenter(i)" [attr.cy]="yS2(b.saldo)" r="4.5" fill="white" stroke="var(--gold)" stroke-width="2.5"/>
+                  <circle [attr.cx]="barCenter(i)" [attr.cy]="yS2(b.saldo)" r="12" fill="transparent" style="cursor:pointer"
                           (mouseenter)="showTooltip($event, moeda(b.saldo))"
                           (mousemove)="moveTooltip($event)"
                           (mouseleave)="hideTooltip()"/>
-                  <text [attr.x]="barCenter(i)" [attr.y]="yS2(b.saldo) - 10"
-                        text-anchor="middle" font-size="9" font-weight="700" fill="var(--gold-2)">{{ kFmt(b.saldo) }}</text>
-                  <text [attr.x]="barCenter(i)" [attr.y]="yS2(minSaldo()) + 26" text-anchor="middle" font-size="10" fill="var(--text-2)">{{ b.label }}</text>
+                  <text [attr.x]="barCenter(i)" [attr.y]="yS2(b.saldo) - 12"
+                        text-anchor="middle" font-size="12" font-weight="700" fill="var(--gold-2)">{{ kFmt(b.saldo) }}</text>
+                  <text [attr.x]="barCenter(i)" [attr.y]="yS2(minSaldo()) + 30" text-anchor="middle" font-size="12" fill="var(--text-2)">{{ b.label }}</text>
                 }
               </svg>
             </div>
