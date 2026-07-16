@@ -271,12 +271,8 @@ export class VisaoGeralService {
     const slots: Slot[] = [];
 
     if (granularidade === 'dia') {
-      const dowLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       for (let d = new Date(inicioD); d <= fimD; d = addDays(d, 1)) {
-        const dias = (fimD.getTime() - inicioD.getTime()) / 86400000 + 1;
-        const label = dias <= 7
-          ? dowLabels[d.getDay()]
-          : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
         slots.push({ chave: toIso(d), label, inicio: new Date(d), fim: new Date(d) });
       }
     } else if (granularidade === 'semana') {
