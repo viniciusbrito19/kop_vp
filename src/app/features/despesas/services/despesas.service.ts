@@ -73,6 +73,33 @@ export class DespesasService {
     if (error) throw error;
   }
 
+  async listarExcecoesMes(ano: number, mes: number): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('despesas_recorrentes_excecoes_mes')
+      .select('despesa_recorrente_id')
+      .eq('ano', ano)
+      .eq('mes', mes);
+    if (error) throw error;
+    return (data ?? []).map(r => r.despesa_recorrente_id);
+  }
+
+  async desativarTemplateMes(templateId: string, ano: number, mes: number): Promise<void> {
+    const { error } = await this.db
+      .from('despesas_recorrentes_excecoes_mes')
+      .upsert({ despesa_recorrente_id: templateId, ano, mes }, { onConflict: 'despesa_recorrente_id,ano,mes' });
+    if (error) throw error;
+  }
+
+  async ativarTemplateMes(templateId: string, ano: number, mes: number): Promise<void> {
+    const { error } = await this.db
+      .from('despesas_recorrentes_excecoes_mes')
+      .delete()
+      .eq('despesa_recorrente_id', templateId)
+      .eq('ano', ano)
+      .eq('mes', mes);
+    if (error) throw error;
+  }
+
   async gerarMes(templateId: string, mes: number, ano: number): Promise<void> {
     const { data: tpl, error: e1 } = await this.db
       .from('despesas_recorrentes')

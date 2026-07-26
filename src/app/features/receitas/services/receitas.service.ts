@@ -7,12 +7,24 @@ export class ReceitasService {
   private db = inject(SupabaseService).client;
 
   async listar(): Promise<RecebimentoCartao[]> {
-    const { data, error } = await this.db
-      .from('recebimentos_cartao')
-      .select('id, data_prevista, data_venda, valor_liquido, created_at')
-      .order('data_prevista');
-    if (error) throw error;
-    return data ?? [];
+    const PAGE = 1000;
+    const raw: RecebimentoCartao[] = [];
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await this.db
+        .from('recebimentos_cartao')
+        .select('id, data_prevista, data_venda, valor_liquido, created_at')
+        .order('data_prevista')
+        .range(offset, offset + PAGE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      raw.push(...page);
+      if (page.length < PAGE) break;
+      offset += PAGE;
+    }
+
+    return raw;
   }
 
   // Substitui todos os registros no intervalo de datas do CSV (idempotente).

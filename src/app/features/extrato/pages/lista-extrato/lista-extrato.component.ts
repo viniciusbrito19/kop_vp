@@ -31,6 +31,7 @@ import { FornecedoresService } from '../../../fornecedores/services/fornecedores
 import { DespesaRecorrente } from '../../../despesas/models/despesa.model';
 import { Fornecedor } from '../../../fornecedores/models/fornecedor.model';
 import { PageHeaderService } from '../../../../core/services/page-header.service';
+import { ApuracaoCrmService } from '../../../apuracao-crm/services/apuracao-crm.service';
 
 const TIPOS_SAIDA: TipoLancamento[] = [
   'pix_enviado', 'pagamento_efetuado', 'compra_debito', 'debito_conta', 'outros_pagamentos',
@@ -63,6 +64,7 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
   private despesasSvc  = inject(DespesasService);
   private fornSvc      = inject(FornecedoresService);
   private correlacaoSvc = inject(CorrelacaoService);
+  private apuracaoSvc   = inject(ApuracaoCrmService);
   private snack        = inject(MatSnackBar);
   private fb           = inject(FormBuilder);
   private router       = inject(Router);
@@ -349,14 +351,18 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
       // Pass 2: correlaciona despesas recorrentes
       const { vinculadas, criadas } = await this.correlacaoSvc.conciliarDespesas();
 
-      const total = nfe + vinculadas + criadas;
+      // Pass 3: concilia títulos de Royalties/FPP com o extrato NIBS
+      const royaltiesFpp = await this.apuracaoSvc.conciliarRoyaltiesFppComExtrato();
+
+      const total = nfe + vinculadas + criadas + royaltiesFpp;
       if (total === 0) {
         this.snack.open('Nenhum lançamento conciliado.', 'OK', { duration: 4000 });
       } else {
         const partes: string[] = [];
-        if (nfe)      partes.push(`${nfe} título${nfe > 1 ? 's' : ''} de pedido`);
-        if (vinculadas) partes.push(`${vinculadas} despesa${vinculadas > 1 ? 's' : ''} vinculada${vinculadas > 1 ? 's' : ''}`);
-        if (criadas)    partes.push(`${criadas} despesa${criadas > 1 ? 's' : ''} criada${criadas > 1 ? 's' : ''}`);
+        if (nfe)         partes.push(`${nfe} título${nfe > 1 ? 's' : ''} de pedido`);
+        if (vinculadas)  partes.push(`${vinculadas} despesa${vinculadas > 1 ? 's' : ''} vinculada${vinculadas > 1 ? 's' : ''}`);
+        if (criadas)     partes.push(`${criadas} despesa${criadas > 1 ? 's' : ''} criada${criadas > 1 ? 's' : ''}`);
+        if (royaltiesFpp) partes.push(`${royaltiesFpp} título${royaltiesFpp > 1 ? 's' : ''} de Royalties/FPP`);
         this.snack.open(`Conciliação concluída: ${partes.join(', ')}.`, 'OK', { duration: 5000 });
         await this.carregar();
       }
@@ -382,6 +388,12 @@ export class ListaExtratoComponent implements OnInit, OnDestroy {
       } else {
         msg = `${resultado.inseridos} lançamento(s) importado(s) com sucesso.`;
       }
+
+      const conciliados = await this.apuracaoSvc.conciliarRoyaltiesFppComExtrato();
+      if (conciliados > 0) {
+        msg += ` ${conciliados} título(s) de Royalties/FPP conciliado(s) automaticamente.`;
+      }
+
       this.snack.open(msg, 'OK', { duration: 6000 });
       await this.carregar();
     } catch (err) {

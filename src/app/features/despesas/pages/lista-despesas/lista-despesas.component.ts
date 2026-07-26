@@ -197,12 +197,12 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
               <div>
                 <h3 class="serif" style="margin:0;font-size:22px;font-weight:400">Despesas recorrentes</h3>
                 <div style="font-size:12px;color:var(--text-3);margin-top:2px">
-                  {{ paidCount }} pagas · {{ dueCount }} a vencer · vencimentos em {{ mesLabel }}
+                  {{ paidCount }} pagas · {{ dueCount }} a vencer · {{ templatesInativos.length }} inativas · vencimentos em {{ mesLabel }}
                 </div>
               </div>
               <div class="row gap-2">
                 <div class="seg">
-                  @for (opt of filtroOpts; track opt.value) {
+                  @for (opt of filtroOptsFixas; track opt.value) {
                     <button [class.on]="filtroLista() === opt.value"
                             (click)="filtroLista.set(opt.value); paginaFixas.set(0)">{{ opt.label }}</button>
                   }
@@ -261,7 +261,11 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
                   <div style="text-align:right;flex-shrink:0">
                     <div class="serif" style="font-size:16px;line-height:1.1">{{ moeda(t.valor_estimado) }}</div>
                     <div style="margin-top:5px">
-                      @if (statusFixa(t) === 'pago') {
+                      @if (!isAtivoNoMes(t)) {
+                        <span class="pill neutral" style="font-size:10px;padding:2px 8px">
+                          <mat-icon style="font-size:10px;width:10px;height:10px">visibility_off</mat-icon> inativa
+                        </span>
+                      } @else if (statusFixa(t) === 'pago') {
                         <span class="pill ok" style="font-size:10px;padding:2px 8px">
                           <mat-icon style="font-size:10px;width:10px;height:10px">check</mat-icon> pago
                         </span>
@@ -697,9 +701,9 @@ const CAT_ICON: Record<CategoriaDespesa, string> = {
         <button mat-menu-item (click)="abrirDialogTemplate(tpl)">
           <mat-icon>edit</mat-icon> Editar
         </button>
-        <button mat-menu-item (click)="toggleAtivo(tpl)">
-          <mat-icon>{{ tpl.ativo ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-          {{ tpl.ativo ? 'Desativar' : 'Ativar' }}
+        <button mat-menu-item (click)="toggleAtivoMes(tpl)">
+          <mat-icon>{{ isAtivoNoMes(tpl) ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          {{ isAtivoNoMes(tpl) ? 'Desativar em ' + mesLabel : 'Ativar em ' + mesLabel }}
         </button>
         <button mat-menu-item (click)="excluirTemplate(tpl)" class="menu-danger">
           <mat-icon>delete</mat-icon> Excluir
@@ -825,7 +829,7 @@ export class ListaDespesasComponent implements OnInit {
   }
 
   carregando         = signal(false);
-  filtroLista          = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
+  filtroLista          = signal<'todas' | 'a_vencer' | 'pagas' | 'inativas'>('todas');
   filtroListaPedidos   = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
   filtroListaRoyalties = signal<'todas' | 'a_vencer' | 'pagas'>('todas');
   paginaFixas        = signal(0);
@@ -839,6 +843,7 @@ export class ListaDespesasComponent implements OnInit {
   showTitulos        = false;
   titulosPedidos     = signal<TituloPedidoMes[]>([]);
   titulosRoyalties   = signal<TituloRoyaltiesMes[]>([]);
+  excecoesInativasMes = signal<Set<string>>(new Set());
   refAno             = signal(new Date().getFullYear());
   refMes             = signal(new Date().getMonth() + 1);
   private readonly _hoje = new Date();
@@ -852,6 +857,11 @@ export class ListaDespesasComponent implements OnInit {
     { value: 'todas'    as const, label: 'Todas'    },
     { value: 'a_vencer' as const, label: 'A vencer' },
     { value: 'pagas'    as const, label: 'Pagas'    },
+  ];
+
+  readonly filtroOptsFixas = [
+    ...this.filtroOpts,
+    { value: 'inativas' as const, label: 'Inativas' },
   ];
 
   // ── Mês ─────────────────────────────────────────────────────
@@ -876,8 +886,12 @@ export class ListaDespesasComponent implements OnInit {
     return this.dsTitulos.data.filter(t => t.data_vencimento?.startsWith(this.mesPrefixo));
   }
 
+  isAtivoNoMes(t: DespesaRecorrente): boolean {
+    return t.ativo && !this.excecoesInativasMes().has(t.id);
+  }
+
   get templatesAtivos(): DespesaRecorrente[] {
-    return [...this.dsTemplates.data.filter(t => t.ativo)]
+    return [...this.dsTemplates.data.filter(t => this.isAtivoNoMes(t))]
       .sort((a, b) => a.dia_venc - b.dia_venc);
   }
 
@@ -937,8 +951,14 @@ export class ListaDespesasComponent implements OnInit {
   get pctPagoGeral(): number       { return this.totalPrevistoGeral > 0 ? (this.totalPagoGeral / this.totalPrevistoGeral) * 100 : 0; }
   get breakEvenGeralDia(): number  { return this.totalPrevistoGeral / 30; }
 
+  get templatesInativos(): DespesaRecorrente[] {
+    return [...this.dsTemplates.data.filter(t => !this.isAtivoNoMes(t))]
+      .sort((a, b) => a.descricao.localeCompare(b.descricao));
+  }
+
   get templatesFiltrados(): DespesaRecorrente[] {
     const f = this.filtroLista();
+    if (f === 'inativas') return this.templatesInativos;
     if (f === 'a_vencer') return this.templatesAtivos.filter(t => !this.isPago(t));
     if (f === 'pagas')    return this.templatesAtivos.filter(t =>  this.isPago(t));
     return this.templatesAtivos;
@@ -1095,16 +1115,18 @@ export class ListaDespesasComponent implements OnInit {
   async carregar() {
     this.carregando.set(true);
     try {
-      const [templates, titulos, titulosPedidos, titulosRoyalties] = await Promise.all([
+      const [templates, titulos, titulosPedidos, titulosRoyalties, excecoesMes] = await Promise.all([
         this.svc.listarTemplates(),
         this.svc.listarTitulosDespesa(),
         this.svc.listarTitulosPedidosMes(this.refAno(), this.refMes()),
         this.svc.listarTitulosRoyaltiesMes(this.refAno(), this.refMes()),
+        this.svc.listarExcecoesMes(this.refAno(), this.refMes()),
       ]);
       this.dsTemplates.data = templates;
       this.dsTitulos.data   = titulos;
       this.titulosPedidos.set(titulosPedidos);
       this.titulosRoyalties.set(titulosRoyalties);
+      this.excecoesInativasMes.set(new Set(excecoesMes));
     } finally {
       this.carregando.set(false);
     }
@@ -1130,10 +1152,15 @@ export class ListaDespesasComponent implements OnInit {
       .afterClosed().subscribe(ok => { if (ok) this.carregar(); });
   }
 
-  async toggleAtivo(t: DespesaRecorrente) {
+  async toggleAtivoMes(t: DespesaRecorrente) {
     try {
-      await this.svc.atualizarTemplate(t.id, { ativo: !t.ativo });
-      await this.carregar();
+      if (this.isAtivoNoMes(t)) {
+        await this.svc.desativarTemplateMes(t.id, this.refAno(), this.refMes());
+      } else {
+        await this.svc.ativarTemplateMes(t.id, this.refAno(), this.refMes());
+      }
+      const excecoesMes = await this.svc.listarExcecoesMes(this.refAno(), this.refMes());
+      this.excecoesInativasMes.set(new Set(excecoesMes));
     } catch {
       this.snack.open('Erro ao atualizar.', 'OK', { duration: 4000 });
     }

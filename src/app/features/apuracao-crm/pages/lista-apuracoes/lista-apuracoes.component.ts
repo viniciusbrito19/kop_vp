@@ -1956,59 +1956,21 @@ export class ListaApuracoesComponent implements OnInit {
   async carregarTitulosApuracao(apuracaoId: string) {
     this.carregandoTitulos.set(apuracaoId);
     try {
-      const [titulos, lancamentosNibs] = await Promise.all([
-        this.service.buscarTitulos(apuracaoId),
-        this.service.buscarLancamentosNibs(),
-      ]);
-      const titulosAtualizados = await this.identificarEConciliar(titulos, lancamentosNibs);
-      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: titulosAtualizados }));
+      const matches = await this.service.conciliarRoyaltiesFppComExtrato();
+      if (matches > 0) {
+        this.snack.open(
+          `${matches} título(s) conciliado(s) automaticamente com o extrato NIBS.`,
+          'OK',
+          { duration: 4000 },
+        );
+      }
+      const titulos = await this.service.buscarTitulos(apuracaoId);
+      this.titulosPorApuracao.update(m => ({ ...m, [apuracaoId]: titulos }));
     } catch {
       this.snack.open('Erro ao carregar títulos.', 'OK', { duration: 3000 });
     } finally {
       this.carregandoTitulos.set(null);
     }
-  }
-
-  /** Identifica títulos com pagamento correspondente no extrato NIBS e concilia automaticamente, sem exigir confirmação manual. */
-  private async identificarEConciliar(
-    titulos: TituloApuracao[],
-    lancamentos: { id: string; valor: number; data_lancamento: string }[],
-  ): Promise<TituloApuracao[]> {
-    const TOLERANCIA = 0.01;
-    const usados = new Set<string>();
-    const matches: Array<{ tituloId: string; lancamentoId: string; dataLancamento: string }> = [];
-
-    for (const t of titulos) {
-      if (t.data_pagamento || t.lancamento_extrato_id) continue;
-
-      const candidatos = lancamentos.filter(
-        l => !usados.has(l.id) && Math.abs(l.valor - t.valor) <= TOLERANCIA,
-      );
-      if (candidatos.length === 0) continue;
-
-      // Prefere o mais próximo ao vencimento
-      const ref = t.data_vencimento ?? candidatos[0].data_lancamento;
-      const melhor = candidatos.reduce((a, b) =>
-        Math.abs(dateDiff(a.data_lancamento, ref)) <= Math.abs(dateDiff(b.data_lancamento, ref)) ? a : b,
-      );
-      matches.push({ tituloId: t.id, lancamentoId: melhor.id, dataLancamento: melhor.data_lancamento });
-      usados.add(melhor.id);
-    }
-
-    if (matches.length === 0) return titulos;
-
-    await Promise.all(matches.map(m => this.service.conciliarTitulo(m.tituloId, m.lancamentoId, m.dataLancamento)));
-    this.snack.open(
-      `${matches.length} título(s) conciliado(s) automaticamente com o extrato NIBS.`,
-      'OK',
-      { duration: 4000 },
-    );
-
-    const porTituloId = new Map(matches.map(m => [m.tituloId, m]));
-    return titulos.map(t => {
-      const m = porTituloId.get(t.id);
-      return m ? { ...t, data_pagamento: m.dataLancamento, lancamento_extrato_id: m.lancamentoId } : t;
-    });
   }
 
   abrirAdicionarTitulo(apuracaoId: string) {
@@ -2348,8 +2310,4 @@ export class ListaApuracoesComponent implements OnInit {
     const { fim } = this.service.intervalo(ano, mes, quinzena);
     return this.service.vencimentoFpp(fim);
   }
-}
-
-function dateDiff(a: string, b: string): number {
-  return (new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
 }

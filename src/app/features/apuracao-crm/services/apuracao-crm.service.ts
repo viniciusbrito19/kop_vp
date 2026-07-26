@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { ApuracaoCrm, PedidoApuracao, PreviewApuracao, ResultadoReconciliacao, ProdutoCatalogo, ItemApuracao, ItemEanSemCatalogo, TituloApuracao } from '../models/apuracao.model';
 
-const ALIQUOTA_FPP      = 0.0385;
+export const ALIQUOTA_FPP = 0.0385;
 const ALIQUOTA_LINHA    = 0.37;
 const ALIQUOTA_SAZONAL  = 0.275;
 
@@ -400,6 +400,56 @@ export class ApuracaoCrmService {
     if (error) throw error;
   }
 
+  /** Busca todos os títulos de Royalties/FPP ainda em aberto (qualquer apuração). */
+  private async buscarTitulosRoyaltiesFppAbertos(): Promise<TituloApuracao[]> {
+    const { data, error } = await this.db
+      .from('titulos')
+      .select('id, codigo, descricao, categoria, valor, data_vencimento, data_pagamento, lancamento_extrato_id')
+      .in('categoria', ['royalties', 'fpp'])
+      .is('data_pagamento', null);
+    if (error) throw error;
+    return (data ?? []) as TituloApuracao[];
+  }
+
+  /**
+   * Identifica títulos de Royalties/FPP em aberto com pagamento correspondente no extrato NIBS
+   * e concilia automaticamente (por valor, com tolerância de centavos, escolhendo o lançamento
+   * mais próximo do vencimento). Usado tanto ao expandir uma apuração quanto após importar o extrato.
+   */
+  async conciliarRoyaltiesFppComExtrato(): Promise<number> {
+    const [titulos, lancamentos] = await Promise.all([
+      this.buscarTitulosRoyaltiesFppAbertos(),
+      this.buscarLancamentosNibs(),
+    ]);
+    if (titulos.length === 0 || lancamentos.length === 0) return 0;
+
+    const TOLERANCIA = 0.01;
+    const usados = new Set<string>();
+    const matches: Array<{ tituloId: string; lancamentoId: string; dataLancamento: string }> = [];
+
+    for (const t of titulos) {
+      const candidatos = lancamentos.filter(
+        l => !usados.has(l.id) && Math.abs(l.valor - t.valor) <= TOLERANCIA,
+      );
+      if (candidatos.length === 0) continue;
+
+      const ref = t.data_vencimento ?? candidatos[0].data_lancamento;
+      const melhor = candidatos.reduce((a, b) =>
+        Math.abs(this.dateDiff(a.data_lancamento, ref)) <= Math.abs(this.dateDiff(b.data_lancamento, ref)) ? a : b,
+      );
+      matches.push({ tituloId: t.id, lancamentoId: melhor.id, dataLancamento: melhor.data_lancamento });
+      usados.add(melhor.id);
+    }
+
+    if (matches.length === 0) return 0;
+    await Promise.all(matches.map(m => this.conciliarTitulo(m.tituloId, m.lancamentoId, m.dataLancamento)));
+    return matches.length;
+  }
+
+  private dateDiff(a: string, b: string): number {
+    return (new Date(a).getTime() - new Date(b).getTime()) / 86_400_000;
+  }
+
   async reconciliarEans(): Promise<ResultadoReconciliacao> {
     // 0. IDs dos pedidos CRM
     const pedidosCrmIds = await this.buscarPedidosCrmIds();
@@ -684,7 +734,8 @@ export class ApuracaoCrmService {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  private somarDias(data: string, dias: number): string {
+  /** Soma dias (podendo ser negativo) a uma data 'YYYY-MM-DD', retornando no mesmo formato. */
+  somarDias(data: string, dias: number): string {
     const [ano, mes, dia] = data.split('-').map(Number);
     const d = new Date(ano, mes - 1, dia + dias);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
