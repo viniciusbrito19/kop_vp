@@ -17,6 +17,22 @@ export class ProdutosService {
     return data ?? [];
   }
 
+  /**
+   * Pode haver mais de um item cadastrado com o mesmo Código SAP. Nesse caso,
+   * prioriza o que tem cobrança de FPP e/ou Royalties (não totalmente isento),
+   * evitando escolher arbitrariamente um item isento.
+   */
+  async buscarPorCodigoSap(codigoSap: string): Promise<Item | null> {
+    const { data, error } = await this.db
+      .from('itens')
+      .select('*')
+      .eq('codigo_sap', codigoSap);
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+    const comCobranca = data.find(i => (i.cobra_fpp ?? true) || (i.cobra_royalties ?? true));
+    return comCobranca ?? data[0];
+  }
+
   async toggleAtivo(id: string, ativo: boolean): Promise<void> {
     const { error } = await this.db.from('itens').update({ ativo }).eq('id', id);
     if (error) throw error;
@@ -29,6 +45,11 @@ export class ProdutosService {
 
   async atualizarPreco(id: string, preco: number | null): Promise<void> {
     const { error } = await this.db.from('itens').update({ preco_venda: preco }).eq('id', id);
+    if (error) throw error;
+  }
+
+  async atualizarPrecoCompra(id: string, preco: number | null): Promise<void> {
+    const { error } = await this.db.from('itens').update({ preco_compra: preco }).eq('id', id);
     if (error) throw error;
   }
 

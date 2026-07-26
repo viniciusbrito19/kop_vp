@@ -1,0 +1,476 @@
+<!-- ===== Content ===== -->
+<div class="content">
+
+  <!-- Page heading -->
+  <div class="row page-heading-row" style="justify-content:space-between;margin-bottom:28px">
+    <div>
+      <h1 class="page">Simular <span class="accent serif">pedido</span></h1>
+      <div class="page-sub">
+        @if (simulacaoNome()) {
+          Simulação salva: <strong style="color:var(--text-2)">{{ simulacaoNome() }}</strong>
+        } @else {
+          Inclua itens pelo Código SAP e veja preço de compra, venda, FPP e royalties calculados na hora
+        }
+      </div>
+    </div>
+    <div class="row gap-2" style="flex-wrap:wrap">
+      <button type="button" class="btn outline sm" (click)="abrirDialogSimulacoes()" [disabled]="simulacoesSalvas().length === 0" title="Abrir simulação salva">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+        Simulações salvas
+      </button>
+
+      @if (simulacaoId()) {
+        <button type="button" class="btn outline sm" [matMenuTriggerFor]="menuAcoes" title="Mais ações">
+          <mat-icon style="font-size:18px;width:18px;height:18px">more_horiz</mat-icon>
+        </button>
+        <mat-menu #menuAcoes="matMenu">
+          <button mat-menu-item (click)="renomearSimulacao()">
+            <mat-icon>edit</mat-icon><span>Renomear</span>
+          </button>
+          <button mat-menu-item (click)="novaSimulacao()">
+            <mat-icon>add</mat-icon><span>Nova simulação</span>
+          </button>
+          <button mat-menu-item class="warn-item" (click)="excluirSimulacaoSalva(simulacaoId()!, $event)">
+            <mat-icon>delete</mat-icon><span>Excluir</span>
+          </button>
+        </mat-menu>
+      }
+
+      <button type="button" class="btn primary sm" (click)="salvarSimulacao()" [disabled]="salvandoSimulacao() || itens().length === 0">
+        @if (salvandoSimulacao()) {
+          <mat-spinner diameter="14" />
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        }
+        Salvar
+      </button>
+
+      <a class="btn outline sm" routerLink="/pedidos">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Voltar
+      </a>
+    </div>
+  </div>
+
+  @if (carregandoSimulacao()) {
+    <div style="display:flex;justify-content:center;padding:64px">
+      <mat-spinner diameter="36"/>
+    </div>
+  } @else {
+  <div class="col" style="gap:16px">
+
+    <!-- ===== Parâmetros ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="params-row">
+        <div class="params-aliquota">
+          <div class="section-title" style="margin-bottom:18px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12c0-4 3-7 7-7s7 3 7 7-3 7-7 7-7-3-7-7Z"/><path d="M9 9c.8 1 2 1.5 3 1.5s2.2-.5 3-1.5M9 14c.8 1 2 1.5 3 1.5s2.2-.5 3-1.5"/></svg>
+            Parâmetros da simulação
+          </div>
+
+          <div class="form-grid" style="max-width:400px">
+            <label class="input">
+              <span class="label-row">
+                Alíquota de Royalties (%)
+                <span class="hint-wrap">
+                  <button type="button" class="hint-toggle" [class.on]="hintAliquotaAberto()" (click)="$event.preventDefault(); hintAliquotaAberto.set(!hintAliquotaAberto())" title="Ajuda" aria-label="Ajuda">?</button>
+                  @if (hintAliquotaAberto()) {
+                    <span class="hint-tooltip">Aplicada sobre a base de royalties de cada item (preço de venda − FPP)</span>
+                  }
+                </span>
+              </span>
+              <input
+                type="text" inputmode="decimal" placeholder="Ex.: 37,00"
+                [value]="aliquotaRoyalties() != null ? (aliquotaRoyalties() | number:'1.0-2':'pt-BR') : ''"
+                (change)="atualizarAliquota($any($event.target).value)"
+              />
+            </label>
+            <label class="input">
+              <span class="label-row">
+                Data de Emissão do Pedido
+                <span class="hint-wrap">
+                  <button type="button" class="hint-toggle" [class.on]="hintDataEmissaoAberto()" (click)="$event.preventDefault(); hintDataEmissaoAberto.set(!hintDataEmissaoAberto())" title="Ajuda" aria-label="Ajuda">?</button>
+                  @if (hintDataEmissaoAberto()) {
+                    <span class="hint-tooltip">Define a quinzena de apuração usada na projeção de cobrança</span>
+                  }
+                </span>
+              </span>
+              <input
+                type="date"
+                [ngModel]="dataEmissao()"
+                (ngModelChange)="dataEmissao.set($event)"
+              />
+            </label>
+          </div>
+        </div>
+
+        @if (itens().length > 0) {
+          <div class="params-resumo">
+            <div class="resumo-label">Resumo da simulação</div>
+            <div class="resumo-grid">
+              <div>
+                <dt>Compra</dt>
+                <dd>{{ totais().custo_total | currency:'BRL' }}</dd>
+              </div>
+              <div>
+                <dt>FPP</dt>
+                <dd>{{ totais().fpp | currency:'BRL' }}</dd>
+              </div>
+              <div>
+                <dt>Royalties</dt>
+                <dd>{{ totais().royalties | currency:'BRL' }}</dd>
+              </div>
+              <div>
+                <dt>Total a Pagar</dt>
+                <dd style="color:var(--bad)">{{ totais().total_a_pagar | currency:'BRL' }}</dd>
+              </div>
+              <div>
+                <dt>Total Venda</dt>
+                <dd>{{ totais().preco_venda_total | currency:'BRL' }}</dd>
+              </div>
+              <div class="resumo-destaque">
+                <dt>Lucro bruto</dt>
+                <dd [style.color]="totais().margem < 0 ? 'var(--bad)' : 'var(--ok)'">
+                  {{ totais().margem | currency:'BRL' }}
+                  <span class="resumo-pct">({{ totais().percentual_margem | number:'1.1-1' }}%)</span>
+                </dd>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ===== Projeção de Cobrança ===== -->
+    @if (itens().length > 0 && projecaoCobranca(); as proj) {
+      <div class="card" style="padding:22px 26px">
+        <div class="row" style="align-items:flex-start;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px">
+          <div class="row" style="align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="section-title" style="margin-bottom:0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+              Projeção de cobrança — pedido Linha
+            </div>
+            <button type="button" class="btn outline sm" (click)="verificarDisponibilidadeCaixa()" [disabled]="verificandoCaixa()">
+              @if (verificandoCaixa()) {
+                <mat-spinner diameter="14" />
+              } @else {
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m18 9-5 5-4-4-4 4"/></svg>
+              }
+              Verificar disponibilidade de caixa
+            </button>
+          </div>
+          <div class="parcela-stepper">
+            <span>Parcelas de Royalties</span>
+            <button type="button" class="stepper-btn" (click)="removerParcelaRoyalties()" [disabled]="proj.royParcelas.length <= 1" title="Remover parcela">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+            </button>
+            <span class="stepper-count">{{ proj.royParcelas.length }}</span>
+            <button type="button" class="stepper-btn" (click)="adicionarParcelaRoyalties()" [disabled]="proj.royParcelas.length >= 6" title="Adicionar parcela">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-4);margin:0 0 18px">
+          Período apurado: <strong style="color:var(--text-3)">{{ proj.periodoLabel }}</strong> · FPP e parcelas de royalties contados a partir do fim da quinzena apurada (não se aplica a Sazonal)
+          @if (resultadoCaixa()) {
+            · disponibilidade cruzada com saldo do extrato, despesas recorrentes previstas e receitas futuras cadastradas
+          }
+        </p>
+
+        <div class="projecao-grid">
+          <div class="projecao-item">
+            <div class="projecao-label">FPP</div>
+            <div class="projecao-valor">{{ proj.fppValor | currency:'BRL' }}</div>
+            <div class="projecao-data">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              {{ proj.fppVencimento | date:'dd/MM/yyyy' }}
+            </div>
+            <div class="projecao-offset-edit">
+              fim da quinzena +
+              <input
+                class="offset-input" type="number" min="0" step="1"
+                [value]="proj.fppOffsetDias"
+                (change)="atualizarFppOffset($any($event.target).value)"
+                title="Dias após o fim da quinzena para vencimento do FPP"
+              />
+              dias
+            </div>
+            @if (resultadoCaixa(); as caixa) {
+              @if (caixa[proj.fppVencimento] != null) {
+                <div class="caixa-status" [class.ok]="caixa[proj.fppVencimento] >= cumulativoSimuladoAte(proj.fppVencimento)">
+                  @if (caixa[proj.fppVencimento] >= cumulativoSimuladoAte(proj.fppVencimento)) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Saldo suficiente
+                  } @else {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17v.01"/><circle cx="12" cy="12" r="9"/></svg>
+                    Faltam {{ (cumulativoSimuladoAte(proj.fppVencimento) - caixa[proj.fppVencimento]) | currency:'BRL' }}
+                  }
+                </div>
+              }
+            }
+          </div>
+          @for (parcela of proj.royParcelas; track parcela.numero; let i = $index) {
+            <div class="projecao-item">
+              <div class="projecao-label">
+                Royalties — Parcela {{ parcela.numero }}
+                @if (proj.royParcelas.length > 1) { <span class="projecao-frac">({{ parcela.numero }}/{{ proj.royParcelas.length }})</span> }
+              </div>
+              <div class="projecao-valor">{{ parcela.valor | currency:'BRL' }}</div>
+              <div class="projecao-data">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                {{ parcela.vencimento | date:'dd/MM/yyyy' }}
+              </div>
+              <div class="projecao-offset-edit">
+                fim da quinzena +
+                <input
+                  class="offset-input" type="number" min="0" step="1"
+                  [value]="parcela.offsetDias"
+                  (change)="atualizarOffsetParcela(i, $any($event.target).value)"
+                  title="Dias após o fim da quinzena para vencimento desta parcela"
+                />
+                dias
+              </div>
+              @if (resultadoCaixa(); as caixa) {
+                @if (caixa[parcela.vencimento] != null) {
+                  <div class="caixa-status" [class.ok]="caixa[parcela.vencimento] >= cumulativoSimuladoAte(parcela.vencimento)">
+                    @if (caixa[parcela.vencimento] >= cumulativoSimuladoAte(parcela.vencimento)) {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      Saldo suficiente
+                    } @else {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17v.01"/><circle cx="12" cy="12" r="9"/></svg>
+                      Faltam {{ (cumulativoSimuladoAte(parcela.vencimento) - caixa[parcela.vencimento]) | currency:'BRL' }}
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+
+        @if (temItemComRoyaltiesSemAliquota()) {
+          <p style="font-size:11px;color:var(--text-4);margin:12px 0 0">
+            Informe a alíquota de royalties para que os valores das parcelas sejam calculados.
+          </p>
+        }
+
+        <div class="row" style="align-items:flex-start;justify-content:space-between;margin:20px 0 6px;padding-top:16px;border-top:1px solid var(--line)">
+          <div class="projecao-subtitle">Pagamento à fábrica (compra)</div>
+          <div class="parcela-stepper">
+            <span>Parcelas de Compra</span>
+            <button type="button" class="stepper-btn" (click)="removerParcelaCompra()" [disabled]="proj.compraParcelas.length <= 1" title="Remover parcela">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+            </button>
+            <span class="stepper-count">{{ proj.compraParcelas.length }}</span>
+            <button type="button" class="stepper-btn" (click)="adicionarParcelaCompra()" [disabled]="proj.compraParcelas.length >= 6" title="Adicionar parcela">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-4);margin:0 0 18px">
+          Parcelas contadas a partir do fim da quinzena apurada, independente da data do FPP
+        </p>
+
+        <div class="projecao-grid">
+          @for (parcela of proj.compraParcelas; track parcela.numero; let i = $index) {
+            <div class="projecao-item">
+              <div class="projecao-label">
+                Compra — Parcela {{ parcela.numero }}
+                @if (proj.compraParcelas.length > 1) { <span class="projecao-frac">({{ parcela.numero }}/{{ proj.compraParcelas.length }})</span> }
+              </div>
+              <div class="projecao-valor">{{ parcela.valor | currency:'BRL' }}</div>
+              <div class="projecao-data">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                {{ parcela.vencimento | date:'dd/MM/yyyy' }}
+              </div>
+              <div class="projecao-offset-edit">
+                fim da quinzena +
+                <input
+                  class="offset-input" type="number" min="0" step="1"
+                  [value]="parcela.offsetDias"
+                  (change)="atualizarOffsetParcelaCompra(i, $any($event.target).value)"
+                  title="Dias após o fim da quinzena para vencimento desta parcela"
+                />
+                dias
+              </div>
+              @if (resultadoCaixa(); as caixa) {
+                @if (caixa[parcela.vencimento] != null) {
+                  <div class="caixa-status" [class.ok]="caixa[parcela.vencimento] >= cumulativoSimuladoAte(parcela.vencimento)">
+                    @if (caixa[parcela.vencimento] >= cumulativoSimuladoAte(parcela.vencimento)) {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      Saldo suficiente
+                    } @else {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17v.01"/><circle cx="12" cy="12" r="9"/></svg>
+                      Faltam {{ (cumulativoSimuladoAte(parcela.vencimento) - caixa[parcela.vencimento]) | currency:'BRL' }}
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ===== Adicionar item ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="section-title" style="margin-bottom:18px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+        Adicionar item
+      </div>
+
+      <div class="row gap-3" style="align-items:flex-end;flex-wrap:wrap">
+        <div class="row gap-2" style="align-items:flex-end">
+          <label class="input" style="flex:1;max-width:280px">
+            <span>Código SAP</span>
+            <input
+              [ngModel]="codigoBusca()"
+              (ngModelChange)="codigoBusca.set($event)"
+              (keydown.enter)="adicionarItem()"
+              placeholder="Ex.: 1102016301"
+              [disabled]="buscando()"
+            />
+          </label>
+          <button type="button" class="btn primary sm" (click)="adicionarItem()" [disabled]="buscando() || !codigoBusca().trim()">
+            @if (buscando()) {
+              <mat-spinner diameter="14" />
+            } @else {
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            }
+            Adicionar
+          </button>
+        </div>
+
+        <span style="font-size:12px;color:var(--text-4);padding-bottom:9px">ou</span>
+
+        <label class="input autocomplete-field" style="flex:1;min-width:240px;max-width:360px">
+          <span>Descrição do produto</span>
+          <input
+            [ngModel]="descricaoBusca()"
+            (ngModelChange)="onDescricaoInput($event)"
+            (focus)="sugestoesAbertas.set(true)"
+            (blur)="fecharSugestoesComAtraso()"
+            (keydown.escape)="sugestoesAbertas.set(false)"
+            placeholder="Digite parte da descrição…"
+            autocomplete="off"
+          />
+          @if (sugestoesAbertas() && sugestoesDescricao().length > 0) {
+            <div class="autocomplete-panel">
+              @for (produto of sugestoesDescricao(); track produto.id) {
+                <button type="button" class="autocomplete-item" (mousedown)="$event.preventDefault()" (click)="selecionarSugestao(produto)">
+                  <span class="autocomplete-desc">{{ produto.descricao }}</span>
+                  <span class="autocomplete-sap mono">{{ produto.codigo_sap }}</span>
+                </button>
+              }
+            </div>
+          } @else if (sugestoesAbertas() && descricaoBusca().trim().length >= 2) {
+            <div class="autocomplete-panel">
+              <div class="autocomplete-empty">Nenhum produto encontrado</div>
+            </div>
+          }
+        </label>
+      </div>
+      <p style="font-size:12px;color:var(--text-4);margin:8px 0 0">
+        Já cadastrado na lista? O item repetido apenas soma +1 na quantidade.
+      </p>
+    </div>
+
+    <!-- ===== Itens da simulação ===== -->
+    <div class="card" style="padding:22px 26px">
+      <div class="row" style="margin-bottom:16px">
+        <div class="section-title" style="margin-bottom:0">
+          Itens da simulação
+        </div>
+        @if (itens().length > 0) {
+          <span style="font-size:13px;color:var(--text-4);font-weight:500;margin-left:8px">({{ itens().length }})</span>
+        }
+        <div class="spacer"></div>
+        @if (itens().length > 0) {
+          <button type="button" class="btn ghost sm" (click)="limpar()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
+            Limpar tudo
+          </button>
+        }
+      </div>
+
+      @if (temItemComRoyaltiesSemAliquota()) {
+        <div class="warn-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 22 20H2L12 3Z"/><path d="M12 10v4M12 17v.01"/></svg>
+          Informe a alíquota de royalties acima para calcular o valor de royalties dos itens.
+        </div>
+      }
+
+      @if (itens().length === 0) {
+        <div class="empty-items">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-4)"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          <div style="font-size:13px;font-weight:500;color:var(--text-3);margin-top:4px">Nenhum item adicionado</div>
+          <div style="font-size:12px;color:var(--text-4)">Digite um Código SAP acima e clique em Adicionar</div>
+        </div>
+      } @else {
+        <!-- Header das colunas -->
+        <div class="sim-head">
+          <span>Código SAP</span>
+          <span>Descrição</span>
+          <span style="text-align:center">Qtd</span>
+          <span style="text-align:right">Preço Compra</span>
+          <span style="text-align:right">Preço Venda</span>
+          <span style="text-align:right">FPP</span>
+          <span style="text-align:right">Royalties</span>
+          <span style="text-align:right">Total Venda</span>
+          <span></span>
+        </div>
+
+        <div class="col" style="gap:6px">
+          @for (item of itens(); track item.codigo_sap) {
+            <div class="sim-row">
+              <span class="mono" style="font-size:12px;color:var(--text-2)">{{ item.codigo_sap }}</span>
+
+              <span>
+                <div style="font-size:13px;font-weight:500">{{ item.descricao }}</div>
+                <div class="row" style="gap:4px;margin-top:2px">
+                  @if (!item.cobra_fpp) { <span class="mini-pill off">Isento FPP</span> }
+                  @if (!item.cobra_royalties) { <span class="mini-pill off">Isento ROY</span> }
+                </div>
+              </span>
+
+              <input
+                class="sim-input center" type="number" min="1" step="1"
+                [value]="item.quantidade"
+                (change)="atualizarQuantidade(item.codigo_sap, $any($event.target).value)"
+              />
+
+              <span class="r compra-cell">
+                @if (editandoCompraCodigo() === item.codigo_sap) {
+                  <input
+                    class="sim-input r compra-input"
+                    type="text"
+                    inputmode="decimal"
+                    [value]="compraEditando()"
+                    (input)="compraEditando.set($any($event.target).value)"
+                    (keydown.enter)="$any($event.target).blur()"
+                    (keydown.escape)="cancelarEdicaoCompra(); $any($event.target).blur()"
+                    (blur)="confirmarEdicaoCompra(item)"
+                  />
+                } @else {
+                  <button type="button" class="compra-display" (click)="iniciarEdicaoCompra(item)" title="Clique para editar o preço de compra">
+                    <span>{{ item.preco_compra != null ? (item.preco_compra | currency:'BRL') : '—' }}</span>
+                    <svg class="compra-edit-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                }
+              </span>
+              <span class="r" style="font-size:13px">{{ item.preco_venda != null ? (item.preco_venda | currency:'BRL') : '—' }}</span>
+              <span class="r" style="font-size:13px">{{ calcularItem(item).fpp | currency:'BRL' }}</span>
+              <span class="r" style="font-size:13px">{{ calcularItem(item).royalties | currency:'BRL' }}</span>
+              <span class="r" style="font-size:13px;font-weight:700;color:var(--bordo)">{{ calcularItem(item).preco_venda_total | currency:'BRL' }}</span>
+
+              <button type="button" class="btn ghost sm remove-btn" (click)="removerItem(item.codigo_sap)" title="Remover item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14"/></svg>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+  </div>
+  }
+</div>

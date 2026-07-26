@@ -8,10 +8,10 @@
       <div class="page-sub">{{ pedidosUnicos().length }} pedidos · próximo vencimento {{ proximoVencimento() }}</div>
     </div>
     <div class="row gap-2">
-      <button class="btn outline sm">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0-4-4m4 4 4-4M5 20h14"/></svg>
-        Exportar
-      </button>
+      <a class="btn outline sm" routerLink="/pedidos/simular">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Simular
+      </a>
       <a class="btn primary" routerLink="/pedidos/novo">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         Novo Pedido

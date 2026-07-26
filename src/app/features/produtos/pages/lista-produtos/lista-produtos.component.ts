@@ -123,6 +123,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
           <span>Descrição</span>
           <span style="text-align:center">Unidade</span>
           <span>EAN</span>
+          <span style="text-align:right">Preço Compra</span>
           <span style="text-align:right">Preço Venda</span>
           <span style="text-align:center">Cobranças</span>
           <span style="text-align:center">Status</span>
@@ -155,6 +156,26 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
 
                 <span class="cell-ean mono" style="font-size:12px;color:var(--text-3)">
                   {{ item.ean ?? '—' }}
+                </span>
+
+                <span class="cell-compra">
+                  @if (editandoCompraId() === item.id) {
+                    <input
+                      class="preco-input"
+                      type="text"
+                      inputmode="decimal"
+                      [value]="compraEditando()"
+                      (input)="compraEditando.set($any($event.target).value)"
+                      (keydown.enter)="$any($event.target).blur()"
+                      (keydown.escape)="cancelarEdicaoCompra(); $any($event.target).blur()"
+                      (blur)="confirmarEdicaoCompra(item)"
+                    />
+                  } @else {
+                    <button class="preco-display" (click)="iniciarEdicaoCompra(item)" title="Clique para editar o preço de compra">
+                      <span>{{ moeda(item.preco_compra) }}</span>
+                      <svg class="preco-edit-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  }
                 </span>
 
                 <span class="cell-preco">
@@ -237,7 +258,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
   styles: [`
     .pg {
       display: grid;
-      grid-template-columns: 120px 1fr 80px 148px 118px 100px 88px 44px;
+      grid-template-columns: 120px 1fr 80px 148px 118px 118px 100px 88px 44px;
       align-items: center;
       gap: 0 16px;
       padding: 0 16px;
@@ -333,7 +354,8 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
     }
     .row-kebab:hover { background: var(--surface-2); color: var(--text-2); }
 
-    .cell-preco {
+    .cell-preco,
+    .cell-compra {
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -448,6 +470,7 @@ import { ImportarProdutosDialogComponent, ImportarProdutosResult } from './impor
       .cell-sap    { grid-area: sap; font-size: 11px !important; color: var(--text-3) !important; }
       .cell-und    { display: none; }
       .cell-ean    { display: none; }
+      .cell-compra { display: none; }
       .cell-preco  { grid-area: preco; justify-content: flex-end; font-size: 13px !important; }
       .cobrancas-cell { grid-area: chips; justify-content: flex-start; }
       .cell-status { grid-area: status; text-align: right !important; }
@@ -470,6 +493,9 @@ export class ListaProdutosComponent implements OnInit {
 
   editandoPrecoId = signal<string | null>(null);
   precoEditando   = signal('');
+
+  editandoCompraId = signal<string | null>(null);
+  compraEditando    = signal('');
 
   readonly tamanhoPagina = 10;
 
@@ -622,6 +648,7 @@ export class ListaProdutosComponent implements OnInit {
   }
 
   iniciarEdicaoPreco(item: Item) {
+    this.editandoCompraId.set(null);
     this.precoEditando.set(item.preco_venda != null ? String(item.preco_venda) : '');
     this.editandoPrecoId.set(item.id);
     setTimeout(() => {
@@ -655,6 +682,44 @@ export class ListaProdutosComponent implements OnInit {
       );
     } catch {
       this.snack.open('Erro ao atualizar preço.', 'OK', { duration: 4000 });
+    }
+  }
+
+  iniciarEdicaoCompra(item: Item) {
+    this.editandoPrecoId.set(null);
+    this.compraEditando.set(item.preco_compra != null ? String(item.preco_compra) : '');
+    this.editandoCompraId.set(item.id);
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('.preco-input');
+      input?.focus();
+      input?.select();
+    }, 0);
+  }
+
+  cancelarEdicaoCompra() {
+    this.editandoCompraId.set(null);
+  }
+
+  async confirmarEdicaoCompra(item: Item) {
+    if (this.editandoCompraId() !== item.id) return;
+    this.editandoCompraId.set(null);
+
+    const valorStr = this.compraEditando().trim().replace(',', '.');
+    const novoValor = valorStr === '' ? null : parseFloat(valorStr);
+
+    if (novoValor === item.preco_compra) return;
+    if (valorStr !== '' && (isNaN(novoValor!) || novoValor! < 0)) {
+      this.snack.open('Valor de compra inválido.', 'OK', { duration: 3000 });
+      return;
+    }
+
+    try {
+      await this.svc.atualizarPrecoCompra(item.id, novoValor);
+      this.itens.update(list =>
+        list.map(i => i.id === item.id ? { ...i, preco_compra: novoValor } : i)
+      );
+    } catch {
+      this.snack.open('Erro ao atualizar valor de compra.', 'OK', { duration: 4000 });
     }
   }
 

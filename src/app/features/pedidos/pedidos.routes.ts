@@ -16,6 +16,20 @@ export const pedidosRoutes: Routes = [
       ),
   },
   {
+    path: 'simular',
+    loadComponent: () =>
+      import('./pages/simulacao-pedido/simulacao-pedido.component').then(
+        m => m.SimulacaoPedidoComponent
+      ),
+  },
+  {
+    path: 'simular/:id',
+    loadComponent: () =>
+      import('./pages/simulacao-pedido/simulacao-pedido.component').then(
+        m => m.SimulacaoPedidoComponent
+      ),
+  },
+  {
     path: ':id/editar',
     loadComponent: () =>
       import('./pages/novo-pedido/novo-pedido.component').then(
