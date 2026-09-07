@@ -458,12 +458,7 @@ export class ApuracaoCrmService {
     }
 
     // 1. Catálogo: EAN, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties
-    const { data: produtos, error: e1 } = await this.db
-      .from('itens')
-      .select('ean, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties')
-      .not('ean', 'is', null)
-      .not('descricao', 'is', null);
-    if (e1) throw e1;
+    const produtos = await this.buscarCatalogoComEan();
 
     // EANs válidos = em catálogo com preço (elegíveis para apuração)
     const eanComPreco = new Set<string>(
@@ -471,13 +466,20 @@ export class ApuracaoCrmService {
     );
 
     // 2. Todos os itens de pedidos CRM (incluindo c_prod e quantidade)
-    const { data: todosItens, error: e2 } = await this.db
-      .from('itens_pedido')
-      .select('id, descricao, ean, c_prod, pedido_id, quantidade, pedido:pedidos(numero_nf)')
-      .in('pedido_id', pedidosCrmIds);
-    if (e2) throw e2;
-
-    const itens = (todosItens ?? []) as any[];
+    const LOTE = 1000;
+    const itens: any[] = [];
+    for (let inicio = 0; ; inicio += LOTE) {
+      const { data, error: e2 } = await this.db
+        .from('itens_pedido')
+        .select('id, descricao, ean, c_prod, pedido_id, quantidade, pedido:pedidos(numero_nf)')
+        .in('pedido_id', pedidosCrmIds)
+        .order('id')
+        .range(inicio, inicio + LOTE - 1);
+      if (e2) throw e2;
+      const lote = data ?? [];
+      itens.push(...lote);
+      if (lote.length < LOTE) break;
+    }
 
     // Separar: já tem EAN válido vs. precisa reconciliar
     const jaValidos      = itens.filter(i => i.ean && eanComPreco.has(i.ean));
@@ -621,18 +623,35 @@ export class ApuracaoCrmService {
   }
 
   async buscarProdutos(): Promise<ProdutoCatalogo[]> {
-    const { data, error } = await this.db
-      .from('itens')
-      .select('ean, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties')
-      .not('ean', 'is', null)
-      .not('descricao', 'is', null)
-      .order('descricao');
-    if (error) throw error;
-    return ((data ?? []) as any[]).map(p => ({
+    const data = await this.buscarCatalogoComEan(true);
+    return (data as any[]).map(p => ({
       ...p,
       cobra_fpp: p.cobra_fpp ?? true,
       cobra_royalties: p.cobra_royalties ?? true,
     })) as ProdutoCatalogo[];
+  }
+
+  /**
+   * Busca o catálogo completo de itens com EAN e descrição preenchidos, paginando em lotes
+   * de 1000 para contornar o teto padrão de linhas do PostgREST/Supabase.
+   */
+  private async buscarCatalogoComEan(ordenado = false): Promise<any[]> {
+    const LOTE = 1000;
+    const todos: any[] = [];
+    for (let inicio = 0; ; inicio += LOTE) {
+      let query = this.db
+        .from('itens')
+        .select('ean, descricao, codigo_sap, preco_venda, cobra_fpp, cobra_royalties')
+        .not('ean', 'is', null)
+        .not('descricao', 'is', null);
+      if (ordenado) query = query.order('descricao');
+      const { data, error } = await query.range(inicio, inicio + LOTE - 1);
+      if (error) throw error;
+      const lote = data ?? [];
+      todos.push(...lote);
+      if (lote.length < LOTE) break;
+    }
+    return todos;
   }
 
   async aplicarMatchManual(descricao: string, ean: string, c_prod?: string | null): Promise<number> {

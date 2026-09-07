@@ -9,12 +9,20 @@ export class ProdutosService {
   private db = inject(SupabaseService).client;
 
   async listar(): Promise<Item[]> {
-    const { data, error } = await this.db
-      .from('itens')
-      .select('*')
-      .order('descricao');
-    if (error) throw error;
-    return data ?? [];
+    const LOTE = 1000;
+    const todos: Item[] = [];
+    for (let inicio = 0; ; inicio += LOTE) {
+      const { data, error } = await this.db
+        .from('itens')
+        .select('*')
+        .order('descricao')
+        .range(inicio, inicio + LOTE - 1);
+      if (error) throw error;
+      const lote = data ?? [];
+      todos.push(...lote);
+      if (lote.length < LOTE) break;
+    }
+    return todos;
   }
 
   /**
