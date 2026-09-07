@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
-import { TipoPedido } from '../../models/tipo-pedido.model';
+import { TipoPedido, PERCENTUAL_ROYALTIES_PADRAO } from '../../models/tipo-pedido.model';
 
 @Component({
   selector: 'app-tipo-pedido-dialog',
@@ -78,8 +78,6 @@ export class TipoPedidoDialogComponent {
 
   salvando = false;
 
-  private readonly PERCENTUAIS: Record<string, number> = { linha: 37, sazonal: 27.5 };
-
   form = this.fb.group({
     nome: [this.data?.nome ?? '', Validators.required],
     incide_royalties: [this.data?.incide_royalties ?? false],
@@ -91,9 +89,9 @@ export class TipoPedidoDialogComponent {
   });
 
   onTipoRoyaltiesChange() {
-    const tipo = this.form.get('tipo_royalties')?.value as string | null;
-    if (tipo && this.PERCENTUAIS[tipo] != null) {
-      this.form.get('percentual_royalties')?.setValue(this.PERCENTUAIS[tipo]);
+    const tipo = this.form.get('tipo_royalties')?.value as 'linha' | 'sazonal' | null;
+    if (tipo && PERCENTUAL_ROYALTIES_PADRAO[tipo] != null) {
+      this.form.get('percentual_royalties')?.setValue(PERCENTUAL_ROYALTIES_PADRAO[tipo]);
     }
   }
 

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TiposPedidoService } from '../../services/tipos-pedido.service';
-import { TipoPedido } from '../../models/tipo-pedido.model';
+import { TipoPedido, PERCENTUAL_ROYALTIES_PADRAO } from '../../models/tipo-pedido.model';
 import { TipoPedidoDialogComponent } from './tipo-pedido-dialog.component';
 import { PageHeaderService } from '../../../../core/services/page-header.service';
 
@@ -39,6 +39,17 @@ export class ListaTiposPedidoComponent implements OnInit {
       const n = this.tiposFiltrados().length;
       this.pageHeader.setSubtitle(`${n} tipo${n !== 1 ? 's' : ''} cadastrado${n !== 1 ? 's' : ''}`);
     });
+  }
+
+  /**
+   * Rótulo da badge de royalties: tipo + percentual efetivamente cobrado para aquele tipo de pedido,
+   * caindo no percentual padrão do tipo quando ele não define um próprio.
+   */
+  labelRoyalties(t: TipoPedido): string {
+    const tipo = t.tipo_royalties === 'linha' ? 'linha' : 'sazonal';
+    const pct  = t.percentual_royalties ?? PERCENTUAL_ROYALTIES_PADRAO[tipo];
+    const nome = tipo === 'linha' ? 'Linha' : 'Sazonal';
+    return `${nome} ${pct.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
   }
 
   async ngOnInit() {
