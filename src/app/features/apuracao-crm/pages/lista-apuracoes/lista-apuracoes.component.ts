@@ -906,12 +906,13 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                [value]="p.vencimento"
                                (change)="updateParcelaSazonal(g, $index, { vencimento: $any($event.target).value })" />
                       </label>
-                      <button type="button" class="parcela-remove"
-                              [disabled]="g.parcelasSazonal.length <= 1 || null"
-                              title="Remover parcela (o valor é redistribuído entre as restantes)"
-                              (click)="removerParcelaSazonal(g, $index)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
-                      </button>
+                      @if (g.parcelasSazonal.length > 1) {
+                        <button type="button" class="btn ghost icon sm"
+                                title="Remover parcela (o valor é redistribuído entre as restantes)"
+                                (click)="removerParcelaSazonal(g, $index)">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+                        </button>
+                      }
                     </div>
                   }
                 }
@@ -1155,7 +1156,6 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       font-size: 11px; font-weight: 600; color: #82622F;
       white-space: nowrap;
     }
-    .spacer { flex: 1; }
     .warn-ean { font-size: 11px; color: #C28A1E; white-space: nowrap; flex-shrink: 0; }
     .nota-fpp  { font-size: 12px; font-weight: 600; color: #5A1620; white-space: nowrap; text-align: right; }
     .nota-roy  { font-size: 12px; font-weight: 600; color: #82622F; white-space: nowrap; text-align: right; }
@@ -1465,17 +1465,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
       display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
     }
     .parcela-row {
-      display: grid; grid-template-columns: 1fr 1fr 28px; gap: 4px 14px; align-items: end;
+      display: grid; grid-template-columns: 1fr 1fr 36px; gap: 4px 14px; align-items: end;
+      .btn { margin-bottom: 3px; }
     }
-    .parcela-remove {
-      display: flex; align-items: center; justify-content: center;
-      width: 28px; height: 34px; padding: 0; margin-bottom: 4px;
-      border: 1px solid var(--line); border-radius: 6px;
-      background: transparent; color: var(--text-4); cursor: pointer;
-      transition: background .12s, color .12s, border-color .12s;
-    }
-    .parcela-remove:hover:not(:disabled) { background: var(--danger-tint, color-mix(in srgb, #B3261E 10%, transparent)); border-color: #B3261E; color: #B3261E; }
-    .parcela-remove:disabled { opacity: .35; cursor: not-allowed; }
     .fpp-modal-info {
       display: flex; align-items: flex-start; gap: 8px;
       padding: 10px 12px; border-radius: 8px; font-size: 12px; color: var(--text-3);
