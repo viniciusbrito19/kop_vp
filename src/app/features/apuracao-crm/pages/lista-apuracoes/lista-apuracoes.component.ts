@@ -41,8 +41,12 @@ interface GrupoRoyaltiesEdicao {
   vencimentoP1: string;
   /** Só usado quando tipo === 'linha' — 2ª parcela, 45 dias. */
   vencimentoP2: string;
-  /** Só usado quando tipo === 'sazonal' — 5 parcelas (20/20/30/15/15%), valor e vencimento editáveis. */
-  parcelasSazonal: Array<{ valorStr: string; vencimento: string }>;
+  /**
+   * Só usado quando tipo === 'sazonal'. Começa com 5 parcelas (20/20/30/15/15%); campanhas com menos
+   * parcelas podem ter linhas removidas no modal. Cada parcela guarda seu percentual de origem — a
+   * fração efetiva é ele renormalizado pela soma das parcelas restantes.
+   */
+  parcelasSazonal: Array<{ valorStr: string; vencimento: string; percentual: number }>;
   /** Σ vProd do grupo — base fixa para recalcular a Devolução Garantida quando o bruto é ajustado. */
   valorProdutosSemImposto: number;
 }
@@ -888,9 +892,9 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 </div>
                 @if (g.tipo === 'sazonal') {
                   @for (p of g.parcelasSazonal; track $index) {
-                    <div class="roy-fields-grid">
+                    <div class="parcela-row">
                       <label class="input">
-                        <span>Parcela {{ $index + 1 }} — {{ percentuaisSazonal[$index] * 100 | number:'1.0-0' }}% (R$)</span>
+                        <span>Parcela {{ $index + 1 }} — {{ fracaoParcela(g, $index) * 100 | number:'1.0-1' }}% (R$)</span>
                         <input type="text" inputmode="decimal"
                                [value]="p.valorStr"
                                (input)="updateParcelaSazonal(g, $index, { valorStr: $any($event.target).value })"
@@ -902,11 +906,17 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                                [value]="p.vencimento"
                                (change)="updateParcelaSazonal(g, $index, { vencimento: $any($event.target).value })" />
                       </label>
+                      <button type="button" class="parcela-remove"
+                              [disabled]="g.parcelasSazonal.length <= 1 || null"
+                              title="Remover parcela (o valor é redistribuído entre as restantes)"
+                              (click)="removerParcelaSazonal(g, $index)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+                      </button>
                     </div>
                   }
                 }
                 <div class="calc-row total">
-                  <span>Royalties líquido — {{ grupoLabel(g) }} ({{ g.tipo === 'linha' ? '2' : '5' }} parcelas)</span>
+                  <span>Royalties líquido — {{ grupoLabel(g) }} ({{ g.tipo === 'linha' ? 2 : g.parcelasSazonal.length }} {{ (g.tipo === 'linha' ? 2 : g.parcelasSazonal.length) === 1 ? 'parcela' : 'parcelas' }})</span>
                   <span>R$ {{ (g.tipo === 'sazonal' ? somaParcelasSazonal(g) : liquidoGrupo(g)) | number:'1.2-2':'pt-BR' }}</span>
                 </div>
                 <div class="calc-divider"></div>
@@ -1454,6 +1464,18 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     .roy-fields-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
     }
+    .parcela-row {
+      display: grid; grid-template-columns: 1fr 1fr 28px; gap: 4px 14px; align-items: end;
+    }
+    .parcela-remove {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 34px; padding: 0; margin-bottom: 4px;
+      border: 1px solid var(--line); border-radius: 6px;
+      background: transparent; color: var(--text-4); cursor: pointer;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .parcela-remove:hover:not(:disabled) { background: var(--danger-tint, color-mix(in srgb, #B3261E 10%, transparent)); border-color: #B3261E; color: #B3261E; }
+    .parcela-remove:disabled { opacity: .35; cursor: not-allowed; }
     .fpp-modal-info {
       display: flex; align-items: flex-start; gap: 8px;
       padding: 10px 12px; border-radius: 8px; font-size: 12px; color: var(--text-3);
@@ -1477,7 +1499,6 @@ export class ListaApuracoesComponent implements OnInit {
   private pageHeader = inject(PageHeaderService);
 
   readonly meses = MESES;
-  readonly percentuaisSazonal = PERCENTUAIS_ROYALTIES_SAZONAL;
 
   apuracoes  = signal<ApuracaoCrm[]>([]);
   carregando = signal(false);
@@ -1592,23 +1613,54 @@ export class ListaApuracoesComponent implements OnInit {
     return bruto - devGarant - devProd - outros;
   }
 
-  /** Divide o líquido nas 5 parcelas de Royalties Sazonal (20/20/30/15/15%); a última absorve o resto do arredondamento. */
-  private calcularParcelasSazonal(liquido: number, vencimentos: string[]): Array<{ valorStr: string; vencimento: string }> {
+  /**
+   * Distribui o líquido entre as parcelas de Royalties Sazonal na proporção dos percentuais de origem
+   * (20/20/30/15/15%), renormalizados pela soma das parcelas presentes — assim uma campanha com menos
+   * parcelas mantém a proporção relativa entre as que restaram e a soma continua igual ao líquido.
+   * A última parcela absorve o resto do arredondamento.
+   */
+  private calcularParcelasSazonal(
+    liquido: number,
+    parcelas: Array<{ vencimento: string; percentual: number }>,
+  ): Array<{ valorStr: string; vencimento: string; percentual: number }> {
+    if (parcelas.length === 0) return [];
+    const totalPct = parcelas.reduce((s, p) => s + p.percentual, 0);
     const valores: number[] = [];
     let soma = 0;
-    for (let i = 0; i < PERCENTUAIS_ROYALTIES_SAZONAL.length - 1; i++) {
-      const v = Math.round(liquido * PERCENTUAIS_ROYALTIES_SAZONAL[i] * 100) / 100;
+    for (let i = 0; i < parcelas.length - 1; i++) {
+      const v = totalPct > 0 ? Math.round(liquido * (parcelas[i].percentual / totalPct) * 100) / 100 : 0;
       valores.push(v);
       soma += v;
     }
     valores.push(Math.round((liquido - soma) * 100) / 100);
-    return vencimentos.map((vencimento, i) => ({ valorStr: this.formatMoeda(valores[i]), vencimento }));
+    return parcelas.map((p, i) => ({
+      valorStr:   this.formatMoeda(valores[i]),
+      vencimento: p.vencimento,
+      percentual: p.percentual,
+    }));
+  }
+
+  /** Fração efetiva de uma parcela — seu percentual de origem renormalizado pelas parcelas restantes. */
+  fracaoParcela(g: GrupoRoyaltiesEdicao, idx: number): number {
+    const total = g.parcelasSazonal.reduce((s, p) => s + p.percentual, 0);
+    return total > 0 ? g.parcelasSazonal[idx].percentual / total : 0;
+  }
+
+  /**
+   * Remove uma parcela de Royalties Sazonal — campanhas sazonais nem sempre são cobradas nas 5 parcelas
+   * padrão. As restantes têm os valores recalculados sobre o líquido do grupo, preservando as datas já
+   * ajustadas; eventuais valores digitados manualmente são substituídos pela nova divisão proporcional.
+   */
+  removerParcelaSazonal(g: GrupoRoyaltiesEdicao, idx: number) {
+    if (g.parcelasSazonal.length <= 1) return;
+    const restantes = g.parcelasSazonal.filter((_, i) => i !== idx);
+    this.updateGrupo(g.key, { parcelasSazonal: this.calcularParcelasSazonal(this.liquidoGrupo(g), restantes) });
   }
 
   /**
    * O royalties bruto (e os créditos) de um grupo podem ser ajustados manualmente. Quando ajustados:
    * em grupo Linha, a Devolução Garantida — que depende do bruto na fórmula (Σ produtos sem imposto +
-   * royalties bruto) × 5% — é recalculada; em grupo Sazonal, as 5 parcelas são recalculadas a partir
+   * royalties bruto) × 5% — é recalculada; em grupo Sazonal, as parcelas são recalculadas a partir
    * do novo líquido (mantendo as datas já ajustadas pelo usuário).
    */
   onGrupoBrutoOuCreditoInput(g: GrupoRoyaltiesEdicao, patch: Partial<GrupoRoyaltiesEdicao>) {
@@ -1621,7 +1673,7 @@ export class ListaApuracoesComponent implements OnInit {
     if (g.tipo === 'sazonal') {
       atualizado = {
         ...atualizado,
-        parcelasSazonal: this.calcularParcelasSazonal(this.liquidoGrupo(atualizado), atualizado.parcelasSazonal.map(p => p.vencimento)),
+        parcelasSazonal: this.calcularParcelasSazonal(this.liquidoGrupo(atualizado), atualizado.parcelasSazonal),
       };
     }
     this.royGrupos.update(lista => lista.map(x => x.key === g.key ? atualizado : x));
@@ -1641,7 +1693,7 @@ export class ListaApuracoesComponent implements OnInit {
     return Math.round((this.liquidoGrupo(g) - this.parcela1Grupo(g)) * 100) / 100;
   }
 
-  /** Soma das 5 parcelas de Sazonal — pode diferir levemente do líquido "de fábrica" se o usuário ajustou valores manualmente. */
+  /** Soma das parcelas de Sazonal — pode diferir levemente do líquido "de fábrica" se o usuário ajustou valores manualmente. */
   somaParcelasSazonal(g: GrupoRoyaltiesEdicao): number {
     return g.parcelasSazonal.reduce((s, p) => s + this.parseMoeda(p.valorStr), 0);
   }
@@ -1798,7 +1850,13 @@ export class ListaApuracoesComponent implements OnInit {
       outrosStr:               '',
       vencimentoP1:            g.tipo === 'linha' ? this.service.vencimentoFpp(dataFim) : '',
       vencimentoP2:            g.tipo === 'linha' ? this.service.vencimentoRoyaltiesLinhaParcela2(dataFim) : '',
-      parcelasSazonal:         g.tipo === 'sazonal' ? this.calcularParcelasSazonal(g.roy_bruto, this.service.vencimentosRoyaltiesSazonal(dataFim, quinzena)) : [],
+      parcelasSazonal:         g.tipo === 'sazonal'
+        ? this.calcularParcelasSazonal(
+            g.roy_bruto,
+            this.service.vencimentosRoyaltiesSazonal(dataFim, quinzena)
+              .map((vencimento, i) => ({ vencimento, percentual: PERCENTUAIS_ROYALTIES_SAZONAL[i] })),
+          )
+        : [],
       valorProdutosSemImposto: g.valor_produtos_sem_imposto,
     }));
   }
@@ -1882,7 +1940,12 @@ export class ListaApuracoesComponent implements OnInit {
           outros:             this.parseMoeda(g.outrosStr),
         });
       } else {
-        if (g.parcelasSazonal.some(p => !p.vencimento)) { this.snack.open(`Informe o vencimento das 5 parcelas — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 }); return; }
+        if (g.parcelasSazonal.length === 0) { this.snack.open(`Informe ao menos uma parcela — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 }); return; }
+        if (g.parcelasSazonal.some(p => !p.vencimento)) {
+          const qtd = g.parcelasSazonal.length;
+          this.snack.open(`Informe o vencimento ${qtd === 1 ? 'da parcela' : `das ${qtd} parcelas`} — ${this.grupoLabel(g)}.`, 'OK', { duration: 3500 });
+          return;
+        }
         itensRoy.push({
           tipo: 'sazonal',
           aliquota: g.aliquota,
